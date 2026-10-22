@@ -1,1 +1,17 @@
 *:Zone.Identifier
+
+# .NET
+bin/
+obj/
+TestResults/
+*.user
+
+# Flutter / Dart
+.dart_tool/
+build/
+.flutter-plugins*
+flutter_*.log
+
+# Misc
+.env
+.DS_Store

@@ -1,0 +1,17 @@
+name: api
+on:
+  push:
+    paths: ["api/**", ".github/workflows/api.yml"]
+  pull_request:
+    paths: ["api/**", ".github/workflows/api.yml"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore api/Vela.sln
+      - run: dotnet build api/Vela.sln --no-restore
+      - run: dotnet test api/Vela.sln --no-build
