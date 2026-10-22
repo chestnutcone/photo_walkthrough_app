@@ -260,6 +260,10 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("artist_id");
 
+                    b.Property<string>("ClientIp")
+                        .HasColumnType("text")
+                        .HasColumnName("client_ip");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -273,9 +277,23 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("message");
 
+                    b.Property<string>("SenderEmail")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("sender_email");
+
                     b.Property<Guid>("SenderId")
                         .HasColumnType("uuid")
                         .HasColumnName("sender_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.Property<Guid?>("WorkId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("work_id");
 
                     b.HasKey("Id")
                         .HasName("pk_inquiries");
@@ -283,8 +301,11 @@ namespace Vela.Api.Data.Migrations
                     b.HasIndex("ArtistId")
                         .HasDatabaseName("ix_inquiries_artist_id");
 
-                    b.HasIndex("SenderId")
-                        .HasDatabaseName("ix_inquiries_sender_id");
+                    b.HasIndex("ClientIp", "CreatedAt")
+                        .HasDatabaseName("ix_inquiries_client_ip_created_at");
+
+                    b.HasIndex("SenderId", "CreatedAt")
+                        .HasDatabaseName("ix_inquiries_sender_id_created_at");
 
                     b.ToTable("inquiries", (string)null);
                 });

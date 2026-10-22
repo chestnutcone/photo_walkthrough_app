@@ -52,6 +52,7 @@ class SendInquiryRequest {
 
 
 
+      /// Trimmed; no control characters other than new lines
   @JsonKey(
     
     name: r'message',

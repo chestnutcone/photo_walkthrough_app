@@ -18,6 +18,7 @@ void main() {
       // TODO
     });
 
+    // Trimmed; no control characters other than new lines
     // String message
     test('to test the property `message`', () async {
       // TODO

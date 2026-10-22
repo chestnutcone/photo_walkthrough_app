@@ -1260,8 +1260,8 @@ components:
       required: [type, email, message]
       properties:
         type: {type: string, enum: [Commission, Buy a print, Licensing, Collaboration, Just saying hi]}
-        email: {type: string, format: email, description: Sender's reply email}
-        message: {type: string, minLength: 1}
+        email: {type: string, format: email, maxLength: 254, description: Sender's reply email}
+        message: {type: string, minLength: 1, maxLength: 2000, description: "Trimmed; no control characters other than new lines"}
         workId: {type: string, format: uuid, nullable: true}
     CreateDraftRequest:
       type: object

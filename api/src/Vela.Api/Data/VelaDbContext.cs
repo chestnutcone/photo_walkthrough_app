@@ -138,6 +138,8 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
             e.HasOne<User>().WithMany().HasForeignKey(x => x.SenderId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.ArtistId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.ArtistId);
+            e.HasIndex(x => new { x.SenderId, x.CreatedAt });
+            e.HasIndex(x => new { x.ClientIp, x.CreatedAt });
         });
         b.Entity<Report>(e =>
         {

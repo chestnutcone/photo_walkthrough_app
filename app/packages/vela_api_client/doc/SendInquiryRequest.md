@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **type** | **String** |  | 
 **email** | **String** | Sender's reply email | 
-**message** | **String** |  | 
+**message** | **String** | Trimmed; no control characters other than new lines | 
 **workId** | **String** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

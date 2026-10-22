@@ -12,7 +12,6 @@ public static class ContractStubs
         ("DELETE", "/v1/me", "deleteAccount"),
         ("POST", "/v1/me/export", "requestExport"),
         ("GET", "/v1/me/export/{id}", "getExport"),
-        ("POST", "/v1/artists/{id}/inquiries", "sendInquiry"),
         ("GET", "/v1/search", "search"),
     ];
 
