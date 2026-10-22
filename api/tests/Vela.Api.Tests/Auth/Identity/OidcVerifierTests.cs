@@ -129,6 +129,33 @@ public class OidcVerifierTests
         await Assert.ThrowsAsync<IdentityVerificationException>(() => Google().VerifyAsync(GoogleToken(), null));
     }
 
+    public static TheoryData<string?[]> BlankApple => new() { new string?[] { null }, new[] { "" }, new[] { "   " } };
+    public static TheoryData<string[]> BlankGoogle => new() { Array.Empty<string>(), new[] { "" }, new[] { " ", "\t" } };
+
+    [Theory]
+    [MemberData(nameof(BlankApple))]
+    public async Task Apple_verifier_fails_closed_when_client_id_is_blank(string?[] clientId)
+    {
+        var opts = Options.Create(new IdentityOptions { Apple = new() { ClientId = clientId[0]! } });
+        var v = new AppleIdentityVerifier(_jwks, opts, _clock);
+        // Valid in every respect except that no audience is configured.
+        var ex = await Assert.ThrowsAsync<IdentityVerificationException>(() => v.VerifyAsync(AppleToken(), Nonce));
+        Assert.Equal("The identity token is invalid.", ex.Message);
+        foreach (var aud in new[] { "", AppleAud })
+            await Assert.ThrowsAsync<IdentityVerificationException>(() => v.VerifyAsync(AppleToken(aud: aud), Nonce));
+    }
+
+    [Theory]
+    [MemberData(nameof(BlankGoogle))]
+    public async Task Google_verifier_fails_closed_when_client_ids_are_empty_or_blank(string[] clientIds)
+    {
+        var opts = Options.Create(new IdentityOptions { Google = new() { ClientIds = clientIds } });
+        var v = new GoogleIdentityVerifier(_jwks, opts, _clock);
+        var ex = await Assert.ThrowsAsync<IdentityVerificationException>(() => v.VerifyAsync(GoogleToken(), Nonce));
+        Assert.Equal("The identity token is invalid.", ex.Message);
+        await Assert.ThrowsAsync<IdentityVerificationException>(() => v.VerifyAsync(GoogleToken(aud: GoogleAud), Nonce));
+    }
+
     [Fact]
     public async Task Fake_verifier_parses_subject_and_optional_email()
     {

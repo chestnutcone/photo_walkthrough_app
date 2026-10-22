@@ -20,15 +20,18 @@ public class SsoEndpointTests(PostgresFixture pg) : IDisposable
 
     public void Dispose() => _factories.ForEach(f => f.Dispose());
 
-    private WebApplicationFactory<Program> Factory(string env = "Test")
+    private WebApplicationFactory<Program> Factory(string env = "Test", bool configureAudiences = true)
     {
         var f = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment(env);
             b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");
-            b.UseSetting("Auth:Apple:ClientId", "app.vela.test");
-            b.UseSetting("Auth:Google:ClientIds:0", "google-ios.apps.googleusercontent.com");
+            if (configureAudiences)
+            {
+                b.UseSetting("Auth:Apple:ClientId", "app.vela.test");
+                b.UseSetting("Auth:Google:ClientIds:0", "google-ios.apps.googleusercontent.com");
+            }
             b.ConfigureTestServices(s =>
             {
                 s.AddSingleton<IJwksProvider>(_jwks);
@@ -76,6 +79,23 @@ public class SsoEndpointTests(PostgresFixture pg) : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, status);
         Assert.Equal(HttpStatusCode.Unauthorized, bad);
+        Assert.Equal("invalid_identity_token", body.GetProperty("error").GetProperty("code").GetString());
+    }
+
+    [Theory]
+    [InlineData("apple")]
+    [InlineData("google")]
+    public async Task Sso_with_no_audience_configured_returns_401_invalid_identity_token(string provider)
+    {
+        var c = Factory(configureAudiences: false).CreateClient();
+        var nonce = provider == "apple" ? TestJwks.Sha256Hex("n1") : "n1";
+        var aud = provider == "apple" ? "app.vela.test" : "google-ios.apps.googleusercontent.com";
+        var iss = provider == "apple" ? "https://appleid.apple.com" : "https://accounts.google.com";
+        var token = _jwks.Mint(iss, aud, Now, new() { ["sub"] = "x-" + Guid.NewGuid(), ["nonce"] = nonce });
+
+        var (status, body) = await Post(c, new { provider, idToken = token, nonce = "n1" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, status);
         Assert.Equal("invalid_identity_token", body.GetProperty("error").GetProperty("code").GetString());
     }
 
