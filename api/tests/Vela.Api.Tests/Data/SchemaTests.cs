@@ -25,6 +25,7 @@ public class SchemaTests(PostgresFixture pg)
         await using var db = pg.NewContext();
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());
         Assert.True(await db.Database.CanConnectAsync());
+        Assert.False(db.Database.HasPendingModelChanges());
     }
 
     [Fact]
@@ -63,7 +64,6 @@ public class SchemaTests(PostgresFixture pg)
 
         // Mixed case is rejected by the lower(handle) check constraint.
         await using var db2 = pg.NewContext();
-        db2.Users.Add(NewUser());
         var u3 = NewUser(); db2.Users.Add(u3);
         db2.Profiles.Add(NewProfile(u3.Id, handle.ToUpperInvariant()));
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => db2.SaveChangesAsync());
@@ -113,5 +113,84 @@ public class SchemaTests(PostgresFixture pg)
         var loaded = await db2.Profiles.SingleAsync(x => x.UserId == u.Id);
         Assert.Equal("Portrait", loaded.Services.Single().Title);
         Assert.Equal("Group show", loaded.Shows.Single().Text);
+    }
+
+    private async Task<Guid> NewWorkAsync()
+    {
+        await using var db = pg.NewContext();
+        var u = NewUser(); db.Users.Add(u);
+        var w = new Work
+        {
+            Id = Guid.NewGuid(), ArtistId = u.Id, Title = "T", Intro = "", Status = WorkStatus.Draft,
+            ImageBlob = "b", Width = 3, Height = 4, CreatedAt = DateTimeOffset.UtcNow,
+        };
+        db.Works.Add(w);
+        await db.SaveChangesAsync();
+        return w.Id;
+    }
+
+    private async Task<string?> SaveChapterAsync(Guid workId, int index, double x, double y, double? zoom)
+    {
+        await using var db = pg.NewContext();
+        db.Chapters.Add(new Chapter { WorkId = workId, Index = index, X = x, Y = y, Zoom = zoom, Title = "c", Body = "b" });
+        try { await db.SaveChangesAsync(); return null; }
+        catch (DbUpdateException e) { return ((PostgresException)e.InnerException!).SqlState; }
+    }
+
+    [Theory]
+    [InlineData(-0.01, 0.5, null, 1)]
+    [InlineData(1.01, 0.5, null, 2)]
+    [InlineData(0.5, -0.01, null, 3)]
+    [InlineData(0.5, 1.01, null, 4)]
+    [InlineData(0.5, 0.5, 0.0, 5)]
+    [InlineData(0.5, 0.5, -1.0, 6)]
+    [InlineData(0.5, 0.5, null, -1)]
+    [InlineData(0.5, 0.5, null, 40)]
+    public async Task Chapter_out_of_range_values_violate_check_constraint(double x, double y, double? zoom, int index)
+    {
+        var workId = await NewWorkAsync();
+        // Index is only the failing field for -1 and 40; other rows use a unique valid index.
+        Assert.Equal(PostgresErrorCodes.CheckViolation, await SaveChapterAsync(workId, index, x, y, zoom));
+    }
+
+    [Theory]
+    [InlineData(0.0, 1.0, null, 0)]
+    [InlineData(1.0, 0.0, 2.4, 39)]
+    [InlineData(0.0, 0.0, null, 1)]
+    public async Task Chapter_edge_values_are_accepted(double x, double y, double? zoom, int index)
+    {
+        var workId = await NewWorkAsync();
+        Assert.Null(await SaveChapterAsync(workId, index, x, y, zoom));
+    }
+
+    [Fact]
+    public async Task Works_has_published_artist_index()
+    {
+        await using var db = pg.NewContext();
+        var def = await db.Database.SqlQuery<string>(
+            $"select indexdef as \"Value\" from pg_indexes where tablename = 'works' and indexdef ilike '%(artist_id, published_at, id)%'")
+            .SingleAsync();
+        Assert.Contains("status", def);
+        Assert.Contains("published", def);
+    }
+
+    [Fact]
+    public async Task Deleting_reporter_keeps_report_with_null_reporter()
+    {
+        await using var db = pg.NewContext();
+        var u = NewUser(); db.Users.Add(u);
+        var r = new Report
+        {
+            Id = Guid.NewGuid(), Source = "user", Reason = "spam", TargetType = "work",
+            TargetId = Guid.NewGuid(), ReporterId = u.Id, CreatedAt = DateTimeOffset.UtcNow,
+        };
+        db.Reports.Add(r);
+        await db.SaveChangesAsync();
+
+        await db.Users.Where(x => x.Id == u.Id).ExecuteDeleteAsync();
+
+        await using var db2 = pg.NewContext();
+        var kept = await db2.Reports.SingleAsync(x => x.Id == r.Id);
+        Assert.Null(kept.ReporterId);
     }
 }

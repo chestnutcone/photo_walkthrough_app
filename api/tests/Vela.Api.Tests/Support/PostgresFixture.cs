@@ -11,11 +11,12 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public string ConnectionString => _container.GetConnectionString();
 
-    public VelaDbContext NewContext() =>
-        new(new DbContextOptionsBuilder<VelaDbContext>()
-            .UseNpgsql(ConnectionString)
-            .UseSnakeCaseNamingConvention()
-            .Options);
+    public VelaDbContext NewContext()
+    {
+        var builder = new DbContextOptionsBuilder<VelaDbContext>();
+        builder.ConfigureVela(ConnectionString);
+        return new VelaDbContext(builder.Options);
+    }
 
     public async Task InitializeAsync()
     {

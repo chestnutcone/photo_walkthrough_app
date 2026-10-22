@@ -6,10 +6,10 @@ using Vela.Api.Stubs;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
 
-builder.Services.AddDbContext<VelaDbContext>(o => o
-    .UseNpgsql(builder.Configuration.GetConnectionString("Default")
-        ?? "Host=localhost;Port=5432;Database=vela;Username=vela;Password=vela_dev_only")
-    .UseSnakeCaseNamingConvention());
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException(
+        "ConnectionStrings:Default is not configured. Set it via environment (ConnectionStrings__Default) or a secret store.");
+builder.Services.AddDbContext<VelaDbContext>(o => o.ConfigureVela(connectionString));
 
 var app = builder.Build();
 

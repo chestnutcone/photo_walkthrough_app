@@ -89,7 +89,16 @@ namespace Vela.Api.Data.Migrations
                     b.HasKey("WorkId", "Index")
                         .HasName("pk_chapters");
 
-                    b.ToTable("chapters", (string)null);
+                    b.ToTable("chapters", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_chapters_index_range", "\"index\" BETWEEN 0 AND 39");
+
+                            t.HasCheckConstraint("ck_chapters_x_range", "x BETWEEN 0 AND 1");
+
+                            t.HasCheckConstraint("ck_chapters_y_range", "y BETWEEN 0 AND 1");
+
+                            t.HasCheckConstraint("ck_chapters_zoom_positive", "zoom IS NULL OR zoom > 0");
+                        });
                 });
 
             modelBuilder.Entity("Vela.Api.Data.Entities.EmailCode", b =>
@@ -735,6 +744,10 @@ namespace Vela.Api.Data.Migrations
                     b.HasIndex("ArtistId", "Status")
                         .HasDatabaseName("ix_works_artist_id_status");
 
+                    b.HasIndex("ArtistId", "PublishedAt", "Id")
+                        .HasDatabaseName("ix_works_artist_id_published_at_id")
+                        .HasFilter("status = 'published'");
+
                     b.HasIndex("Status", "PublishedAt", "Id")
                         .HasDatabaseName("ix_works_status_published_at_id");
 
@@ -874,7 +887,7 @@ namespace Vela.Api.Data.Migrations
                     b.HasOne("Vela.Api.Data.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ReporterId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_reports_users_reporter_id");
                 });
 

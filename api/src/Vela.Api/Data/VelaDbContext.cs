@@ -75,11 +75,19 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
             e.Property(x => x.Status).HasConversion(LowerEnum<WorkStatus>()).HasMaxLength(16);
             e.HasIndex(x => new { x.ArtistId, x.Status });
             e.HasIndex(x => new { x.Status, x.PublishedAt, x.Id });
+            e.HasIndex(x => new { x.ArtistId, x.PublishedAt, x.Id }).HasFilter("status = 'published'");
         });
         b.Entity<Chapter>(e =>
         {
             e.HasKey(x => new { x.WorkId, x.Index });
             e.HasOne<Work>().WithMany().HasForeignKey(x => x.WorkId).OnDelete(DeleteBehavior.Cascade);
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("ck_chapters_x_range", "x BETWEEN 0 AND 1");
+                t.HasCheckConstraint("ck_chapters_y_range", "y BETWEEN 0 AND 1");
+                t.HasCheckConstraint("ck_chapters_zoom_positive", "zoom IS NULL OR zoom > 0");
+                t.HasCheckConstraint("ck_chapters_index_range", "\"index\" BETWEEN 0 AND 39");
+            });
         });
         b.Entity<Reply>(e =>
         {
@@ -120,7 +128,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         });
         b.Entity<Report>(e =>
         {
-            e.HasOne<User>().WithMany().HasForeignKey(x => x.ReporterId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.ReporterId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => new { x.Status, x.CreatedAt });
             e.HasIndex(x => new { x.ReporterId, x.CreatedAt });
         });
