@@ -40,7 +40,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A6 Blocks, reports, visibility (ccb8aef)
 - [x] A7 Quota, drafts, uploads, image variants (e631618)
 - [x] A8 Works, chapters, publish, moderation (1f75178)
-- [ ] A9 Follows, feed, replies
+- [x] A9 Follows, feed, replies (811af34)
 - [ ] A10 Notifications and inquiries
 - [ ] A11 Search
 - [ ] A12 Share pages, well-known, legal
