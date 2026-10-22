@@ -7,23 +7,22 @@ namespace Vela.Api.Images;
 
 public sealed class AzureBlobStore : IBlobStore
 {
-    public const string WorksContainer = "works";
-    public const string AvatarsContainer = "avatars";
-    private static readonly string[] Containers = [WorksContainer, AvatarsContainer];
     private static readonly TimeSpan MaxUploadTtl = TimeSpan.FromMinutes(15);
 
     private readonly BlobServiceClient _service;
     private readonly string _publicBase;
+    private readonly string _originalsContainer;
 
     public AzureBlobStore(StorageOptions options)
     {
         _service = new BlobServiceClient(options.ConnectionString);
         _publicBase = options.PublicBaseUrl.TrimEnd('/') + "/";
+        _originalsContainer = options.OriginalsContainer;
     }
 
     public async Task EnsureContainersAsync(CancellationToken ct = default)
     {
-        foreach (var name in Containers)
+        foreach (var name in new[] { BlobNames.Works, BlobNames.Avatars, _originalsContainer })
             await _service.GetBlobContainerClient(name).CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: ct);
     }
 
@@ -66,17 +65,26 @@ public sealed class AzureBlobStore : IBlobStore
 
     public Uri PublicUrl(string name)
     {
-        Split(name);
+        var (container, _) = Split(name);
+        if (container == _originalsContainer)
+            throw new ArgumentException("Originals are private and have no public URL.", nameof(name));
         return new Uri(_publicBase + name);
     }
 
-    private static (string Container, string Blob) Split(string name)
+    private (string Container, string Blob) Split(string name)
     {
         var slash = name.IndexOf('/');
-        if (slash <= 0 || slash == name.Length - 1 || !Containers.Contains(name[..slash])
+        if (slash <= 0 || slash == name.Length - 1
             || name.Contains("..") || name.Contains('\\') || name.Contains('?') || name.Contains('#'))
-            throw new ArgumentException("Blob name must be '{works|avatars}/<path>'.", nameof(name));
-        return (name[..slash], name[(slash + 1)..]);
+            throw new ArgumentException("Blob name must be '{originals|works|avatars}/<path>'.", nameof(name));
+        var logical = name[..slash];
+        var container = logical switch
+        {
+            BlobNames.Originals => _originalsContainer,
+            BlobNames.Works or BlobNames.Avatars => logical,
+            _ => throw new ArgumentException("Blob name must be '{originals|works|avatars}/<path>'.", nameof(name)),
+        };
+        return (container, name[(slash + 1)..]);
     }
 }
 

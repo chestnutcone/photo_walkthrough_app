@@ -14,7 +14,7 @@ public sealed class VariantGenerator(IBlobStore blobs) : IVariantGenerator
 
     public async Task<ImageVariants> GenerateAsync(string sourceBlob)
     {
-        var dir = sourceBlob[..sourceBlob.LastIndexOf('/')];
+        var dir = $"{BlobNames.Works}/{sourceBlob[(sourceBlob.LastIndexOf('/') + 1)..]}";
         using var oriented = Decode(await ReadSourceAsync(sourceBlob));
         var names = new List<string>();
         foreach (var (name, edge) in Sizes)
@@ -38,6 +38,7 @@ public sealed class VariantGenerator(IBlobStore blobs) : IVariantGenerator
             canvas.DrawImage(image, crop, SKRect.Create(AvatarSize, AvatarSize), Sampling, null);
         var name = $"avatars/{userId}/avatar-256.webp";
         await WriteWebpAsync(name, square);
+        await blobs.DeletePrefixAsync(sourceBlob); // the raw upload is not needed once the avatar exists
         return name;
     }
 

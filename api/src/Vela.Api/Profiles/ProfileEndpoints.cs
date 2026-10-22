@@ -33,7 +33,7 @@ public static class ProfileEndpoints
 
         app.MapPost("/v1/me/avatar-upload", (ICurrentUser me, IBlobStore blobs, TimeProvider clock) =>
         {
-            var url = blobs.CreateUploadUrl($"avatars/{me.UserId!.Value}/original", WorkEndpoints.UploadUrlLifetime);
+            var url = blobs.CreateUploadUrl(BlobNames.AvatarOriginal(me.UserId!.Value), WorkEndpoints.UploadUrlLifetime);
             return Results.Ok(new UploadTicket(url.ToString(), clock.GetUtcNow() + WorkEndpoints.UploadUrlLifetime));
         }).RequireAuthorization().WithName("avatarUpload");
 

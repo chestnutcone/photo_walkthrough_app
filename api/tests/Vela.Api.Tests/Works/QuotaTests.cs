@@ -50,13 +50,13 @@ public class QuotaTests(PostgresFixture pg) : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, r.Status);
         var id = r.Data.GetProperty("workId").GetGuid();
-        Assert.Contains($"works/{id}/original", r.Data.GetProperty("uploadUrl").GetString());
+        Assert.Contains($"originals/works/{id}", r.Data.GetProperty("uploadUrl").GetString());
         Assert.Equal(ProfileTestHost.Now.AddMinutes(15), r.Data.GetProperty("expiresAt").GetDateTimeOffset());
         await using var db = _host.Db();
         var w = await db.Works.SingleAsync(x => x.Id == id);
         Assert.Equal(WorkStatus.Draft, w.Status);
         Assert.Equal(ProfileTestHost.Now.AddHours(24), w.ExpiresAt);
-        Assert.Equal($"works/{id}/original", w.ImageBlob);
+        Assert.Equal($"originals/works/{id}", w.ImageBlob);
         Assert.Equal((0, 0), (w.Width, w.Height));
         Assert.Equal(u.Id, w.ArtistId);
     }
@@ -123,9 +123,10 @@ public class QuotaTests(PostgresFixture pg) : IDisposable
         await Seed(u.Id, WorkStatus.Pending, 1);
         var draft = (await u.Post("/v1/works", Body)).Data.GetProperty("workId").GetGuid();
         var fresh = (await u.Post("/v1/works", Body)).Data.GetProperty("workId").GetGuid();
-        _host.Blobs.Put($"works/{draft}/original", [1]);
+        _host.Blobs.Put($"originals/works/{draft}", [1]);
         _host.Blobs.Put($"works/{draft}/thumb.webp", [1]);
-        _host.Blobs.Put($"works/{fresh}/original", [1]);
+        _host.Blobs.Put($"works/{draft}/feed.webp", [1]);
+        _host.Blobs.Put($"originals/works/{fresh}", [1]);
         await using (var db = _host.Db())
             await db.Works.Where(w => w.Id == draft).ExecuteUpdateAsync(s => s.SetProperty(w => w.ExpiresAt, ProfileTestHost.Now.AddHours(1)));
         var job = _host.Services.GetServices<IHostedService>().OfType<DraftCleanupJob>().Single();
@@ -136,9 +137,10 @@ public class QuotaTests(PostgresFixture pg) : IDisposable
         Assert.False(await check.Works.AnyAsync(w => w.Id == draft));
         Assert.True(await check.Works.AnyAsync(w => w.Id == fresh));
         Assert.Equal(3, await check.Works.CountAsync(w => w.ArtistId == u.Id));
-        Assert.False(_host.Blobs.Exists($"works/{draft}/original"));
+        Assert.False(_host.Blobs.Exists($"originals/works/{draft}"));
         Assert.False(_host.Blobs.Exists($"works/{draft}/thumb.webp"));
-        Assert.True(_host.Blobs.Exists($"works/{fresh}/original"));
+        Assert.False(_host.Blobs.Exists($"works/{draft}/feed.webp"));
+        Assert.True(_host.Blobs.Exists($"originals/works/{fresh}"));
     }
 
     [Fact]

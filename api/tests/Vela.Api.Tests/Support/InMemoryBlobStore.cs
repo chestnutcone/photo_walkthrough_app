@@ -33,5 +33,8 @@ public sealed class InMemoryBlobStore : IBlobStore
         return Task.CompletedTask;
     }
 
-    public Uri PublicUrl(string name) => new($"https://cdn.test/{name}");
+    public Uri PublicUrl(string name) =>
+        name.StartsWith(BlobNames.Originals + "/", StringComparison.Ordinal)
+            ? throw new ArgumentException("Originals are private.", nameof(name))
+            : new($"https://cdn.test/{name}");
 }

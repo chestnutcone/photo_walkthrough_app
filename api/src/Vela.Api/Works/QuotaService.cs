@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Data;
 using Vela.Api.Data.Entities;
+using Vela.Api.Images;
 using Vela.Api.Profiles;
 
 namespace Vela.Api.Works;
@@ -38,7 +39,7 @@ public sealed class QuotaService(VelaDbContext db, WorkCounts counts, TimeProvid
         var work = new Work
         {
             Id = id, ArtistId = userId, Title = title?.Trim() ?? "", Status = WorkStatus.Draft,
-            ImageBlob = $"works/{id}/original", CreatedAt = now, ExpiresAt = now + DraftLifetime,
+            ImageBlob = BlobNames.WorkOriginal(id), CreatedAt = now, ExpiresAt = now + DraftLifetime,
         };
         db.Works.Add(work);
         await db.SaveChangesAsync();

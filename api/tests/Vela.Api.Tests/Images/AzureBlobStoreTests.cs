@@ -1,12 +1,14 @@
 using System.Net;
 using Testcontainers.Azurite;
+using Azure.Storage.Blobs.Models;
 using Vela.Api.Images;
+using Vela.Api.Tests.Support;
 
 namespace Vela.Api.Tests.Images;
 
 public sealed class AzuriteFixture : IAsyncLifetime
 {
-    private readonly AzuriteContainer _container = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:latest")
+    private readonly AzuriteContainer _container = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:3.33.0")
         .WithCommand("--skipApiVersionCheck").Build();
 
     public string ConnectionString => _container.GetConnectionString();
@@ -31,22 +33,23 @@ public class AzureBlobStoreTests(AzuriteFixture azurite) : IClassFixture<Azurite
     {
         var store = await Store();
         var id = Guid.NewGuid();
-        await store.WriteAsync($"works/{id}/original", new MemoryStream([1, 2, 3]), "image/jpeg");
+        await store.WriteAsync($"originals/works/{id}", new MemoryStream([1, 2, 3]), "image/jpeg");
         await store.WriteAsync($"works/{id}/thumb.webp", new MemoryStream([4]), "image/webp");
         var other = Guid.NewGuid();
-        await store.WriteAsync($"works/{other}/original", new MemoryStream([9]), "image/jpeg");
+        await store.WriteAsync($"originals/works/{other}", new MemoryStream([9]), "image/jpeg");
 
-        await using (var s = await store.OpenReadAsync($"works/{id}/original"))
+        await using (var s = await store.OpenReadAsync($"originals/works/{id}"))
         {
             using var ms = new MemoryStream();
             await s.CopyToAsync(ms);
             Assert.Equal([1, 2, 3], ms.ToArray());
         }
         await store.DeletePrefixAsync($"works/{id}/");
+        await store.DeletePrefixAsync($"originals/works/{id}");
 
-        await Assert.ThrowsAsync<FileNotFoundException>(() => store.OpenReadAsync($"works/{id}/original"));
+        await Assert.ThrowsAsync<FileNotFoundException>(() => store.OpenReadAsync($"originals/works/{id}"));
         await Assert.ThrowsAsync<FileNotFoundException>(() => store.OpenReadAsync($"works/{id}/thumb.webp"));
-        await using var kept = await store.OpenReadAsync($"works/{other}/original");
+        await using var kept = await store.OpenReadAsync($"originals/works/{other}");
         Assert.Equal(1, kept.Length);
     }
 
@@ -55,7 +58,7 @@ public class AzureBlobStoreTests(AzuriteFixture azurite) : IClassFixture<Azurite
     {
         var store = await Store();
         var id = Guid.NewGuid();
-        var url = store.CreateUploadUrl($"works/{id}/original", TimeSpan.FromHours(3));
+        var url = store.CreateUploadUrl($"originals/works/{id}", TimeSpan.FromHours(3));
 
         var expiry = DateTimeOffset.Parse(System.Web.HttpUtility.ParseQueryString(url.Query)["se"]!);
         Assert.True(expiry <= DateTimeOffset.UtcNow.AddMinutes(15).AddSeconds(5));
@@ -87,5 +90,52 @@ public class AzureBlobStoreTests(AzuriteFixture azurite) : IClassFixture<Azurite
         var store = await Store();
         Assert.Throws<ArgumentException>(() => store.CreateUploadUrl("secrets/x", TimeSpan.FromMinutes(5)));
         await Assert.ThrowsAsync<ArgumentException>(() => store.WriteAsync("../x", new MemoryStream(), "x"));
+    }
+
+    [Fact]
+    public async Task Upload_urls_target_the_private_originals_container()
+    {
+        var store = await Store();
+        var id = Guid.NewGuid();
+        Assert.Contains($"/originals/works/{id}", store.CreateUploadUrl(BlobNames.WorkOriginal(id), TimeSpan.FromMinutes(5)).AbsolutePath);
+        Assert.Contains($"/originals/avatars/{id}", store.CreateUploadUrl(BlobNames.AvatarOriginal(id), TimeSpan.FromMinutes(5)).AbsolutePath);
+    }
+
+    [Fact]
+    public async Task Public_url_for_an_original_throws()
+    {
+        var store = await Store();
+        Assert.Throws<ArgumentException>(() => store.PublicUrl(BlobNames.WorkOriginal(Guid.NewGuid())));
+        Assert.Throws<ArgumentException>(() => store.PublicUrl(BlobNames.AvatarOriginal(Guid.NewGuid())));
+    }
+
+    [Fact]
+    public async Task Public_containers_never_hold_an_original_after_a_full_create_and_generate_cycle()
+    {
+        var store = await Store();
+        var gen = new VariantGenerator(store);
+        var workId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await store.WriteAsync(BlobNames.WorkOriginal(workId), new MemoryStream(ImageFixtures.JpegWithExifOrientation6AndGps(400, 200)), "image/jpeg");
+        await store.WriteAsync(BlobNames.AvatarOriginal(userId), new MemoryStream(ImageFixtures.Png(300, 300)), "image/png");
+
+        await gen.GenerateAsync(BlobNames.WorkOriginal(workId));
+        await gen.GenerateAvatarAsync(BlobNames.AvatarOriginal(userId), userId);
+
+        var service = new Azure.Storage.Blobs.BlobServiceClient(azurite.ConnectionString);
+        foreach (var container in new[] { "works", "avatars" })
+        {
+            var names = new List<string>();
+            await foreach (var b in service.GetBlobContainerClient(container).GetBlobsAsync()) names.Add(b.Name);
+            Assert.DoesNotContain(names, n => n.Contains("original", StringComparison.OrdinalIgnoreCase));
+        }
+        var works = new List<string>();
+        await foreach (var b in service.GetBlobContainerClient("works").GetBlobsAsync(BlobTraits.None, BlobStates.None, $"{workId}/", default)) works.Add(b.Name);
+        Assert.Equal([$"{workId}/feed.webp", $"{workId}/full.webp", $"{workId}/thumb.webp"], works.OrderBy(x => x).ToList());
+        var originals = new List<string>();
+        await foreach (var b in service.GetBlobContainerClient("originals").GetBlobsAsync()) originals.Add(b.Name);
+        Assert.Contains($"works/{workId}", originals);
+        Assert.DoesNotContain($"avatars/{userId}", originals);
+        Assert.Equal(PublicAccessType.None, (await service.GetBlobContainerClient("originals").GetAccessPolicyAsync()).Value.BlobPublicAccess);
     }
 }

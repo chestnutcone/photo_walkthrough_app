@@ -72,7 +72,7 @@ public sealed class ProfileService(VelaDbContext db, ArtistQueries artists, Work
 
     private async Task<string> GenerateAvatarAsync(Guid userId)
     {
-        try { return await images.GenerateAvatarAsync($"avatars/{userId}/original", userId); }
+        try { return await images.GenerateAvatarAsync(BlobNames.AvatarOriginal(userId), userId); }
         catch (InvalidImageException)
         {
             throw new ProfileException(400, "invalid_image", "That image can't be used. Use a JPEG, PNG or WebP under 25 MB.");

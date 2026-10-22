@@ -32,7 +32,7 @@ public sealed record UpdateProfileRequest
     public string? ReplyTime { get; init; }
     public string? PublicEmail { get; init; }
     public bool ClearPublicEmail { get; init; }
-    /// <summary>The client has uploaded avatars/{userId}/original; generate the avatar from it.</summary>
+    /// <summary>The client has uploaded originals/avatars/{userId}; generate the avatar from it.</summary>
     public bool AvatarUploaded { get; init; }
     public IReadOnlyList<ServiceDto>? Services { get; init; }
     public IReadOnlyList<ShowDto>? Shows { get; init; }

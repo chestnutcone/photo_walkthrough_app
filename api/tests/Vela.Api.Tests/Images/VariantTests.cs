@@ -28,24 +28,24 @@ public class VariantTests
     public async Task Variants_are_generated_in_three_sizes_as_webp(string format)
     {
         byte[] src = format switch { "jpeg" => ImageFixtures.Jpeg(3000, 1500), "png" => ImageFixtures.Png(3000, 1500), _ => ImageFixtures.WebP(3000, 1500) };
-        _blobs.Put("works/w1/original", src);
+        _blobs.Put("originals/works/w1", src);
 
-        var v = await _gen.GenerateAsync("works/w1/original");
+        var v = await _gen.GenerateAsync("originals/works/w1");
 
         Assert.Equal((3000, 1500), (v.Width, v.Height));
         Assert.Equal((400, 200), Size(_blobs.Bytes("works/w1/thumb.webp")));
         Assert.Equal((1080, 540), Size(_blobs.Bytes("works/w1/feed.webp")));
         Assert.Equal((2400, 1200), Size(_blobs.Bytes("works/w1/full.webp")));
         Assert.All(new[] { "thumb", "feed", "full" }, n => Assert.True(IsWebP(_blobs.Bytes($"works/w1/{n}.webp"))));
-        Assert.True(_blobs.Exists("works/w1/original"));
+        Assert.True(_blobs.Exists("originals/works/w1"));
     }
 
     [Fact]
     public async Task Small_images_are_never_upscaled()
     {
-        _blobs.Put("works/w2/original", ImageFixtures.Png(300, 200));
+        _blobs.Put("originals/works/w2", ImageFixtures.Png(300, 200));
 
-        var v = await _gen.GenerateAsync("works/w2/original");
+        var v = await _gen.GenerateAsync("originals/works/w2");
 
         Assert.Equal((300, 200), (v.Width, v.Height));
         Assert.Equal((300, 200), Size(_blobs.Bytes("works/w2/thumb.webp")));
@@ -66,9 +66,9 @@ public class VariantTests
     public async Task Exif_rotated_portrait_photo_reports_corrected_width_and_height()
     {
         // Stored 400x200 (landscape): left half red, right half blue, orientation 6 = rotate 90 CW.
-        _blobs.Put("works/w3/original", ImageFixtures.JpegWithExifOrientation6AndGps(400, 200));
+        _blobs.Put("originals/works/w3", ImageFixtures.JpegWithExifOrientation6AndGps(400, 200));
 
-        var v = await _gen.GenerateAsync("works/w3/original");
+        var v = await _gen.GenerateAsync("originals/works/w3");
 
         Assert.Equal((200, 400), (v.Width, v.Height));
         foreach (var n in new[] { "thumb", "feed", "full" })
@@ -85,9 +85,9 @@ public class VariantTests
     [Fact]
     public async Task All_metadata_including_gps_is_stripped_from_every_output()
     {
-        _blobs.Put("works/w4/original", ImageFixtures.JpegWithExifOrientation6AndGps(400, 200));
+        _blobs.Put("originals/works/w4", ImageFixtures.JpegWithExifOrientation6AndGps(400, 200));
 
-        await _gen.GenerateAsync("works/w4/original");
+        await _gen.GenerateAsync("originals/works/w4");
 
         foreach (var n in new[] { "thumb", "feed", "full" })
         {
@@ -102,16 +102,16 @@ public class VariantTests
     [Fact]
     public async Task Non_image_bytes_are_rejected_whatever_the_name_says()
     {
-        _blobs.Put("works/x/original", "<html>not an image</html>"u8.ToArray());
-        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("works/x/original"));
+        _blobs.Put("originals/works/x", "<html>not an image</html>"u8.ToArray());
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("originals/works/x"));
         Assert.Equal("unsupported_format", e.Reason);
     }
 
     [Fact]
     public async Task Gif_is_rejected_as_unsupported()
     {
-        _blobs.Put("works/x/original", "GIF89a\x01\0\x01\0\0\0\0;"u8.ToArray());
-        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("works/x/original"));
+        _blobs.Put("originals/works/x", "GIF89a\x01\0\x01\0\0\0\0;"u8.ToArray());
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("originals/works/x"));
         Assert.Equal("unsupported_format", e.Reason);
     }
 
@@ -120,31 +120,31 @@ public class VariantTests
     {
         var big = new byte[25 * 1024 * 1024 + 1];
         ImageFixtures.Jpeg(10, 10).CopyTo(big, 0);
-        _blobs.Put("works/x/original", big);
-        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("works/x/original"));
+        _blobs.Put("originals/works/x", big);
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("originals/works/x"));
         Assert.Equal("too_large", e.Reason);
     }
 
     [Fact]
     public async Task Decompression_bomb_over_60_megapixels_is_rejected()
     {
-        _blobs.Put("works/x/original", ImageFixtures.BombPng(8000, 8000)); // 64 MP, tiny file
-        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("works/x/original"));
+        _blobs.Put("originals/works/x", ImageFixtures.BombPng(8000, 8000)); // 64 MP, tiny file
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("originals/works/x"));
         Assert.Equal("too_many_pixels", e.Reason);
     }
 
     [Fact]
     public async Task Truncated_image_is_rejected_as_corrupt()
     {
-        _blobs.Put("works/x/original", ImageFixtures.Jpeg(800, 800).Take(300).ToArray());
-        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("works/x/original"));
+        _blobs.Put("originals/works/x", ImageFixtures.Jpeg(800, 800).Take(300).ToArray());
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("originals/works/x"));
         Assert.Equal("corrupt", e.Reason);
     }
 
     [Fact]
     public async Task Missing_source_is_rejected()
     {
-        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("works/none/original"));
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAsync("originals/works/none"));
         Assert.Equal("missing", e.Reason);
     }
 
@@ -152,9 +152,9 @@ public class VariantTests
     public async Task Avatar_is_a_center_cropped_256_square()
     {
         var user = Guid.NewGuid();
-        _blobs.Put($"avatars/{user}/original", ImageFixtures.Jpeg(400, 200)); // red | blue
+        _blobs.Put($"originals/avatars/{user}", ImageFixtures.Jpeg(400, 200)); // red | blue
 
-        var name = await _gen.GenerateAvatarAsync($"avatars/{user}/original", user);
+        var name = await _gen.GenerateAvatarAsync($"originals/avatars/{user}", user);
 
         Assert.Equal($"avatars/{user}/avatar-256.webp", name);
         using var bmp = Decode(_blobs.Bytes(name));
@@ -167,7 +167,54 @@ public class VariantTests
     public async Task Invalid_avatar_is_rejected()
     {
         var user = Guid.NewGuid();
-        _blobs.Put($"avatars/{user}/original", [1, 2, 3]);
-        await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAvatarAsync($"avatars/{user}/original", user));
+        _blobs.Put($"originals/avatars/{user}", [1, 2, 3]);
+        await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAvatarAsync($"originals/avatars/{user}", user));
+    }
+
+    [Fact]
+    public async Task Variants_never_land_in_originals_and_originals_never_in_public_containers()
+    {
+        var workId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        _blobs.Put(BlobNames.WorkOriginal(workId), ImageFixtures.Jpeg(500, 500));
+        _blobs.Put(BlobNames.AvatarOriginal(userId), ImageFixtures.Jpeg(500, 500));
+
+        await _gen.GenerateAsync(BlobNames.WorkOriginal(workId));
+        await _gen.GenerateAvatarAsync(BlobNames.AvatarOriginal(userId), userId);
+
+        Assert.All(_blobs.Names.Where(n => n.StartsWith("originals/")), n => Assert.DoesNotContain(".webp", n));
+        Assert.All(_blobs.Names.Where(n => !n.StartsWith("originals/")), n => Assert.EndsWith(".webp", n));
+        Assert.Contains($"works/{workId}/thumb.webp", _blobs.Names);
+    }
+
+    [Fact]
+    public void Public_url_for_an_original_throws()
+    {
+        Assert.Throws<ArgumentException>(() => _blobs.PublicUrl(BlobNames.WorkOriginal(Guid.NewGuid())));
+    }
+
+    [Fact]
+    public async Task Avatar_original_is_deleted_after_success_and_kept_after_failure()
+    {
+        var ok = Guid.NewGuid();
+        var bad = Guid.NewGuid();
+        _blobs.Put(BlobNames.AvatarOriginal(ok), ImageFixtures.Png(100, 100));
+        _blobs.Put(BlobNames.AvatarOriginal(bad), [1, 2, 3]);
+
+        await _gen.GenerateAvatarAsync(BlobNames.AvatarOriginal(ok), ok);
+        await Assert.ThrowsAsync<InvalidImageException>(() => _gen.GenerateAvatarAsync(BlobNames.AvatarOriginal(bad), bad));
+
+        Assert.False(_blobs.Exists(BlobNames.AvatarOriginal(ok)));
+        Assert.True(_blobs.Exists($"avatars/{ok}/avatar-256.webp"));
+        Assert.True(_blobs.Exists(BlobNames.AvatarOriginal(bad)));
+    }
+
+    [Fact]
+    public async Task Work_original_is_kept_after_generation()
+    {
+        var id = Guid.NewGuid();
+        _blobs.Put(BlobNames.WorkOriginal(id), ImageFixtures.Jpeg(100, 100));
+        await _gen.GenerateAsync(BlobNames.WorkOriginal(id));
+        Assert.True(_blobs.Exists(BlobNames.WorkOriginal(id)));
     }
 }

@@ -39,7 +39,8 @@ public sealed class DraftCleanupJob(IServiceScopeFactory scopes, TimeProvider cl
             try
             {
                 // Blobs first: a failure leaves the row, so the next run retries instead of orphaning files.
-                await blobs.DeletePrefixAsync($"works/{id}/");
+                await blobs.DeletePrefixAsync(BlobNames.WorkVariantsPrefix(id));
+                await blobs.DeletePrefixAsync(BlobNames.WorkOriginal(id));
                 deleted += await db.Works.Where(w => w.Id == id && w.Status == WorkStatus.Draft && w.ExpiresAt <= now).ExecuteDeleteAsync(ct);
             }
             catch (Exception e) when (e is not OperationCanceledException)
