@@ -41,7 +41,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A7 Quota, drafts, uploads, image variants (e631618)
 - [x] A8 Works, chapters, publish, moderation (1f75178)
 - [x] A9 Follows, feed, replies (811af34)
-- [ ] A10 Notifications and inquiries
+- [x] A10 Notifications and inquiries (686f382)
 - [ ] A11 Search
 - [ ] A12 Share pages, well-known, legal
 - [ ] A13 Account deletion and export
