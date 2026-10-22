@@ -9,7 +9,6 @@ public static class ContractStubs
 {
     private static readonly (string Method, string Route, string OperationId)[] Operations =
     [
-        ("POST", "/v1/me/avatar-upload", "avatarUpload"),
         ("DELETE", "/v1/me", "deleteAccount"),
         ("POST", "/v1/me/export", "requestExport"),
         ("GET", "/v1/me/export/{id}", "getExport"),
@@ -19,7 +18,6 @@ public static class ContractStubs
         ("GET", "/v1/artists/{id}/followers", "listFollowers"),
         ("POST", "/v1/artists/{id}/inquiries", "sendInquiry"),
         ("GET", "/v1/feed", "getFeed"),
-        ("POST", "/v1/works", "createDraft"),
         ("GET", "/v1/works/{id}", "getWork"),
         ("PUT", "/v1/works/{id}", "updateWork"),
         ("POST", "/v1/works/{id}/publish", "publishWork"),

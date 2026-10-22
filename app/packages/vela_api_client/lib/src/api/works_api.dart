@@ -23,7 +23,7 @@ class WorksApi {
   const WorksApi(this._dio);
 
   /// Create a draft and get an upload URL
-  /// 
+  /// Counts against the tier&#39;s story limit. Errors: 409 quota_exceeded (message includes the limit) when the account is at its limit; 409 onboarding_required before onboarding.
   ///
   /// Parameters:
   /// * [createDraftRequest] 

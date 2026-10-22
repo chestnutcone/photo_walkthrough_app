@@ -12,8 +12,15 @@ void main() {
       // TODO
     });
 
+    // Write-only signed URL for the original image (PUT with x-ms-blob-type: BlockBlob), valid for at most 15 minutes
     // String uploadUrl
     test('to test the property `uploadUrl`', () async {
+      // TODO
+    });
+
+    // When the upload URL stops working (the draft itself lives 24 hours)
+    // DateTime expiresAt
+    test('to test the property `expiresAt`', () async {
       // TODO
     });
 

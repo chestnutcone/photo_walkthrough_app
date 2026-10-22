@@ -217,6 +217,8 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
             b.UseSetting("Auth:EmailCode:Pepper", pepper);
             b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
+            b.UseSetting("Storage:ConnectionString", "UseDevelopmentStorage=true");
+            b.UseSetting("Storage:PublicBaseUrl", "https://cdn.example.test/");
         });
         var ex = Assert.Throws<InvalidOperationException>(() => f.CreateClient());
         Assert.Contains("Auth:EmailCode:Pepper", ex.Message);
@@ -246,6 +248,8 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
         {
             b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
+            b.UseSetting("Storage:ConnectionString", "UseDevelopmentStorage=true");
+            b.UseSetting("Storage:PublicBaseUrl", "https://cdn.example.test/");
         });
         using var scope = f.Services.CreateScope();
         Assert.IsType(expected, scope.ServiceProvider.GetRequiredService<IEmailSender>());
@@ -311,6 +315,8 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
         {
             b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
+            b.UseSetting("Storage:ConnectionString", "UseDevelopmentStorage=true");
+            b.UseSetting("Storage:PublicBaseUrl", "https://cdn.example.test/");
             b.UseSetting("Auth:ReviewMode", "true");
             b.UseSetting("Auth:ReviewEmails:0", "reviewer@example.test");
             b.UseSetting("Auth:ReviewCode", "987654");

@@ -21,6 +21,8 @@ class CreateDraftResult {
     required  this.workId,
 
     required  this.uploadUrl,
+
+    required  this.expiresAt,
   });
 
   @JsonKey(
@@ -35,6 +37,7 @@ class CreateDraftResult {
 
 
 
+      /// Write-only signed URL for the original image (PUT with x-ms-blob-type: BlockBlob), valid for at most 15 minutes
   @JsonKey(
     
     name: r'uploadUrl',
@@ -47,17 +50,32 @@ class CreateDraftResult {
 
 
 
+      /// When the upload URL stops working (the draft itself lives 24 hours)
+  @JsonKey(
+    
+    name: r'expiresAt',
+    required: true,
+    includeIfNull: false,
+  )
+
+
+  final DateTime expiresAt;
+
+
+
 
 
     @override
     bool operator ==(Object other) => identical(this, other) || other is CreateDraftResult &&
       other.workId == workId &&
-      other.uploadUrl == uploadUrl;
+      other.uploadUrl == uploadUrl &&
+      other.expiresAt == expiresAt;
 
     @override
     int get hashCode =>
         workId.hashCode +
-        uploadUrl.hashCode;
+        uploadUrl.hashCode +
+        expiresAt.hashCode;
 
   factory CreateDraftResult.fromJson(Map<String, dynamic> json) => _$CreateDraftResultFromJson(json);
 

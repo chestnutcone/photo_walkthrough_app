@@ -1,0 +1,27 @@
+namespace Vela.Api.Images;
+
+public sealed class StorageOptions
+{
+    public const string Section = "Storage";
+    private const string DevConnectionString = "UseDevelopmentStorage=true";
+    private const string DevPublicBaseUrl = "http://127.0.0.1:10000/devstoreaccount1/";
+
+    public string ConnectionString { get; init; } = "";
+    public string PublicBaseUrl { get; init; } = "";
+
+    /// <summary>Outside Development and Test both settings are required; startup fails naming the missing one.</summary>
+    public static StorageOptions Load(IConfiguration config, IHostEnvironment env)
+    {
+        var lenient = env.EnvironmentName is "Development" or "Test";
+        return new StorageOptions
+        {
+            ConnectionString = Require(config, "ConnectionString", lenient ? DevConnectionString : null),
+            PublicBaseUrl = Require(config, "PublicBaseUrl", lenient ? DevPublicBaseUrl : null),
+        };
+    }
+
+    private static string Require(IConfiguration config, string key, string? fallback) =>
+        config[$"{Section}:{key}"] is { Length: > 0 } v ? v
+        : fallback ?? throw new InvalidOperationException(
+            $"{Section}:{key} is not configured. Set it via environment ({Section}__{key}) or a secret store.");
+}

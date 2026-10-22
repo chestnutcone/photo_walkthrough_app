@@ -253,6 +253,8 @@ This endpoint does not need any parameter.
 
 Update profile fields
 
+Send avatarUploaded: true after uploading to the avatar upload URL; the server builds the 256 px avatar. 400 invalid_image when the upload is missing, not a JPEG/PNG/WebP, over 25 MB or over 60 megapixels.
+
 ### Example
 ```dart
 import 'package:vela_api_client/api.dart';

@@ -222,6 +222,7 @@ paths:
       operationId: updateProfile
       tags: [Me]
       summary: "Update profile fields"
+      description: "Send avatarUploaded: true after uploading to the avatar upload URL; the server builds the 256 px avatar. 400 invalid_image when the upload is missing, not a JPEG/PNG/WebP, over 25 MB or over 60 megapixels."
       security:
         - bearerAuth: []
       requestBody:
@@ -497,6 +498,7 @@ paths:
       operationId: createDraft
       tags: [Works]
       summary: "Create a draft and get an upload URL"
+      description: "Counts against the tier's story limit. Errors: 409 quota_exceeded (message includes the limit) when the account is at its limit; 409 onboarding_required before onboarding."
       security:
         - bearerAuth: []
       requestBody:
@@ -1130,15 +1132,17 @@ components:
         expiresAt: {type: string, format: date-time, nullable: true}
     UploadTicket:
       type: object
-      required: [uploadUrl]
+      required: [uploadUrl, expiresAt]
       properties:
-        uploadUrl: {type: string, description: Short-lived signed blob URL}
+        uploadUrl: {type: string, description: "Write-only signed URL for one blob (PUT with x-ms-blob-type: BlockBlob), valid for at most 15 minutes"}
+        expiresAt: {type: string, format: date-time, description: When the upload URL stops working}
     CreateDraftResult:
       type: object
-      required: [workId, uploadUrl]
+      required: [workId, uploadUrl, expiresAt]
       properties:
         workId: {type: string, format: uuid}
-        uploadUrl: {type: string}
+        uploadUrl: {type: string, description: "Write-only signed URL for the original image (PUT with x-ms-blob-type: BlockBlob), valid for at most 15 minutes"}
+        expiresAt: {type: string, format: date-time, description: When the upload URL stops working (the draft itself lives 24 hours)}
     UnreadCount:
       type: object
       required: [count]

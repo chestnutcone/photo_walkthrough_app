@@ -2,11 +2,13 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Vela.Api.Data;
 using Vela.Api.Data.Entities;
+using Vela.Api.Images;
 using Vela.Api.Works;
 
 namespace Vela.Api.Profiles;
 
-public sealed class ProfileService(VelaDbContext db, ArtistQueries artists, WorkCounts workCounts, TimeProvider clock) : IProfileService
+public sealed class ProfileService(VelaDbContext db, ArtistQueries artists, WorkCounts workCounts, TimeProvider clock,
+    IBlobStore blobs, IVariantGenerator images) : IProfileService
 {
     private static readonly TimeSpan HandleChangeWindow = TimeSpan.FromDays(30);
 
@@ -16,7 +18,7 @@ public sealed class ProfileService(VelaDbContext db, ArtistQueries artists, Work
         var tier = await db.Tiers.AsNoTracking().SingleAsync(t => t.Id == user.TierId);
         var row = await artists.FindOwnAsync(userId);
         var onboarded = row is not null && user.AgeConfirmedAt is not null && user.TermsAcceptedAt is not null;
-        return new MeDto(userId, row is null ? null : ArtistQueries.ToDto(row, userId, onboarded),
+        return new MeDto(userId, row is null ? null : WithAvatar(ArtistQueries.ToDto(row, userId, onboarded), row.Profile.AvatarBlob),
             onboarded, new TierDto(tier.Name, tier.MaxWorks), await workCounts.CountActiveAsync(userId));
     }
 
@@ -55,14 +57,27 @@ public sealed class ProfileService(VelaDbContext db, ArtistQueries artists, Work
         ProfileValidator.ValidateUpdate(req);
         await ApplyHandleAsync(profile, req.Handle);
         Apply(profile, req);
+        if (req.AvatarUploaded) profile.AvatarBlob = await GenerateAvatarAsync(userId);
         await SaveAsync();
     }
 
     public async Task<ArtistDto?> GetByHandleAsync(string handle, Guid? viewerId) =>
-        await artists.FindByHandleAsync(handle, viewerId) is { } row ? ArtistQueries.ToDto(row, viewerId) : null;
+        await artists.FindByHandleAsync(handle, viewerId) is { } row ? WithAvatar(ArtistQueries.ToDto(row, viewerId), row.Profile.AvatarBlob) : null;
 
     public async Task<IReadOnlyList<ArtistDto>> GetSuggestedAsync(Guid? viewerId) =>
-        (await artists.SuggestedAsync(viewerId)).Select(r => ArtistQueries.ToDto(r, viewerId)).ToList();
+        (await artists.SuggestedAsync(viewerId)).Select(r => WithAvatar(ArtistQueries.ToDto(r, viewerId), r.Profile.AvatarBlob)).ToList();
+
+    private ArtistDto WithAvatar(ArtistDto dto, string? blob) =>
+        blob is null ? dto : dto with { AvatarUrl = blobs.PublicUrl(blob).ToString() };
+
+    private async Task<string> GenerateAvatarAsync(Guid userId)
+    {
+        try { return await images.GenerateAvatarAsync($"avatars/{userId}/original", userId); }
+        catch (InvalidImageException)
+        {
+            throw new ProfileException(400, "invalid_image", "That image can't be used. Use a JPEG, PNG or WebP under 25 MB.");
+        }
+    }
 
     private async Task ApplyHandleAsync(Profile profile, string? requested)
     {

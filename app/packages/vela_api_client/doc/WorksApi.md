@@ -22,6 +22,8 @@ Method | HTTP request | Description
 
 Create a draft and get an upload URL
 
+Counts against the tier's story limit. Errors: 409 quota_exceeded (message includes the limit) when the account is at its limit; 409 onboarding_required before onboarding.
+
 ### Example
 ```dart
 import 'package:vela_api_client/api.dart';

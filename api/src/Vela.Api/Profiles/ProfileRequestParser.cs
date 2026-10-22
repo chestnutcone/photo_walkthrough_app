@@ -32,7 +32,7 @@ public static class ProfileRequestParser
             DisplayName = Str(obj, "displayName"), Handle = Str(obj, "handle"), Bio = Str(obj, "bio"),
             City = Str(obj, "city"), Discipline = Str(obj, "discipline"), Availability = Str(obj, "availability"),
             Website = Str(obj, "website"), Social = Str(obj, "social"), Studio = Str(obj, "studio"),
-            ReplyTime = Str(obj, "replyTime"), PublicEmail = Str(obj, "publicEmail"), ClearPublicEmail = clearEmail,
+            ReplyTime = Str(obj, "replyTime"), PublicEmail = Str(obj, "publicEmail"), ClearPublicEmail = clearEmail, AvatarUploaded = Bool(obj, "avatarUploaded"),
             Services = List(obj, "services", e => new ServiceDto(
                 Str(e, "title", "services") ?? "", Str(e, "description", "services") ?? "", Str(e, "price", "services") ?? "")),
             Shows = List(obj, "shows", e => new ShowDto(Str(e, "year", "shows") ?? "", Str(e, "text", "shows") ?? "")),

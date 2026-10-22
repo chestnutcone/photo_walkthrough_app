@@ -30,6 +30,8 @@ public class SsoEndpointTests(PostgresFixture pg) : IDisposable
             b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");
             b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
+            b.UseSetting("Storage:ConnectionString", "UseDevelopmentStorage=true");
+            b.UseSetting("Storage:PublicBaseUrl", "https://cdn.example.test/");
             if (configureAudiences)
             {
                 b.UseSetting("Auth:Apple:ClientId", "app.vela.test");

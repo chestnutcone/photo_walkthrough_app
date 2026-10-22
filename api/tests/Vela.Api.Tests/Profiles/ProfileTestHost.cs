@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Vela.Api.Data;
+using Vela.Api.Images;
 using Vela.Api.Tests.Support;
 
 namespace Vela.Api.Tests.Profiles;
@@ -50,6 +51,7 @@ public sealed class ProfileTestHost : IDisposable
     private readonly WebApplicationFactory<Program> _factory;
     private readonly string _cs;
     public MutableTimeProvider Clock { get; } = new(Now);
+    public InMemoryBlobStore Blobs { get; } = new();
 
     public ProfileTestHost(PostgresFixture pg, IReadOnlyDictionary<string, string>? settings = null, string? connectionString = null)
     {
@@ -63,9 +65,17 @@ public sealed class ProfileTestHost : IDisposable
             b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
             foreach (var (k, v) in settings ?? new Dictionary<string, string>()) b.UseSetting(k, v);
-            b.ConfigureTestServices(s => s.AddSingleton<TimeProvider>(Clock));
+            b.ConfigureTestServices(s =>
+            {
+                s.AddSingleton<TimeProvider>(Clock);
+                s.AddSingleton<IBlobStore>(Blobs);
+            });
         });
     }
+
+    public IServiceProvider Services => _factory.Services;
+
+    public IServiceScope Scope() => _factory.Services.CreateScope();
 
     public HttpClient Anonymous() => _factory.CreateClient();
 

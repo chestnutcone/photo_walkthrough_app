@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Vela.Api.Auth;
+using Vela.Api.Images;
 using Vela.Api.Works;
 
 namespace Vela.Api.Profiles;
@@ -29,6 +30,12 @@ public static class ProfileEndpoints
                 await svc.UpdateAsync(me.UserId!.Value, req);
                 return Results.Ok(await svc.GetMeAsync(me.UserId.Value));
             })).RequireAuthorization().WithName("updateProfile");
+
+        app.MapPost("/v1/me/avatar-upload", (ICurrentUser me, IBlobStore blobs, TimeProvider clock) =>
+        {
+            var url = blobs.CreateUploadUrl($"avatars/{me.UserId!.Value}/original", WorkEndpoints.UploadUrlLifetime);
+            return Results.Ok(new UploadTicket(url.ToString(), clock.GetUtcNow() + WorkEndpoints.UploadUrlLifetime));
+        }).RequireAuthorization().WithName("avatarUpload");
 
         // Public with optional auth: a valid bearer token only adds isFollowing and the exclusions.
         app.MapGet("/v1/artists/suggested", (ICurrentUser me, IProfileService svc) =>
@@ -61,3 +68,5 @@ public static class ProfileEndpoints
         }
     }
 }
+
+public sealed record UploadTicket(string UploadUrl, DateTimeOffset ExpiresAt);

@@ -19,9 +19,11 @@ class UploadTicket {
   UploadTicket({
 
     required  this.uploadUrl,
+
+    required  this.expiresAt,
   });
 
-      /// Short-lived signed blob URL
+      /// Write-only signed URL for one blob (PUT with x-ms-blob-type: BlockBlob), valid for at most 15 minutes
   @JsonKey(
     
     name: r'uploadUrl',
@@ -34,15 +36,30 @@ class UploadTicket {
 
 
 
+      /// When the upload URL stops working
+  @JsonKey(
+    
+    name: r'expiresAt',
+    required: true,
+    includeIfNull: false,
+  )
+
+
+  final DateTime expiresAt;
+
+
+
 
 
     @override
     bool operator ==(Object other) => identical(this, other) || other is UploadTicket &&
-      other.uploadUrl == uploadUrl;
+      other.uploadUrl == uploadUrl &&
+      other.expiresAt == expiresAt;
 
     @override
     int get hashCode =>
-        uploadUrl.hashCode;
+        uploadUrl.hashCode +
+        expiresAt.hashCode;
 
   factory UploadTicket.fromJson(Map<String, dynamic> json) => _$UploadTicketFromJson(json);
 

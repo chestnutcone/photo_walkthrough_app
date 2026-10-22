@@ -7,9 +7,15 @@ void main() {
   // TODO add properties to the entity
 
   group(UploadTicket, () {
-    // Short-lived signed blob URL
+    // Write-only signed URL for one blob (PUT with x-ms-blob-type: BlockBlob), valid for at most 15 minutes
     // String uploadUrl
     test('to test the property `uploadUrl`', () async {
+      // TODO
+    });
+
+    // When the upload URL stops working
+    // DateTime expiresAt
+    test('to test the property `expiresAt`', () async {
       // TODO
     });
 

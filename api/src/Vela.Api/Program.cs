@@ -6,7 +6,9 @@ using Microsoft.IdentityModel.Tokens;
 using Vela.Api.Auth;
 using Vela.Api.Auth.EmailCodes;
 using Vela.Api.Auth.Identity;
+using Vela.Api.Images;
 using Vela.Api.Profiles;
+using Vela.Api.Works;
 using Vela.Api.Social;
 using Vela.Api.Stubs;
 
@@ -52,7 +54,9 @@ builder.Services.AddAuthorization();
 builder.Services.AddIdentityVerification(builder.Configuration, builder.Environment);
 builder.Services.AddEmailCodes(builder.Configuration, builder.Environment);
 builder.Services.AddSafety(builder.Configuration);
+builder.Services.AddImageStorage(builder.Configuration, builder.Environment);
 builder.Services.AddProfiles();
+builder.Services.AddWorks();
 
 var app = builder.Build();
 if (app.Services.GetRequiredService<EmailCodeSettings>().ReviewMode && !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Test"))
@@ -65,6 +69,7 @@ app.MapAuthEndpoints();
 app.MapSsoEndpoint();
 app.MapEmailCodeEndpoints();
 app.MapProfileEndpoints();
+app.MapWorkEndpoints();
 app.MapSafetyEndpoints();
 app.MapContractStubs();
 
