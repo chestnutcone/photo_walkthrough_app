@@ -1,5 +1,6 @@
 using Vela.Api.Auth;
 using Vela.Api.Common;
+using Vela.Api.Feed;
 using Vela.Api.Works;
 
 namespace Vela.Api.Social;
@@ -10,7 +11,7 @@ public static class SocialEndpoints
     public const int MaxLimit = 50;
 
     public static IServiceCollection AddSocial(this IServiceCollection services) =>
-        services.AddScoped<IFollowService, FollowService>();
+        services.AddScoped<IFollowService, FollowService>().AddScoped<IFeedService, FeedService>();
 
     public static IEndpointRouteBuilder MapSocialEndpoints(this IEndpointRouteBuilder app)
     {
@@ -26,8 +27,27 @@ public static class SocialEndpoints
                 var page = await svc.ListFollowersAsync(me.UserId, ParseArtist(id), cursor, ParseLimit(limit));
                 return Common.Results.Ok(page.Items, page.NextCursor);
             })).RequireAuthorization().WithName("listFollowers");
+        app.MapGet("/v1/feed", (string? tab, string? cursor, string? limit, ICurrentUser me, IFeedService svc) =>
+            Run(async () =>
+            {
+                var page = await svc.GetAsync(me.UserId, ParseTab(tab), cursor, ParseLimit(limit));
+                return Common.Results.Ok(page.Items, page.NextCursor);
+            })).WithName("getFeed");
+        app.MapGet("/v1/artists/{handle}/works", (string handle, string? cursor, string? limit, ICurrentUser me, IFeedService svc) =>
+            Run(async () =>
+            {
+                var page = await svc.ListArtistWorksAsync(me.UserId, handle, cursor, ParseLimit(limit));
+                return Common.Results.Ok(page.Items, page.NextCursor);
+            })).WithName("listArtistWorks");
         return app;
     }
+
+    private static FeedTab ParseTab(string? raw) => raw switch
+    {
+        "following" => FeedTab.Following,
+        "discover" => FeedTab.Discover,
+        _ => throw new SafetyException(StatusCodes.Status400BadRequest, "validation_failed", "tab must be following or discover."),
+    };
 
     public static Guid ParseArtist(string raw) => Guid.TryParse(raw, out var id) ? id : throw FollowService.NotFound();
 

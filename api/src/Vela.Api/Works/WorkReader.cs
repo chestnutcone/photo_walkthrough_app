@@ -8,47 +8,72 @@ using Vela.Api.Social;
 
 namespace Vela.Api.Works;
 
-/// <summary>Reads a work for one viewer, applying visibility rules and building the public DTO.</summary>
+/// <summary>Reads works for one viewer, applying the shared visibility rules and building the public DTOs.</summary>
 public sealed class WorkReader(VelaDbContext db, IVisibility visibility, IBlobStore blobs, IOptions<BrandingOptions> branding)
 {
-    public async Task<WorkDto?> GetAsync(Guid workId, Guid? viewerId)
+    public async Task<WorkDto?> GetAsync(Guid workId, Guid? viewerId) =>
+        await FindViewableAsync(workId, viewerId) is { } work ? (await BuildAsync([work], viewerId)).FirstOrDefault() : null;
+
+    /// <summary>The work if this viewer may see it (public, or theirs, or any as admin); null otherwise.</summary>
+    public async Task<Work?> FindViewableAsync(Guid workId, Guid? viewerId)
     {
         var work = await db.Works.AsNoTracking().FirstOrDefaultAsync(w => w.Id == workId);
         if (work is null) return null;
-        var owner = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == work.ArtistId);
-        var profile = await db.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == work.ArtistId);
-        if (owner is null || profile is null) return null;
-
-        var isOwner = viewerId == work.ArtistId;
-        var isAdmin = viewerId is { } v && !isOwner && await db.Users.AnyAsync(u => u.Id == v && u.IsAdmin && u.DeletedAt == null);
+        if (viewerId == work.ArtistId || await IsAdminAsync(viewerId)) return work;
         var hidden = await visibility.HiddenUserIdsAsync(viewerId);
-        var publiclyVisible = work.Status == WorkStatus.Published && !work.ReportHidden
-            && owner.DeletedAt is null && owner.SuspendedAt is null && !hidden.Contains(work.ArtistId);
-        if (!isOwner && !isAdmin && !publiclyVisible) return null;
-
-        var counts = await ReplyCountsAsync(workId, hidden);
-        var chapters = (await db.Chapters.AsNoTracking().Where(c => c.WorkId == workId).OrderBy(c => c.Index).ToListAsync())
-            .Select(c => new ChapterDto(c.X, c.Y, c.Zoom, c.Title, c.Body, c.Meta, c.AltText, counts.GetValueOrDefault(c.Index)))
-            .ToList();
-        return ToDto(work, profile, chapters, isOwner, showStatus: isOwner || isAdmin);
+        return await WorkVisibility.Public(db, hidden).AnyAsync(w => w.Id == workId) ? work : null;
     }
 
-    private async Task<Dictionary<int, int>> ReplyCountsAsync(Guid workId, IReadOnlySet<Guid> hiddenUsers)
+    /// <summary>The work if it is public to this viewer; owners and admins get no special access (used for writes).</summary>
+    public async Task<Work?> FindPublicAsync(Guid workId, Guid? viewerId)
     {
-        var ids = hiddenUsers.ToArray();
-        return await db.Replies.AsNoTracking()
-            .Where(r => r.WorkId == workId && !r.Hidden && !ids.Contains(r.AuthorId))
-            .GroupBy(r => r.ChapterIndex).Select(g => new { g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.Count);
+        var hidden = await visibility.HiddenUserIdsAsync(viewerId);
+        return await WorkVisibility.Public(db, hidden).AsNoTracking().FirstOrDefaultAsync(w => w.Id == workId);
     }
 
-    private WorkDto ToDto(Work w, Profile p, List<ChapterDto> chapters, bool isOwner, bool showStatus)
+    /// <summary>DTOs for works already known to be viewable, in the given order; works without a profile are skipped.</summary>
+    public async Task<List<WorkDto>> BuildAsync(IReadOnlyList<Work> works, Guid? viewerId)
+    {
+        if (works.Count == 0) return [];
+        var workIds = works.Select(w => w.Id).ToArray();
+        var artistIds = works.Select(w => w.ArtistId).Distinct().ToArray();
+        var hidden = await visibility.HiddenUserIdsAsync(viewerId);
+        var isAdmin = await IsAdminAsync(viewerId);
+
+        var profiles = await db.Profiles.AsNoTracking().Where(p => artistIds.Contains(p.UserId)).ToDictionaryAsync(p => p.UserId);
+        var following = viewerId is { } v
+            ? (await db.Follows.AsNoTracking().Where(f => f.FollowerId == v && artistIds.Contains(f.FolloweeId)).Select(f => f.FolloweeId).ToListAsync()).ToHashSet()
+            : [];
+        var chapters = (await db.Chapters.AsNoTracking().Where(c => workIds.Contains(c.WorkId)).OrderBy(c => c.Index).ToListAsync())
+            .ToLookup(c => c.WorkId);
+        var counts = await ReplyCountsAsync(workIds, hidden);
+
+        return works.Where(w => profiles.ContainsKey(w.ArtistId)).Select(w =>
+        {
+            var isOwner = viewerId == w.ArtistId;
+            var dtos = chapters[w.Id].Select(c =>
+                new ChapterDto(c.X, c.Y, c.Zoom, c.Title, c.Body, c.Meta, c.AltText, counts.GetValueOrDefault((w.Id, c.Index)))).ToList();
+            return ToDto(w, profiles[w.ArtistId], dtos, isOwner, showStatus: isOwner || isAdmin,
+                isFollowing: viewerId is null || isOwner ? null : following.Contains(w.ArtistId));
+        }).ToList();
+    }
+
+    private Task<bool> IsAdminAsync(Guid? viewerId) =>
+        viewerId is { } v ? db.Users.AnyAsync(u => u.Id == v && u.IsAdmin && u.DeletedAt == null) : Task.FromResult(false);
+
+    private async Task<Dictionary<(Guid WorkId, int Index), int>> ReplyCountsAsync(Guid[] workIds, IReadOnlySet<Guid> hiddenUsers) =>
+        await ReplyRules.FromVisibleAuthors(db, hiddenUsers).AsNoTracking()
+            .Where(r => workIds.Contains(r.WorkId) && !r.Hidden)
+            .GroupBy(r => new { r.WorkId, r.ChapterIndex }).Select(g => new { g.Key.WorkId, g.Key.ChapterIndex, Count = g.Count() })
+            .ToDictionaryAsync(x => (x.WorkId, x.ChapterIndex), x => x.Count);
+
+    private WorkDto ToDto(Work w, Profile p, List<ChapterDto> chapters, bool isOwner, bool showStatus, bool? isFollowing)
     {
         var hasImage = w.Width > 0 && w.Height > 0;
         string? Variant(string name) => hasImage ? blobs.PublicUrl($"{BlobNames.WorkVariantsPrefix(w.Id)}{name}.webp").ToString() : null;
         var avatar = p.AvatarBlob is { Length: > 0 } a ? blobs.PublicUrl(a).ToString() : null;
         return new WorkDto(
-            w.Id, new ArtistSummaryDto(p.UserId, p.Handle, p.DisplayName, avatar), w.Title, w.Intro, w.AltText, isOwner,
+            w.Id, new ArtistSummaryDto(p.UserId, p.Handle, p.DisplayName, avatar, isFollowing), w.Title, w.Intro, w.AltText, isOwner,
             showStatus ? w.Status.ToString().ToLowerInvariant() : null,
             Variant("full"), Variant("thumb"), Variant("feed"),
             hasImage ? w.Width : null, hasImage ? w.Height : null,

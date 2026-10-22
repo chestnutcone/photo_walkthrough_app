@@ -8,7 +8,7 @@ public sealed record ChapterInput(double? X, double? Y, double? Zoom, string? Ti
 
 public sealed record UpdateWorkRequest(string? Title, string? Intro, string? AltText, IReadOnlyList<ChapterInput?>? Chapters);
 
-public sealed record ArtistSummaryDto(Guid Id, string Handle, string DisplayName, string? AvatarUrl);
+public sealed record ArtistSummaryDto(Guid Id, string Handle, string DisplayName, string? AvatarUrl, bool? IsFollowing = null);
 
 public sealed record WorkDto(
     Guid Id, ArtistSummaryDto Author, string Title, string Intro, string? AltText, bool IsOwner, string? Status,
