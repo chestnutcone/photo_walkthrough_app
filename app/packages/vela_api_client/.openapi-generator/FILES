@@ -21,7 +21,10 @@ doc/Inquiry.md
 doc/InquiryEnvelope.md
 doc/LogoutRequest.md
 doc/MarkReadRequest.md
+doc/Me.md
 doc/MeApi.md
+doc/MeEnvelope.md
+doc/MeTier.md
 doc/Notification.md
 doc/NotificationListEnvelope.md
 doc/NotificationsApi.md
@@ -40,6 +43,8 @@ doc/SearchApi.md
 doc/SearchResults.md
 doc/SearchResultsListEnvelope.md
 doc/SendInquiryRequest.md
+doc/ServiceItem.md
+doc/ShowItem.md
 doc/SsoSignInRequest.md
 doc/TokenPair.md
 doc/TokenPairEnvelope.md
@@ -84,6 +89,9 @@ lib/src/model/inquiry.dart
 lib/src/model/inquiry_envelope.dart
 lib/src/model/logout_request.dart
 lib/src/model/mark_read_request.dart
+lib/src/model/me.dart
+lib/src/model/me_envelope.dart
+lib/src/model/me_tier.dart
 lib/src/model/notification.dart
 lib/src/model/notification_list_envelope.dart
 lib/src/model/page.dart
@@ -98,6 +106,8 @@ lib/src/model/report_request.dart
 lib/src/model/search_results.dart
 lib/src/model/search_results_list_envelope.dart
 lib/src/model/send_inquiry_request.dart
+lib/src/model/service_item.dart
+lib/src/model/show_item.dart
 lib/src/model/sso_sign_in_request.dart
 lib/src/model/token_pair.dart
 lib/src/model/token_pair_envelope.dart
@@ -131,6 +141,9 @@ test/inquiry_test.dart
 test/logout_request_test.dart
 test/mark_read_request_test.dart
 test/me_api_test.dart
+test/me_envelope_test.dart
+test/me_test.dart
+test/me_tier_test.dart
 test/notification_list_envelope_test.dart
 test/notification_test.dart
 test/notifications_api_test.dart
@@ -149,6 +162,8 @@ test/search_api_test.dart
 test/search_results_list_envelope_test.dart
 test/search_results_test.dart
 test/send_inquiry_request_test.dart
+test/service_item_test.dart
+test/show_item_test.dart
 test/sso_sign_in_request_test.dart
 test/token_pair_envelope_test.dart
 test/token_pair_test.dart

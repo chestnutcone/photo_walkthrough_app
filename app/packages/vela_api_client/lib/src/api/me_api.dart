@@ -12,7 +12,7 @@ import 'package:dio/dio.dart';
 import 'package:vela_api_client/src/model/complete_onboarding_request.dart';
 import 'package:vela_api_client/src/model/envelope.dart';
 import 'package:vela_api_client/src/model/export_job_envelope.dart';
-import 'package:vela_api_client/src/model/profile_envelope.dart';
+import 'package:vela_api_client/src/model/me_envelope.dart';
 import 'package:vela_api_client/src/model/update_profile_request.dart';
 import 'package:vela_api_client/src/model/upload_ticket_envelope.dart';
 
@@ -109,9 +109,9 @@ _responseData = rawData == null ? null : deserialize<UploadTicketEnvelope, Uploa
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [ProfileEnvelope] as data
+  /// Returns a [Future] containing a [Response] with a [MeEnvelope] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ProfileEnvelope>> completeOnboarding({ 
+  Future<Response<MeEnvelope>> completeOnboarding({ 
     required CompleteOnboardingRequest completeOnboardingRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -165,11 +165,11 @@ _bodyData=jsonEncode(completeOnboardingRequest);
       onReceiveProgress: onReceiveProgress,
     );
 
-    ProfileEnvelope? _responseData;
+    MeEnvelope? _responseData;
 
     try {
 final rawData = _response.data;
-_responseData = rawData == null ? null : deserialize<ProfileEnvelope, ProfileEnvelope>(rawData, 'ProfileEnvelope', growable: true);
+_responseData = rawData == null ? null : deserialize<MeEnvelope, MeEnvelope>(rawData, 'MeEnvelope', growable: true);
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -180,7 +180,7 @@ _responseData = rawData == null ? null : deserialize<ProfileEnvelope, ProfileEnv
       );
     }
 
-    return Response<ProfileEnvelope>(
+    return Response<MeEnvelope>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,
@@ -355,9 +355,9 @@ _responseData = rawData == null ? null : deserialize<ExportJobEnvelope, ExportJo
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [ProfileEnvelope] as data
+  /// Returns a [Future] containing a [Response] with a [MeEnvelope] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ProfileEnvelope>> getMe({ 
+  Future<Response<MeEnvelope>> getMe({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -392,11 +392,11 @@ _responseData = rawData == null ? null : deserialize<ExportJobEnvelope, ExportJo
       onReceiveProgress: onReceiveProgress,
     );
 
-    ProfileEnvelope? _responseData;
+    MeEnvelope? _responseData;
 
     try {
 final rawData = _response.data;
-_responseData = rawData == null ? null : deserialize<ProfileEnvelope, ProfileEnvelope>(rawData, 'ProfileEnvelope', growable: true);
+_responseData = rawData == null ? null : deserialize<MeEnvelope, MeEnvelope>(rawData, 'MeEnvelope', growable: true);
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -407,7 +407,7 @@ _responseData = rawData == null ? null : deserialize<ProfileEnvelope, ProfileEnv
       );
     }
 
-    return Response<ProfileEnvelope>(
+    return Response<MeEnvelope>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,
@@ -506,9 +506,9 @@ _responseData = rawData == null ? null : deserialize<ExportJobEnvelope, ExportJo
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [ProfileEnvelope] as data
+  /// Returns a [Future] containing a [Response] with a [MeEnvelope] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ProfileEnvelope>> updateProfile({ 
+  Future<Response<MeEnvelope>> updateProfile({ 
     required UpdateProfileRequest updateProfileRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -562,11 +562,11 @@ _bodyData=jsonEncode(updateProfileRequest);
       onReceiveProgress: onReceiveProgress,
     );
 
-    ProfileEnvelope? _responseData;
+    MeEnvelope? _responseData;
 
     try {
 final rawData = _response.data;
-_responseData = rawData == null ? null : deserialize<ProfileEnvelope, ProfileEnvelope>(rawData, 'ProfileEnvelope', growable: true);
+_responseData = rawData == null ? null : deserialize<MeEnvelope, MeEnvelope>(rawData, 'MeEnvelope', growable: true);
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -577,7 +577,7 @@ _responseData = rawData == null ? null : deserialize<ProfileEnvelope, ProfileEnv
       );
     }
 
-    return Response<ProfileEnvelope>(
+    return Response<MeEnvelope>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

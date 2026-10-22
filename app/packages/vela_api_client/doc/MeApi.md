@@ -56,7 +56,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **completeOnboarding**
-> ProfileEnvelope completeOnboarding(completeOnboardingRequest)
+> MeEnvelope completeOnboarding(completeOnboardingRequest)
 
 Finish onboarding
 
@@ -83,7 +83,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**ProfileEnvelope**](ProfileEnvelope.md)
+[**MeEnvelope**](MeEnvelope.md)
 
 ### Authorization
 
@@ -175,7 +175,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getMe**
-> ProfileEnvelope getMe()
+> MeEnvelope getMe()
 
 Get the signed-in profile
 
@@ -198,7 +198,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**ProfileEnvelope**](ProfileEnvelope.md)
+[**MeEnvelope**](MeEnvelope.md)
 
 ### Authorization
 
@@ -249,7 +249,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **updateProfile**
-> ProfileEnvelope updateProfile(updateProfileRequest)
+> MeEnvelope updateProfile(updateProfileRequest)
 
 Update profile fields
 
@@ -276,7 +276,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**ProfileEnvelope**](ProfileEnvelope.md)
+[**MeEnvelope**](MeEnvelope.md)
 
 ### Authorization
 

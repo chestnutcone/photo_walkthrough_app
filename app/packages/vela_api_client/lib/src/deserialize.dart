@@ -14,6 +14,9 @@ import 'package:vela_api_client/src/model/inquiry.dart';
 import 'package:vela_api_client/src/model/inquiry_envelope.dart';
 import 'package:vela_api_client/src/model/logout_request.dart';
 import 'package:vela_api_client/src/model/mark_read_request.dart';
+import 'package:vela_api_client/src/model/me.dart';
+import 'package:vela_api_client/src/model/me_envelope.dart';
+import 'package:vela_api_client/src/model/me_tier.dart';
 import 'package:vela_api_client/src/model/notification.dart';
 import 'package:vela_api_client/src/model/notification_list_envelope.dart';
 import 'package:vela_api_client/src/model/page.dart';
@@ -28,6 +31,8 @@ import 'package:vela_api_client/src/model/report_request.dart';
 import 'package:vela_api_client/src/model/search_results.dart';
 import 'package:vela_api_client/src/model/search_results_list_envelope.dart';
 import 'package:vela_api_client/src/model/send_inquiry_request.dart';
+import 'package:vela_api_client/src/model/service_item.dart';
+import 'package:vela_api_client/src/model/show_item.dart';
 import 'package:vela_api_client/src/model/sso_sign_in_request.dart';
 import 'package:vela_api_client/src/model/token_pair.dart';
 import 'package:vela_api_client/src/model/token_pair_envelope.dart';
@@ -91,6 +96,12 @@ final _regMap = RegExp(r'^Map<String,(.*)>$');
           return LogoutRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'MarkReadRequest':
           return MarkReadRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'Me':
+          return Me.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'MeEnvelope':
+          return MeEnvelope.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'MeTier':
+          return MeTier.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'Notification':
           return Notification.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'NotificationListEnvelope':
@@ -119,6 +130,10 @@ final _regMap = RegExp(r'^Map<String,(.*)>$');
           return SearchResultsListEnvelope.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'SendInquiryRequest':
           return SendInquiryRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'ServiceItem':
+          return ServiceItem.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'ShowItem':
+          return ShowItem.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'SsoSignInRequest':
           return SsoSignInRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'TokenPair':

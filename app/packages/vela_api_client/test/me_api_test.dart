@@ -16,7 +16,7 @@ void main() {
 
     // Finish onboarding
     //
-    //Future<ProfileEnvelope> completeOnboarding(CompleteOnboardingRequest completeOnboardingRequest) async
+    //Future<MeEnvelope> completeOnboarding(CompleteOnboardingRequest completeOnboardingRequest) async
     test('test completeOnboarding', () async {
       // TODO
     });
@@ -37,7 +37,7 @@ void main() {
 
     // Get the signed-in profile
     //
-    //Future<ProfileEnvelope> getMe() async
+    //Future<MeEnvelope> getMe() async
     test('test getMe', () async {
       // TODO
     });
@@ -51,7 +51,7 @@ void main() {
 
     // Update profile fields
     //
-    //Future<ProfileEnvelope> updateProfile(UpdateProfileRequest updateProfileRequest) async
+    //Future<MeEnvelope> updateProfile(UpdateProfileRequest updateProfileRequest) async
     test('test updateProfile', () async {
       // TODO
     });
