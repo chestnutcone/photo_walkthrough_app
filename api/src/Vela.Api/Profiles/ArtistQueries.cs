@@ -1,45 +1,51 @@
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Data;
 using Vela.Api.Data.Entities;
+using Vela.Api.Social;
 
 namespace Vela.Api.Profiles;
 
 /// <summary>Public-profile reads: counts are computed in the database, one query per list.</summary>
-public sealed class ArtistQueries(VelaDbContext db)
+public sealed class ArtistQueries(VelaDbContext db, IVisibility visibility)
 {
     public const int SuggestedLimit = 12;
 
     public sealed record Row(Profile Profile, int Followers, int Following, int Works, int Chapters, bool Followed);
 
-    public Task<Row?> FindByHandleAsync(string handle, Guid? viewerId) =>
-        Rows(Visible(handle: HandleRules.Normalize(handle), viewerId), viewerId).FirstOrDefaultAsync();
+    public async Task<Row?> FindByHandleAsync(string handle, Guid? viewerId) =>
+        await Rows(await VisibleAsync(HandleRules.Normalize(handle), viewerId), viewerId).FirstOrDefaultAsync();
 
     /// <summary>The signed-in user's own profile row, even before onboarding completes.</summary>
     public Task<Row?> FindOwnAsync(Guid userId) =>
         Rows(db.Profiles.AsNoTracking().Where(p => p.UserId == userId), userId).FirstOrDefaultAsync();
 
-    public Task<List<Row>> SuggestedAsync(Guid? viewerId)
+    public async Task<List<Row>> SuggestedAsync(Guid? viewerId)
     {
-        var q = Visible(handle: null, viewerId)
+        var q = (await VisibleAsync(handle: null, viewerId))
             .Where(x => viewerId == null || (x.UserId != viewerId && !db.Follows.Any(f => f.FollowerId == viewerId && f.FolloweeId == x.UserId)))
             .OrderByDescending(x => db.Follows.Count(f => f.FolloweeId == x.UserId))
             .ThenByDescending(x => db.Users.Where(u => u.Id == x.UserId).Select(u => u.CreatedAt).First())
             .ThenBy(x => x.UserId)
             .Take(SuggestedLimit);
-        return Rows(q, viewerId).ToListAsync();
+        return await Rows(q, viewerId).ToListAsync();
     }
 
-    private IQueryable<Profile> Visible(string? handle, Guid? viewerId)
+    private async Task<IQueryable<Profile>> VisibleAsync(string? handle, Guid? viewerId)
     {
         var q = db.Profiles.AsNoTracking().Where(p => db.Users.Any(u => u.Id == p.UserId
             && u.DeletedAt == null && u.SuspendedAt == null
             && u.AgeConfirmedAt != null && u.TermsAcceptedAt != null));
         if (handle is not null) q = q.Where(p => p.Handle == handle);
-        return ExcludeBlocked(q, viewerId);
+        return ExcludeBlocked(q, await visibility.HiddenUserIdsAsync(viewerId));
     }
 
-    /// <summary>Extension point for task A6: hide profiles that block the viewer or are blocked by them.</summary>
-    private static IQueryable<Profile> ExcludeBlocked(IQueryable<Profile> source, Guid? viewerId) => source;
+    /// <summary>Hides profiles the viewer blocked and profiles that blocked the viewer.</summary>
+    private static IQueryable<Profile> ExcludeBlocked(IQueryable<Profile> source, IReadOnlySet<Guid> hidden)
+    {
+        if (hidden.Count == 0) return source;
+        var ids = hidden.ToArray();
+        return source.Where(p => !ids.Contains(p.UserId));
+    }
 
     private IQueryable<Row> Rows(IQueryable<Profile> q, Guid? viewerId) =>
         q.Select(p => new Row(p,

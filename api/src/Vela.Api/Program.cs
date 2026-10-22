@@ -7,6 +7,7 @@ using Vela.Api.Auth;
 using Vela.Api.Auth.EmailCodes;
 using Vela.Api.Auth.Identity;
 using Vela.Api.Profiles;
+using Vela.Api.Social;
 using Vela.Api.Stubs;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,6 +51,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityVerification(builder.Configuration, builder.Environment);
 builder.Services.AddEmailCodes(builder.Configuration, builder.Environment);
+builder.Services.AddSafety(builder.Configuration);
 builder.Services.AddProfiles();
 
 var app = builder.Build();
@@ -63,6 +65,7 @@ app.MapAuthEndpoints();
 app.MapSsoEndpoint();
 app.MapEmailCodeEndpoints();
 app.MapProfileEndpoints();
+app.MapSafetyEndpoints();
 app.MapContractStubs();
 
 app.Run();

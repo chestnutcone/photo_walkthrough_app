@@ -564,6 +564,11 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasColumnType("text")
@@ -600,6 +605,16 @@ namespace Vela.Api.Data.Migrations
 
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("ix_reports_status_created_at");
+
+                    b.HasIndex("TargetType", "TargetId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_reports_pending_auto_flag")
+                        .HasFilter("source = 'auto_flag' AND status = 'pending'");
+
+                    b.HasIndex("ReporterId", "TargetType", "TargetId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_reports_reporter_target")
+                        .HasFilter("reporter_id IS NOT NULL");
 
                     b.ToTable("reports", (string)null);
                 });

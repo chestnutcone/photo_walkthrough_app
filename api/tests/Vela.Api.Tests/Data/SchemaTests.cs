@@ -181,7 +181,7 @@ public class SchemaTests(PostgresFixture pg)
         var u = NewUser(); db.Users.Add(u);
         var r = new Report
         {
-            Id = Guid.NewGuid(), Source = "user", Reason = "spam", TargetType = "work",
+            Id = Guid.NewGuid(), Source = "user_report", Reason = "spam", TargetType = "work",
             TargetId = Guid.NewGuid(), ReporterId = u.Id, CreatedAt = DateTimeOffset.UtcNow,
         };
         db.Reports.Add(r);

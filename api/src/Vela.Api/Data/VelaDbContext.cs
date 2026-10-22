@@ -141,6 +141,12 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
             e.HasOne<User>().WithMany().HasForeignKey(x => x.ReporterId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => new { x.Status, x.CreatedAt });
             e.HasIndex(x => new { x.ReporterId, x.CreatedAt });
+            e.Property(x => x.Note).HasMaxLength(500);
+            // One report per reporter per target; one pending auto-flag per target (retries cannot duplicate queue items).
+            e.HasIndex(x => new { x.ReporterId, x.TargetType, x.TargetId }).IsUnique()
+                .HasFilter("reporter_id IS NOT NULL").HasDatabaseName("ux_reports_reporter_target");
+            e.HasIndex(x => new { x.TargetType, x.TargetId }).IsUnique()
+                .HasFilter("source = 'auto_flag' AND status = 'pending'").HasDatabaseName("ux_reports_pending_auto_flag");
         });
         b.Entity<ExportJob>(e =>
         {

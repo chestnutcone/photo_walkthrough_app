@@ -21,6 +21,7 @@ public sealed record Reply(HttpStatusCode Status, JsonElement Body)
 
 public sealed class TestUser(HttpClient client, Guid id)
 {
+    public HttpClient Client => client;
     public Guid Id { get; } = id;
 
     private async Task<Reply> Send(HttpMethod m, string url, object? body)
@@ -34,6 +35,8 @@ public sealed class TestUser(HttpClient client, Guid id)
 
     public Task<Reply> Get(string url) => Send(HttpMethod.Get, url, null);
     public Task<Reply> Post(string url, object body) => Send(HttpMethod.Post, url, body);
+    public Task<Reply> Put(string url) => Send(HttpMethod.Put, url, null);
+    public Task<Reply> Delete(string url) => Send(HttpMethod.Delete, url, null);
     public Task<Reply> Patch(string url, object body) => Send(HttpMethod.Patch, url, body);
 
     public Task<Reply> Onboard(string handle, string name = "Test Artist", bool age = true, bool terms = true, IEnumerable<Guid>? follow = null) =>
@@ -48,7 +51,7 @@ public sealed class ProfileTestHost : IDisposable
     private readonly PostgresFixture _pg;
     public MutableTimeProvider Clock { get; } = new(Now);
 
-    public ProfileTestHost(PostgresFixture pg)
+    public ProfileTestHost(PostgresFixture pg, IReadOnlyDictionary<string, string>? settings = null)
     {
         _pg = pg;
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
@@ -59,6 +62,7 @@ public sealed class ProfileTestHost : IDisposable
             b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");
             b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
+            foreach (var (k, v) in settings ?? new Dictionary<string, string>()) b.UseSetting(k, v);
             b.ConfigureTestServices(s => s.AddSingleton<TimeProvider>(Clock));
         });
     }

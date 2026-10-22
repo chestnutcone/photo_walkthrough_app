@@ -31,9 +31,6 @@ public static class ContractStubs
         ("GET", "/v1/notifications/unread-count", "unreadCount"),
         ("POST", "/v1/notifications/read", "markRead"),
         ("GET", "/v1/search", "search"),
-        ("POST", "/v1/reports", "report"),
-        ("PUT", "/v1/blocks/{userId}", "block"),
-        ("DELETE", "/v1/blocks/{userId}", "unblock"),
     ];
 
     public static IEndpointRouteBuilder MapContractStubs(this IEndpointRouteBuilder app)
