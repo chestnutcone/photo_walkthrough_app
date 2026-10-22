@@ -13,6 +13,9 @@ public static class Results
             StatusCodes.Status200OK,
             new ApiEnvelope<T>(true, data, null, nextCursor is null ? null : new PageInfo(nextCursor)));
 
+    public static IResult Created<T>(T data) =>
+        new EnvelopeResult<T>(StatusCodes.Status201Created, new ApiEnvelope<T>(true, data, null, null));
+
     public static IResult Fail(int status, string code, string message) =>
         new EnvelopeResult<object>(
             status,

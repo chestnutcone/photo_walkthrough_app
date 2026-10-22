@@ -23,4 +23,7 @@ public class Work
     /// <summary>Failed moderation scans so far (fail-open after 3).</summary>
     public int ScanAttempts { get; set; }
     public DateTimeOffset? LastScanAttemptAt { get; set; }
+    /// <summary>Times publishing this work failed after a clean scan (for example a failing event handler); retried after a gap.</summary>
+    public int PublishFailures { get; set; }
+    public DateTimeOffset? LastPublishFailureAt { get; set; }
 }

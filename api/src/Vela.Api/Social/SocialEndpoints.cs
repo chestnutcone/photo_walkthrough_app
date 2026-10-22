@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Vela.Api.Auth;
 using Vela.Api.Common;
 using Vela.Api.Feed;
@@ -11,7 +12,8 @@ public static class SocialEndpoints
     public const int MaxLimit = 50;
 
     public static IServiceCollection AddSocial(this IServiceCollection services) =>
-        services.AddScoped<IFollowService, FollowService>().AddScoped<IFeedService, FeedService>();
+        services.AddScoped<IFollowService, FollowService>().AddScoped<IFeedService, FeedService>()
+            .AddScoped<IReplyService, ReplyService>();
 
     public static IEndpointRouteBuilder MapSocialEndpoints(this IEndpointRouteBuilder app)
     {
@@ -39,7 +41,48 @@ public static class SocialEndpoints
                 var page = await svc.ListArtistWorksAsync(me.UserId, handle, cursor, ParseLimit(limit));
                 return Common.Results.Ok(page.Items, page.NextCursor);
             })).WithName("listArtistWorks");
+        MapReplies(app);
         return app;
+    }
+
+    private static void MapReplies(IEndpointRouteBuilder app)
+    {
+        app.MapGet("/v1/works/{id}/chapters/{index}/replies", (string id, string index, string? cursor, string? limit, ICurrentUser me, IReplyService svc) =>
+            Run(async () =>
+            {
+                var page = await svc.ListAsync(me.UserId, ParseWork(id), ParseIndex(index), cursor, ParseLimit(limit));
+                return Common.Results.Ok(page.Items, page.NextCursor);
+            })).WithName("listReplies");
+        app.MapPost("/v1/works/{id}/chapters/{index}/replies", (string id, string index, HttpContext ctx, ICurrentUser me, IReplyService svc) =>
+            Run(async () =>
+            {
+                var reply = await svc.AddAsync(me.UserId!.Value, ParseWork(id), ParseIndex(index), await ReadBodyAsync(ctx));
+                return Common.Results.Created(reply);
+            })).RequireAuthorization().WithName("addReply");
+        app.MapDelete("/v1/replies/{id}", (string id, ICurrentUser me, IReplyService svc) =>
+            Run(async () =>
+            {
+                await svc.DeleteAsync(me.UserId!.Value, Guid.TryParse(id, out var rid) ? rid : throw ReplyService.ReplyNotFound());
+                return Common.Results.Ok<object?>(null);
+            })).RequireAuthorization().WithName("deleteReply");
+    }
+
+    private static Guid ParseWork(string raw) => Guid.TryParse(raw, out var id) ? id : throw ReplyService.WorkNotFound();
+
+    private static int ParseIndex(string raw) => int.TryParse(raw, out var i) && i >= 0 ? i : throw ReplyService.ChapterNotFound();
+
+    /// <summary>The "body" text of the request; anything that is not a JSON object with a text body is a validation error.</summary>
+    private static async Task<string> ReadBodyAsync(HttpContext ctx)
+    {
+        try
+        {
+            using var doc = await JsonDocument.ParseAsync(ctx.Request.Body);
+            if (doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("body", out var body) && body.ValueKind == JsonValueKind.String)
+                return body.GetString()!;
+        }
+        catch (Exception e) when (e is JsonException or InvalidOperationException) { }
+        throw new SafetyException(StatusCodes.Status400BadRequest, "validation_failed", "body must be text.");
     }
 
     private static FeedTab ParseTab(string? raw) => raw switch

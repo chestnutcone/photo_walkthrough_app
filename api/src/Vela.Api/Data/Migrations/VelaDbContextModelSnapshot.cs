@@ -772,6 +772,10 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("intro");
 
+                    b.Property<DateTimeOffset?>("LastPublishFailureAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_publish_failure_at");
+
                     b.Property<DateTimeOffset?>("LastScanAttemptAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_scan_attempt_at");
@@ -783,6 +787,10 @@ namespace Vela.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("PendingSince")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("pending_since");
+
+                    b.Property<int>("PublishFailures")
+                        .HasColumnType("integer")
+                        .HasColumnName("publish_failures");
 
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")

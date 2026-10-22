@@ -30,7 +30,32 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
             if (!await ProcessNextAsync(now, minAge ?? TimeSpan.Zero, ct)) break;
     }
 
+    /// <summary>
+    /// Handles one work. A failure while processing it (for example an event handler throwing) rolls that work back, is counted
+    /// on the work, and the sweep moves on, so one poison work cannot starve the others. It is retried after <see cref="RetryGap"/>.
+    /// </summary>
     private async Task<bool> ProcessNextAsync(DateTimeOffset now, TimeSpan minAge, CancellationToken ct)
+    {
+        Guid? claimed = null;
+        try { return await ProcessClaimedAsync(now, minAge, id => claimed = id, ct); }
+        catch (Exception e) when (e is not OperationCanceledException && claimed is not null)
+        {
+            log.LogError("Publishing work {WorkId} failed ({Reason}); it will be retried.", claimed, e.GetType().Name);
+            await RecordFailureAsync(claimed.Value, now, ct);
+            return true;
+        }
+    }
+
+    private async Task RecordFailureAsync(Guid workId, DateTimeOffset now, CancellationToken ct)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<VelaDbContext>();
+        await db.Works.Where(w => w.Id == workId).ExecuteUpdateAsync(s => s
+            .SetProperty(w => w.PublishFailures, w => w.PublishFailures + 1)
+            .SetProperty(w => w.LastPublishFailureAt, now), ct);
+    }
+
+    private async Task<bool> ProcessClaimedAsync(DateTimeOffset now, TimeSpan minAge, Action<Guid> onClaim, CancellationToken ct)
     {
         await using var scope = scopes.CreateAsyncScope();
         var sp = scope.ServiceProvider;
@@ -39,6 +64,7 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
 
         var work = await ClaimAsync(db, now, minAge, ct);
         if (work is null) return false;
+        onClaim(work.Id);
 
         var scanner = sp.GetRequiredService<IContentSafety>();
         var blobs = sp.GetRequiredService<IBlobStore>();
@@ -88,6 +114,7 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
             SELECT * FROM works
             WHERE status = 'pending' AND pending_since <= {pendingBefore}
               AND (scan_attempts = 0 OR last_scan_attempt_at <= {retryBefore})
+              AND (publish_failures = 0 OR last_publish_failure_at <= {retryBefore})
             ORDER BY pending_since
             LIMIT 1
             FOR UPDATE SKIP LOCKED
