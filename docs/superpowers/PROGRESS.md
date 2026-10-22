@@ -20,7 +20,7 @@ Read this first after any interruption. Update it after every task, then commit.
 3. If a task is marked IN PROGRESS, inspect `git diff` for partial work, decide whether to continue or reset that task's files.
 
 ## Milestones (commit and push when reached)
-- [ ] M0 docs committed and pushed (spec, plan, progress)
+- [x] M0 docs committed and pushed (spec, plan, progress) — commit 310df02
 - [ ] M1 Foundation done (T1, T2)
 - [ ] M2 API core done (A1-A6)
 - [ ] M3 API features done (A7-A13)
