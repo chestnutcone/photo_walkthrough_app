@@ -8,6 +8,7 @@ using Vela.Api.Auth.EmailCodes;
 using Vela.Api.Auth.Identity;
 using Vela.Api.Images;
 using Vela.Api.Moderation;
+using Vela.Api.Notifications;
 using Vela.Api.Profiles;
 using Vela.Api.Works;
 using Vela.Api.Social;
@@ -56,6 +57,7 @@ builder.Services.AddIdentityVerification(builder.Configuration, builder.Environm
 builder.Services.AddEmailCodes(builder.Configuration, builder.Environment);
 builder.Services.AddSafety(builder.Configuration);
 builder.Services.AddSocial();
+builder.Services.AddNotifications();
 builder.Services.AddImageStorage(builder.Configuration, builder.Environment);
 builder.Services.AddProfiles();
 builder.Services.AddWorks();
@@ -76,6 +78,7 @@ app.MapProfileEndpoints();
 app.MapWorkEndpoints();
 app.MapSafetyEndpoints();
 app.MapSocialEndpoints();
+app.MapNotificationEndpoints();
 app.MapContractStubs();
 
 app.Run();

@@ -335,6 +335,11 @@ namespace Vela.Api.Data.Migrations
                     b.HasIndex("UserId", "CreatedAt", "Id")
                         .HasDatabaseName("ix_notifications_user_id_created_at_id");
 
+                    b.HasIndex("UserId", "Type", "WorkId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_notifications_new_story")
+                        .HasFilter("type = 'NewStory'");
+
                     b.ToTable("notifications", (string)null);
                 });
 

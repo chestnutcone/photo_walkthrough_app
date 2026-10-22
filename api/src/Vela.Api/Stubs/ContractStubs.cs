@@ -13,9 +13,6 @@ public static class ContractStubs
         ("POST", "/v1/me/export", "requestExport"),
         ("GET", "/v1/me/export/{id}", "getExport"),
         ("POST", "/v1/artists/{id}/inquiries", "sendInquiry"),
-        ("GET", "/v1/notifications", "listNotifications"),
-        ("GET", "/v1/notifications/unread-count", "unreadCount"),
-        ("POST", "/v1/notifications/read", "markRead"),
         ("GET", "/v1/search", "search"),
     ];
 

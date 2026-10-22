@@ -1129,11 +1129,22 @@ components:
       required: [id, type, actor, createdAt, read]
       properties:
         id: {type: string, format: uuid}
-        type: {type: string, enum: [follow, reply, inquiry, moderation]}
+        type: {type: string, enum: [follow, reply, new_story, inquiry, moderation]}
         actor: {$ref: '#/components/schemas/Profile'}
         workId: {type: string, format: uuid, nullable: true}
+        workTitle: {type: string, nullable: true, description: Title of the story the notification is about}
+        chapterIndex: {type: integer, nullable: true}
+        replyId: {type: string, format: uuid, nullable: true}
         createdAt: {type: string, format: date-time}
         read: {type: boolean}
+        count:
+          type: integer
+          minimum: 1
+          description: "Rows folded into this item. Consecutive unread replies on one chapter collapse into one item (render \"3 new replies on <title>\"); `id` and `actor` are the latest row's. 1 for every other item."
+        ids:
+          type: array
+          items: {type: string, format: uuid}
+          description: Ids of every row folded into this item (pass them to markRead)
     Inquiry:
       type: object
       required: [id, artistId, type, message, createdAt]

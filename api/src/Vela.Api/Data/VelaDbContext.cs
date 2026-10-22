@@ -129,6 +129,9 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         {
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.UserId, x.CreatedAt, x.Id });
+            // One new-story notification per recipient and work, so a repeated WorkPublished (admin restore) adds nothing.
+            e.HasIndex(x => new { x.UserId, x.Type, x.WorkId }).IsUnique()
+                .HasFilter("type = 'NewStory'").HasDatabaseName("ux_notifications_new_story");
         });
         b.Entity<Inquiry>(e =>
         {

@@ -27,9 +27,19 @@ class Notification {
 
      this.workId,
 
+     this.workTitle,
+
+     this.chapterIndex,
+
+     this.replyId,
+
     required  this.createdAt,
 
     required  this.read,
+
+     this.count,
+
+     this.ids,
   });
 
   @JsonKey(
@@ -80,6 +90,43 @@ class Notification {
 
 
 
+      /// Title of the story the notification is about
+  @JsonKey(
+    
+    name: r'workTitle',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final String? workTitle;
+
+
+
+  @JsonKey(
+    
+    name: r'chapterIndex',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final int? chapterIndex;
+
+
+
+  @JsonKey(
+    
+    name: r'replyId',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final String? replyId;
+
+
+
   @JsonKey(
     
     name: r'createdAt',
@@ -104,6 +151,33 @@ class Notification {
 
 
 
+      /// Rows folded into this item. Consecutive unread replies on one chapter collapse into one item (render \"3 new replies on <title>\"); `id` and `actor` are the latest row's. 1 for every other item.
+          // minimum: 1
+  @JsonKey(
+    
+    name: r'count',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final int? count;
+
+
+
+      /// Ids of every row folded into this item (pass them to markRead)
+  @JsonKey(
+    
+    name: r'ids',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final List<String>? ids;
+
+
+
 
 
     @override
@@ -112,8 +186,13 @@ class Notification {
       other.type == type &&
       other.actor == actor &&
       other.workId == workId &&
+      other.workTitle == workTitle &&
+      other.chapterIndex == chapterIndex &&
+      other.replyId == replyId &&
       other.createdAt == createdAt &&
-      other.read == read;
+      other.read == read &&
+      other.count == count &&
+      other.ids == ids;
 
     @override
     int get hashCode =>
@@ -121,8 +200,13 @@ class Notification {
         type.hashCode +
         actor.hashCode +
         (workId == null ? 0 : workId.hashCode) +
+        (workTitle == null ? 0 : workTitle.hashCode) +
+        (chapterIndex == null ? 0 : chapterIndex.hashCode) +
+        (replyId == null ? 0 : replyId.hashCode) +
         createdAt.hashCode +
-        read.hashCode;
+        read.hashCode +
+        count.hashCode +
+        ids.hashCode;
 
   factory Notification.fromJson(Map<String, dynamic> json) => _$NotificationFromJson(json);
 
@@ -141,6 +225,8 @@ enum NotificationTypeEnum {
 follow(r'follow'),
 @JsonValue(r'reply')
 reply(r'reply'),
+@JsonValue(r'new_story')
+newStory(r'new_story'),
 @JsonValue(r'inquiry')
 inquiry(r'inquiry'),
 @JsonValue(r'moderation')
