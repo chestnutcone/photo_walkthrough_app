@@ -30,7 +30,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [ ] M7 Infra and security done (C1, S1)
 
 ## Task checklist (mark `[x]` when merged and tests pass; `[~]` when in progress)
-- [ ] T1 Repo scaffold
+- [x] T1 Repo scaffold (a8dca9b)
 - [ ] T2 OpenAPI contract and generated client
 - [ ] A1 Schema and migrations
 - [ ] A2 Access and refresh tokens
