@@ -35,6 +35,7 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
         {
             b.UseEnvironment(env);
             b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
+            b.UseSetting("Admin:Enabled", "false"); // these tests boot production-like environments without admin config
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");
             b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");
             tweak?.Invoke(b);

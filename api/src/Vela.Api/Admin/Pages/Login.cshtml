@@ -1,0 +1,27 @@
+@page "/admin/login"
+@model LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+<h1>Admin sign-in</h1>
+@if (Model.Step == "code")
+{
+    <p>If that address is allowed, a sign-in code has been sent. Enter it below. It expires in 10 minutes.</p>
+    @if (Model.Failed)
+    {
+        <p class="flash err">That code did not work. Check it and try again, or start over.</p>
+    }
+    <form method="post" asp-page-handler="Verify" class="stack">
+        <input type="hidden" name="Email" value="@Model.Email">
+        <label>Code <input type="text" name="Code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label>
+        <button type="submit">Sign in</button>
+    </form>
+    <p><a href="/admin/login">Start over</a></p>
+}
+else
+{
+    <form method="post" class="stack">
+        <label>Email <input type="email" name="Email" autocomplete="username" maxlength="254" required></label>
+        <button type="submit">Send code</button>
+    </form>
+}

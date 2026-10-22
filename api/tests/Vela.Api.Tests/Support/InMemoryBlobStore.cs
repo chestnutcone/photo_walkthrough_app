@@ -26,8 +26,17 @@ public sealed class InMemoryBlobStore : IBlobStore
     /// <summary>Lets a test make selected writes fail (for example the export archive).</summary>
     public Func<string, bool>? FailWrites { get; set; }
 
-    public Uri CreateReadUrl(string name, TimeSpan ttl) =>
-        new($"https://blob.test/{name}?sp=r&ttl={(int)Math.Min(ttl.TotalSeconds, 900)}");
+    public Uri ReadOrigin => new("https://blob.test/");
+
+    /// <summary>Every read URL handed out, so tests can check lifetimes.</summary>
+    public List<(string Name, int TtlSeconds)> ReadUrls { get; } = [];
+
+    public Uri CreateReadUrl(string name, TimeSpan ttl)
+    {
+        var seconds = (int)Math.Min(ttl.TotalSeconds, 900);
+        lock (ReadUrls) ReadUrls.Add((name, seconds));
+        return new($"https://blob.test/{name}?sp=r&ttl={seconds}&sig=SECRETSIG");
+    }
 
     public Task<Stream> OpenReadAsync(string name) =>
         _blobs.TryGetValue(name, out var b)

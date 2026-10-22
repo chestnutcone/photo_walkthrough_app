@@ -36,6 +36,8 @@ public sealed class AzureBlobStore : IBlobStore
         return client.GenerateSasUri(BlobSasPermissions.Create | BlobSasPermissions.Write, DateTimeOffset.UtcNow + lifetime);
     }
 
+    public Uri ReadOrigin => new(_service.Uri.GetLeftPart(UriPartial.Authority));
+
     public Uri CreateReadUrl(string blobName, TimeSpan ttl)
     {
         var (container, blob) = Split(blobName);

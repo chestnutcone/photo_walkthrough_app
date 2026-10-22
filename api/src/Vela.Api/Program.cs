@@ -18,6 +18,7 @@ using Vela.Api.Works;
 using Vela.Api.Search;
 using Vela.Api.Social;
 using Vela.Api.Stubs;
+using Vela.Api.Admin;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
@@ -72,11 +73,13 @@ builder.Services.AddContentSafety(builder.Configuration, builder.Environment);
 builder.Services.AddShare(builder.Configuration, builder.Environment);
 builder.Services.AddLegal();
 builder.Services.AddAccount(builder.Environment);
+builder.Services.AddAdmin(builder.Configuration, builder.Environment);
 if (!builder.Environment.IsEnvironment("Test")) builder.Services.AddHostedService<Vela.Api.Moderation.PublishPipelineWorker>();
 
 var app = builder.Build();
 if (app.Services.GetRequiredService<EmailCodeSettings>().ReviewMode && !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Test"))
     app.Logger.LogWarning("Review mode is ON: a fixed sign-in code is accepted for allow-listed review accounts. Turn Auth:ReviewMode off after app review.");
+app.UseAdminHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -96,6 +99,7 @@ app.MapWellKnown();
 app.MapLegalPages();
 app.MapAccountEndpoints();
 app.MapContractStubs();
+app.MapAdmin();
 
 app.Run();
 

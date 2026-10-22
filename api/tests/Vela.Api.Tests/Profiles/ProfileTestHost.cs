@@ -81,6 +81,10 @@ public sealed class ProfileTestHost : IDisposable
 
     public HttpClient Anonymous() => _factory.CreateClient();
 
+    /// <summary>A client with its own cookie jar; redirects are not followed unless asked.</summary>
+    public HttpClient NewClient(bool allowAutoRedirect = false) =>
+        _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = allowAutoRedirect });
+
     public VelaDbContext Db()
     {
         var o = new DbContextOptionsBuilder<VelaDbContext>();
