@@ -98,16 +98,30 @@ public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task Stub_endpoint_returns_501_not_implemented_envelope()
+    public async Task Any_remaining_stub_returns_501_not_implemented_envelope()
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync($"/v1/me/export/{Guid.NewGuid()}");
+        // Every operation is implemented now, so this loop is empty; it keeps guarding any stub added later.
+        foreach (var (method, route, operationId) in Vela.Api.Stubs.ContractStubs.Pending)
+        {
+            var response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), route.Replace("{id}", Guid.NewGuid().ToString())));
 
-        Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
-        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.False(body.RootElement.GetProperty("success").GetBoolean());
-        Assert.Equal("not_implemented", body.RootElement.GetProperty("error").GetProperty("code").GetString());
+            Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.False(body.RootElement.GetProperty("success").GetBoolean(), operationId);
+            Assert.Equal("not_implemented", body.RootElement.GetProperty("error").GetProperty("code").GetString());
+        }
+    }
+
+    [Fact]
+    public async Task Export_and_delete_operations_are_real_endpoints_that_require_sign_in()
+    {
+        var client = _factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.DeleteAsync("/v1/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsync("/v1/me/export", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync($"/v1/me/export/{Guid.NewGuid()}")).StatusCode);
     }
 
     [Fact]

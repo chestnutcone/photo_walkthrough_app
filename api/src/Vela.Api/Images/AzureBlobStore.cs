@@ -36,6 +36,14 @@ public sealed class AzureBlobStore : IBlobStore
         return client.GenerateSasUri(BlobSasPermissions.Create | BlobSasPermissions.Write, DateTimeOffset.UtcNow + lifetime);
     }
 
+    public Uri CreateReadUrl(string blobName, TimeSpan ttl)
+    {
+        var (container, blob) = Split(blobName);
+        var lifetime = ttl > MaxUploadTtl ? MaxUploadTtl : ttl;
+        var client = _service.GetBlobContainerClient(container).GetBlobClient(blob);
+        return client.GenerateSasUri(BlobSasPermissions.Read, DateTimeOffset.UtcNow + lifetime);
+    }
+
     public async Task WriteAsync(string name, Stream data, string contentType)
     {
         var (container, blob) = Split(name);

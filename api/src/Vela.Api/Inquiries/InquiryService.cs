@@ -89,8 +89,7 @@ public sealed class InquiryService(
     {
         try
         {
-            var to = await db.Identities.AsNoTracking().Where(i => i.UserId == inquiry.ArtistId && i.Email != null)
-                .OrderBy(i => i.Provider == "email" ? 0 : 1).ThenBy(i => i.Id).Select(i => i.Email).FirstOrDefaultAsync();
+            var to = await Auth.LoginEmail.ForUserAsync(db, inquiry.ArtistId);
             if (to is null) { log.LogInformation("Inquiry email skipped ({Reason}).", "no_recipient"); return; }
 
             await email.SendAsync(to, $"New {inquiry.Type} inquiry via {branding.Value.AppName}", Body(inquiry, workTitle));
