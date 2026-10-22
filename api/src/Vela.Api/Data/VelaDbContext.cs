@@ -42,6 +42,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         b.Entity<User>(e =>
         {
             e.HasOne<Tier>().WithMany().HasForeignKey(x => x.TierId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.DeletedAt).HasFilter("deleted_at IS NOT NULL").HasDatabaseName("ix_users_deleted_at_pending");
         });
         b.Entity<Identity>(e =>
         {
@@ -167,6 +168,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         {
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.UserId, x.RequestedAt });
+            e.HasIndex(x => new { x.Status, x.RequestedAt });
         });
     }
 

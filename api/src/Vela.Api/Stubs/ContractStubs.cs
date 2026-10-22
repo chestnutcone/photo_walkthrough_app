@@ -9,10 +9,12 @@ public static class ContractStubs
 {
     private static readonly (string Method, string Route, string OperationId)[] Operations =
     [
-        ("DELETE", "/v1/me", "deleteAccount"),
         ("POST", "/v1/me/export", "requestExport"),
         ("GET", "/v1/me/export/{id}", "getExport"),
     ];
+
+    /// <summary>Operations that still answer 501. Empty once every contract operation has a real handler.</summary>
+    public static IReadOnlyList<(string Method, string Route, string OperationId)> Pending => Operations;
 
     public static IEndpointRouteBuilder MapContractStubs(this IEndpointRouteBuilder app)
     {

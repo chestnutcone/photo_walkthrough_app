@@ -13,6 +13,7 @@ using Vela.Api.Share;
 using Vela.Api.Moderation;
 using Vela.Api.Notifications;
 using Vela.Api.Profiles;
+using Vela.Api.Account;
 using Vela.Api.Works;
 using Vela.Api.Search;
 using Vela.Api.Social;
@@ -70,6 +71,7 @@ builder.Services.AddSearch();
 builder.Services.AddContentSafety(builder.Configuration, builder.Environment);
 builder.Services.AddShare(builder.Configuration, builder.Environment);
 builder.Services.AddLegal();
+builder.Services.AddAccount(builder.Environment);
 if (!builder.Environment.IsEnvironment("Test")) builder.Services.AddHostedService<Vela.Api.Moderation.PublishPipelineWorker>();
 
 var app = builder.Build();
@@ -92,6 +94,7 @@ app.MapSearchEndpoints();
 app.MapSharePage();
 app.MapWellKnown();
 app.MapLegalPages();
+app.MapAccountEndpoints();
 app.MapContractStubs();
 
 app.Run();

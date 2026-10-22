@@ -167,9 +167,17 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
 
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
                     b.Property<DateTimeOffset>("RequestedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("requested_at");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -182,6 +190,9 @@ namespace Vela.Api.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_export_jobs");
+
+                    b.HasIndex("Status", "RequestedAt")
+                        .HasDatabaseName("ix_export_jobs_status_requested_at");
 
                     b.HasIndex("UserId", "RequestedAt")
                         .HasDatabaseName("ix_export_jobs_user_id_requested_at");
@@ -712,6 +723,14 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
+                    b.Property<DateTimeOffset?>("DeletionFailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deletion_failed_at");
+
+                    b.Property<int>("DeletionFailures")
+                        .HasColumnType("integer")
+                        .HasColumnName("deletion_failures");
+
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean")
                         .HasColumnName("is_admin");
@@ -730,6 +749,10 @@ namespace Vela.Api.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_users");
+
+                    b.HasIndex("DeletedAt")
+                        .HasDatabaseName("ix_users_deleted_at_pending")
+                        .HasFilter("deleted_at IS NOT NULL");
 
                     b.HasIndex("TierId")
                         .HasDatabaseName("ix_users_tier_id");

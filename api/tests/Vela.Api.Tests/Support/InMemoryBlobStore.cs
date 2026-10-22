@@ -17,10 +17,14 @@ public sealed class InMemoryBlobStore : IBlobStore
 
     public async Task WriteAsync(string name, Stream data, string contentType)
     {
+        if (FailWrites?.Invoke(name) == true) throw new IOException("write failed");
         using var ms = new MemoryStream();
         await data.CopyToAsync(ms);
         _blobs[name] = ms.ToArray();
     }
+
+    /// <summary>Lets a test make selected writes fail (for example the export archive).</summary>
+    public Func<string, bool>? FailWrites { get; set; }
 
     public Task<Stream> OpenReadAsync(string name) =>
         _blobs.TryGetValue(name, out var b)
@@ -34,7 +38,7 @@ public sealed class InMemoryBlobStore : IBlobStore
     }
 
     public Uri PublicUrl(string name) =>
-        name.StartsWith(BlobNames.Originals + "/", StringComparison.Ordinal)
+        (name.StartsWith(BlobNames.Originals + "/", StringComparison.Ordinal) || name.StartsWith(BlobNames.Exports + "/", StringComparison.Ordinal))
             ? throw new ArgumentException("Originals are private.", nameof(name))
             : new($"https://cdn.test/{name}");
 }

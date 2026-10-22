@@ -134,6 +134,10 @@ public class SearchTriggerTests(PostgresFixture pg) : IDisposable
         await using (var db = new VelaDbContext(builder.Options))
             await db.GetService<IMigrator>().MigrateAsync(SearchMigration);
 
+        // Later migrations (the model has moved on since) must be applied before the app signs anyone in.
+        await using (var db = new VelaDbContext(builder.Options))
+            await db.Database.MigrateAsync();
+
         var host = new ProfileTestHost(pg, null, cs);
         _hosts.Add(host);
         Assert.Equal("old lighthouse pre existing intro foghorn chapter second light", await SearchText(host, work));
