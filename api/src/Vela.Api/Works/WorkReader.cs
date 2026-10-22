@@ -79,6 +79,6 @@ public sealed class WorkReader(VelaDbContext db, IVisibility visibility, IBlobSt
             hasImage ? w.Width : null, hasImage ? w.Height : null,
             chapters, w.CreatedAt, w.PublishedAt,
             isOwner && w.Status == WorkStatus.Draft ? w.ExpiresAt : null,
-            $"https://{branding.Value.Domain}/w/{w.Id}");
+            $"https://{branding.Value.Domain}/s/{w.Id}");
     }
 }

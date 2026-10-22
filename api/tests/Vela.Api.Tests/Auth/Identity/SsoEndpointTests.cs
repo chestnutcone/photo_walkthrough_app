@@ -32,6 +32,7 @@ public class SsoEndpointTests(PostgresFixture pg) : IDisposable
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
             b.UseSetting("Storage:ConnectionString", "UseDevelopmentStorage=true");
             b.UseSetting("Storage:PublicBaseUrl", "https://cdn.example.test/");
+            b.UseSetting("Web:ViewerUrl", "https://viewer.example.test");
             b.UseSetting("ContentSafety:Endpoint", "https://safety.example.test/");
             b.UseSetting("ContentSafety:Key", "test-key");
             if (configureAudiences)

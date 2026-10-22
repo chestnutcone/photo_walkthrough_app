@@ -55,7 +55,7 @@ public class WorkReadTests(PostgresFixture pg) : IDisposable
         Assert.Equal((400, 300), (body.GetProperty("imageWidth").GetInt32(), body.GetProperty("imageHeight").GetInt32()));
         Assert.False(body.GetProperty("isOwner").GetBoolean());
         Assert.False(body.TryGetProperty("status", out var s) && s.ValueKind != System.Text.Json.JsonValueKind.Null);
-        Assert.Contains(id.ToString(), body.GetProperty("shareUrl").GetString());
+        Assert.EndsWith($"/s/{id}", body.GetProperty("shareUrl").GetString());
     }
 
     [Fact]

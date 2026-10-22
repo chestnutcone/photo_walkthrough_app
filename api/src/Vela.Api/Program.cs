@@ -8,6 +8,8 @@ using Vela.Api.Auth.EmailCodes;
 using Vela.Api.Auth.Identity;
 using Vela.Api.Images;
 using Vela.Api.Inquiries;
+using Vela.Api.Legal;
+using Vela.Api.Share;
 using Vela.Api.Moderation;
 using Vela.Api.Notifications;
 using Vela.Api.Profiles;
@@ -66,6 +68,8 @@ builder.Services.AddProfiles();
 builder.Services.AddWorks();
 builder.Services.AddSearch();
 builder.Services.AddContentSafety(builder.Configuration, builder.Environment);
+builder.Services.AddShare(builder.Configuration, builder.Environment);
+builder.Services.AddLegal();
 if (!builder.Environment.IsEnvironment("Test")) builder.Services.AddHostedService<Vela.Api.Moderation.PublishPipelineWorker>();
 
 var app = builder.Build();
@@ -85,6 +89,9 @@ app.MapSocialEndpoints();
 app.MapNotificationEndpoints();
 app.MapInquiryEndpoints();
 app.MapSearchEndpoints();
+app.MapSharePage();
+app.MapWellKnown();
+app.MapLegalPages();
 app.MapContractStubs();
 
 app.Run();
