@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#191817;color:#f2eee6;font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}a{color:oklch(0.8 0.12 70)}a:hover{color:#f2eee6}input,textarea,button{font-family:inherit}input::placeholder,textarea::placeholder{color:#8a847b}*::-webkit-scrollbar{display:none}</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:56px;padding:40px 24px;box-sizing:border-box">
+  <div style="flex:none;padding:10px;background:#050505;border-radius:58px;box-shadow:0 40px 80px rgba(0,0,0,.45),inset 0 0 0 1px #2a2826">
+    <div style="position:relative;width:390px;height:844px;border-radius:48px;overflow:hidden;background:#0f0e0d">
+
+      <!-- FEED -->
+      <sc-if value="{{ isFeed }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;overflow-y:auto;padding:54px 0 96px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;padding:8px 20px 4px">
+            <div style="font:400 40px/1 'Instrument Serif',serif;letter-spacing:-.5px">Vela</div>
+            <div style="display:flex;gap:16px;font:500 13px Geist">
+              <button onClick="{{ tabFollowing }}" style="background:none;border:0;padding:6px 0;cursor:pointer;color:{{ tabFColor }};border-bottom:1px solid {{ tabFLine }}">Following</button>
+              <button onClick="{{ tabDiscover }}" style="background:none;border:0;padding:6px 0;cursor:pointer;color:{{ tabDColor }};border-bottom:1px solid {{ tabDLine }}">Discover</button>
+            </div>
+          </div>
+          <div style="font:400 11px 'Geist Mono',monospace;color:#8a847b;padding:0 20px 18px;letter-spacing:.4px">PHOTOGRAPHS, WITH THE STORY LEFT IN</div>
+          <div style="display:flex;flex-direction:column;gap:36px">
+            <sc-for list="{{ feed }}" as="w" hint-placeholder-count="2">
+              <div style="display:flex;flex-direction:column;gap:12px;padding:0 16px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <button onClick="{{ w.openArtist }}" style="display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;cursor:pointer;color:#f2eee6;text-align:left">
+                    <div style="width:34px;height:34px;border-radius:50%;background:{{ w.artistColor }};display:grid;place-items:center;font:400 18px 'Instrument Serif',serif;color:#0f0e0d">{{ w.initial }}</div>
+                    <div style="display:flex;flex-direction:column;gap:1px"><span style="font:500 14px Geist">{{ w.artistName }}</span><span style="font:400 11px 'Geist Mono',monospace;color:#8a847b">{{ w.loc }} · {{ w.date }}</span></div>
+                  </button>
+                  <div style="flex:1"></div>
+                  <button onClick="{{ w.toggleFollow }}" style="background:none;border:1px solid rgba(242,238,230,.18);color:#f2eee6;border-radius:99px;padding:6px 12px;font:500 12px Geist;cursor:pointer">{{ w.followLabel }}</button>
+                </div>
+                <button onClick="{{ w.open }}" style="position:relative;width:358px;height:448px;border:0;padding:0;border-radius:14px;overflow:hidden;cursor:pointer;background:{{ w.bg }}">
+                  <span style="position:absolute;left:12px;bottom:12px;font:400 10px 'Geist Mono',monospace;color:rgba(255,255,255,.6);letter-spacing:.4px">PHOTO · {{ w.label }}</span>
+                  <sc-for list="{{ w.dots }}" as="d" hint-placeholder-count="3">
+                    <span style="position:absolute;left:{{ d.left }};top:{{ d.top }};width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:oklch(0.8 0.12 70);box-shadow:0 0 0 5px oklch(0.8 0.12 70 / .25)"></span>
+                  </sc-for>
+                </button>
+                <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <div style="font:400 28px/1.05 'Instrument Serif',serif">{{ w.title }}</div>
+                    <div style="font:400 11px 'Geist Mono',monospace;color:#a39d93;letter-spacing:.3px">{{ w.chapterCount }} CHAPTERS · {{ w.replyTotal }} REPLIES</div>
+                  </div>
+                  <button onClick="{{ w.open }}" style="flex:none;background:#f2eee6;color:#0f0e0d;border:0;border-radius:99px;padding:10px 16px;font:600 13px Geist;cursor:pointer">Walk through</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- PROFILE -->
+      <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;overflow-y:auto;padding-bottom:110px">
+          <div style="position:relative;height:236px;background:{{ profile.coverBg }}">
+            <div style="position:absolute;inset:0;background:linear-gradient(rgba(15,14,13,.45),rgba(15,14,13,0) 45%,#0f0e0d)"></div>
+            <div style="position:absolute;left:16px;right:16px;top:54px;display:flex;justify-content:space-between;align-items:center">
+              <button onClick="{{ goFeed }}" style="background:rgba(15,14,13,.55);backdrop-filter:blur(10px);border:1px solid rgba(242,238,230,.12);color:#f2eee6;border-radius:99px;font:500 13px Geist;padding:8px 14px;cursor:pointer">← Feed</button>
+              <button onClick="{{ profile.share }}" style="background:rgba(15,14,13,.55);backdrop-filter:blur(10px);border:1px solid rgba(242,238,230,.12);color:#f2eee6;border-radius:99px;font:500 13px Geist;padding:8px 14px;cursor:pointer">{{ profile.shareLabel }}</button>
+            </div>
+            <span style="position:absolute;right:16px;bottom:56px;font:400 10px 'Geist Mono',monospace;color:rgba(255,255,255,.55);letter-spacing:.4px">COVER · {{ profile.coverTitle }}</span>
+          </div>
+          <div style="position:relative;margin-top:-46px;padding:0 20px 22px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+              <div style="width:88px;height:88px;border-radius:50%;background:{{ profile.color }};border:4px solid #0f0e0d;display:grid;place-items:center;font:400 46px 'Instrument Serif',serif;color:#0f0e0d">{{ profile.initial }}</div>
+              <sc-if value="{{ profile.availOn }}" hint-placeholder-val="{{ true }}">
+                <span style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding:6px 11px;border-radius:99px;background:oklch(0.8 0.12 70 / .14);color:oklch(0.85 0.1 70);font:500 12px Geist"><span style="width:7px;height:7px;border-radius:50%;background:oklch(0.8 0.12 70)"></span>{{ profile.avail }}</span>
+              </sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font:400 46px/0.95 'Instrument Serif',serif;letter-spacing:-.5px">{{ profile.name }}</div>
+              <div style="font:400 11px 'Geist Mono',monospace;color:#a39d93;letter-spacing:.4px">{{ profile.discUpper }} · {{ profile.locUpper }}</div>
+            </div>
+            <div style="font:400 15px/1.5 Geist;color:#d6d1c8;text-wrap:pretty">{{ profile.bio }}</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(242,238,230,.08);border-bottom:1px solid rgba(242,238,230,.08)">
+              <div style="padding:12px 0;display:flex;flex-direction:column;gap:2px"><span style="font:400 24px/1 'Instrument Serif',serif">{{ profile.storyCount }}</span><span style="font:400 11px Geist;color:#8a847b">Stories</span></div>
+              <div style="padding:12px 0;display:flex;flex-direction:column;gap:2px"><span style="font:400 24px/1 'Instrument Serif',serif">{{ profile.chapterTotal }}</span><span style="font:400 11px Geist;color:#8a847b">Chapters</span></div>
+              <button onClick="{{ profile.openFollowers }}" style="padding:12px 0;display:flex;flex-direction:column;gap:2px;background:none;border:0;color:#f2eee6;text-align:left;cursor:pointer"><span style="font:400 24px/1 'Instrument Serif',serif">{{ profile.followers }}</span><span style="font:400 11px Geist;color:#8a847b">Followers ›</span></button>
+              <div style="padding:12px 0;display:flex;flex-direction:column;gap:2px"><span style="font:400 24px/1 'Instrument Serif',serif">{{ profile.followingCount }}</span><span style="font:400 11px Geist;color:#8a847b">Following</span></div>
+            </div>
+            <button onClick="{{ profile.openFollowers }}" style="display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;color:#a39d93;font:400 13px Geist;cursor:pointer;text-align:left">
+              <span style="display:flex">
+                <sc-for list="{{ profile.faces }}" as="f" hint-placeholder-count="3">
+                  <span style="width:24px;height:24px;margin-left:{{ f.ml }};border-radius:50%;border:2px solid #0f0e0d;background:{{ f.color }};display:grid;place-items:center;font:400 13px 'Instrument Serif',serif;color:#0f0e0d">{{ f.initial }}</span>
+                </sc-for>
+              </span>
+              <span>{{ profile.followedBy }}</span>
+            </button>
+            <sc-if value="{{ profile.canFollow }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:8px">
+                <button onClick="{{ profile.toggleFollow }}" style="flex:1;background:{{ profile.followBg }};color:{{ profile.followColor }};border:1px solid rgba(242,238,230,.25);border-radius:12px;padding:13px;font:600 14px Geist;cursor:pointer">{{ profile.followLabel }}</button>
+                <button onClick="{{ profile.openContact }}" style="flex:1;background:none;color:#f2eee6;border:1px solid rgba(242,238,230,.25);border-radius:12px;padding:13px;font:500 14px Geist;cursor:pointer">Contact</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ profile.isMe }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:8px">
+                <button style="flex:1;background:none;color:#f2eee6;border:1px solid rgba(242,238,230,.25);border-radius:12px;padding:13px;font:500 14px Geist;cursor:pointer">Edit profile</button>
+                <button onClick="{{ goCreate }}" style="flex:1;background:#f2eee6;color:#0f0e0d;border:0;border-radius:12px;padding:13px;font:600 14px Geist;cursor:pointer">New story</button>
+              </div>
+            </sc-if>
+          </div>
+          <div style="position:sticky;top:0;z-index:2;display:flex;gap:24px;padding:14px 20px 0;background:#0f0e0d;border-bottom:1px solid rgba(242,238,230,.08)">
+            <button onClick="{{ profile.tabWorks }}" style="background:none;border:0;padding:0 0 12px;cursor:pointer;font:500 14px Geist;color:{{ profile.worksColor }};border-bottom:1.5px solid {{ profile.worksLine }}">Works · {{ profile.storyCount }}</button>
+            <button onClick="{{ profile.tabAbout }}" style="background:none;border:0;padding:0 0 12px;cursor:pointer;font:500 14px Geist;color:{{ profile.aboutColor }};border-bottom:1.5px solid {{ profile.aboutLine }}">About & contact</button>
+          </div>
+
+          <sc-if value="{{ profile.showWorks }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:20px;padding:18px 16px 0">
+              <sc-if value="{{ profile.empty }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:40px 20px;border:1px dashed rgba(242,238,230,.18);border-radius:14px;text-align:center;font:400 14px/1.5 Geist;color:#a39d93">No stories yet. Tap + to annotate your first photograph.</div>
+              </sc-if>
+              <sc-if value="{{ profile.hasFeatured }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div style="font:400 11px 'Geist Mono',monospace;color:oklch(0.8 0.12 70);letter-spacing:.4px">FEATURED STORY</div>
+                  <button onClick="{{ profile.featured.open }}" style="position:relative;width:358px;height:300px;border:0;padding:0;border-radius:14px;overflow:hidden;cursor:pointer;background:{{ profile.featured.bg }}">
+                    <sc-for list="{{ profile.featured.dots }}" as="d" hint-placeholder-count="3">
+                      <span style="position:absolute;left:{{ d.left }};top:{{ d.top }};width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:oklch(0.8 0.12 70);box-shadow:0 0 0 5px oklch(0.8 0.12 70 / .25)"></span>
+                    </sc-for>
+                  </button>
+                  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
+                    <div style="display:flex;flex-direction:column;gap:4px"><span style="font:400 26px/1.05 'Instrument Serif',serif">{{ profile.featured.title }}</span><span style="font:400 11px 'Geist Mono',monospace;color:#a39d93">{{ profile.featured.chapterCount }} CHAPTERS · {{ profile.featured.replyTotal }} REPLIES</span></div>
+                    <button onClick="{{ profile.featured.open }}" style="flex:none;background:#f2eee6;color:#0f0e0d;border:0;border-radius:99px;padding:10px 16px;font:600 13px Geist;cursor:pointer">Walk through</button>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ profile.hasRest }}" hint-placeholder-val="{{ true }}">
+                <div style="font:400 11px 'Geist Mono',monospace;color:#8a847b;letter-spacing:.4px">ALL WORKS</div>
+              </sc-if>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <sc-for list="{{ profile.rest }}" as="w" hint-placeholder-count="2">
+                  <button onClick="{{ w.open }}" style="position:relative;aspect-ratio:4/5;border:0;padding:0;border-radius:10px;overflow:hidden;cursor:pointer;background:{{ w.bg }};text-align:left">
+                    <span style="position:absolute;inset:auto 0 0 0;padding:28px 10px 10px;background:linear-gradient(transparent,rgba(0,0,0,.6));display:flex;flex-direction:column;gap:2px">
+                      <span style="font:400 18px/1.05 'Instrument Serif',serif;color:#fff">{{ w.title }}</span>
+                      <span style="font:400 10px 'Geist Mono',monospace;color:rgba(255,255,255,.75)">{{ w.chapterCount }} CHAPTERS</span>
+                    </span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ profile.showAbout }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:26px;padding:22px 20px 0">
+              <sc-if value="{{ profile.hasServices }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column">
+                  <div style="font:400 11px 'Geist Mono',monospace;color:#8a847b;letter-spacing:.4px;padding-bottom:6px">AVAILABLE FOR</div>
+                  <sc-for list="{{ profile.services }}" as="v" hint-placeholder-count="3">
+                    <div style="display:flex;justify-content:space-between;gap:16px;padding:13px 0;border-bottom:1px solid rgba(242,238,230,.08)">
+                      <div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 15px Geist">{{ v.t }}</span><span style="font:400 13px/1.4 Geist;color:#a39d93">{{ v.d }}</span></div>
+                      <span style="flex:none;font:400 12px 'Geist Mono',monospace;color:#d6d1c8;padding-top:2px">{{ v.p }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <div style="display:flex;flex-direction:column">
+                <div style="font:400 11px 'Geist Mono',monospace;color:#8a847b;letter-spacing:.4px;padding-bottom:6px">CONTACT</div>
+                <sc-for list="{{ profile.contacts }}" as="k" hint-placeholder-count="4">
+                  <button onClick="{{ k.act }}" style="display:flex;align-items:center;gap:14px;padding:13px 0;background:none;border:0;border-bottom:1px solid rgba(242,238,230,.08);color:#f2eee6;cursor:pointer;text-align:left">
+                    <span style="width:72px;flex:none;font:400 12px Geist;color:#8a847b">{{ k.label }}</span>
+                    <span style="flex:1;font:500 14px Geist;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ k.value }}</span>
+                    <span style="flex:none;font:500 12px Geist;color:{{ k.actColor }}">{{ k.actLabel }}</span>
+                  </button>
+                </sc-for>
+                <div style="font:400 12px Geist;color:#8a847b;padding-top:10px">{{ profile.replyNote }}</div>
+              </div>
+              <sc-if value="{{ profile.hasShows }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column">
+                  <div style="font:400 11px 'Geist Mono',monospace;color:#8a847b;letter-spacing:.4px;padding-bottom:6px">EXHIBITIONS & PRESS</div>
+                  <sc-for list="{{ profile.shows }}" as="x" hint-placeholder-count="3">
+                    <div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid rgba(242,238,230,.08)">
+                      <span style="width:40px;flex:none;font:400 12px 'Geist Mono',monospace;color:#8a847b;padding-top:2px">{{ x.y }}</span>
+                      <span style="font:400 14px/1.4 Geist;color:#d6d1c8">{{ x.t }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ profile.canFollow }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ profile.openContact }}" style="background:#f2eee6;color:#0f0e0d;border:0;border-radius:12px;padding:14px;font:600 14px Geist;cursor:pointer">Send {{ profile.first }} an inquiry</button>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:rgba(0,0,0,.5)"></div>
+          <div style="position:absolute;left:0;right:0;bottom:0;max-height:700px;background:#161513;border-radius:26px 26px 0 0;border-top:1px solid rgba(242,238,230,.1);display:flex;flex-direction:column">
+            <div style="width:36px;height:4px;border-radius:2px;background:rgba(242,238,230,.2);margin:10px auto 0"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:16px 20px 14px;border-bottom:1px solid rgba(242,238,230,.08)">
+              <div style="font:400 28px/1.05 'Instrument Serif',serif">{{ sheetTitle }}</div>
+              <button onClick="{{ closeSheet }}" style="background:none;border:0;color:#a39d93;font:500 13px Geist;cursor:pointer">Close</button>
+            </div>
+            <sc-if value="{{ isFollowersSheet }}" hint-placeholder-val="{{ false }}">
+              <div style="overflow-y:auto;padding:4px 20px 34px;display:flex;flex-direction:column">
+                <sc-for list="{{ profile.followersList }}" as="f" hint-placeholder-count="6">
+                  <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(242,238,230,.06)">
+                    <button onClick="{{ f.open }}" style="display:flex;align-items:center;gap:12px;flex:1;background:none;border:0;padding:0;color:#f2eee6;cursor:pointer;text-align:left">
+                      <span style="flex:none;width:40px;height:40px;border-radius:50%;background:{{ f.color }};display:grid;place-items:center;font:400 20px 'Instrument Serif',serif;color:#0f0e0d">{{ f.initial }}</span>
+                      <span style="display:flex;flex-direction:column;gap:2px"><span style="font:500 14px Geist">{{ f.n }}</span><span style="font:400 12px Geist;color:#8a847b">{{ f.d }}</span></span>
+                    </button>
+                    <button onClick="{{ f.toggle }}" style="flex:none;background:{{ f.bg }};color:{{ f.fg }};border:1px solid rgba(242,238,230,.2);border-radius:99px;padding:7px 14px;font:500 12px Geist;cursor:pointer">{{ f.label }}</button>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isContactSheet }}" hint-placeholder-val="{{ false }}">
+              <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
+                <div style="overflow-y:auto;padding:16px 20px 34px;display:flex;flex-direction:column;gap:14px">
+                  <div style="font:400 11px 'Geist Mono',monospace;color:#8a847b;letter-spacing:.4px">WHAT IS THIS ABOUT</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px">
+                    <sc-for list="{{ inqTypes }}" as="t" hint-placeholder-count="4">
+                      <button onClick="{{ t.pick }}" style="border-radius:99px;padding:8px 14px;font:500 13px Geist;cursor:pointer;background:{{ t.bg }};color:{{ t.fg }};border:1px solid {{ t.line }}">{{ t.label }}</button>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ hasRefWork }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;background:#1f1d1a">
+                      <span style="width:40px;height:40px;border-radius:6px;background:{{ refWork.bg }}"></span>
+                      <span style="display:flex;flex-direction:column;gap:2px"><span style="font:400 11px Geist;color:#8a847b">About the work</span><span style="font:500 14px Geist">{{ refWork.title }}</span></span>
+                    </div>
+                  </sc-if>
+                  <input value="{{ inqEmail }}" onChange="{{ onInqEmail }}" placeholder="Your email" style="background:#1f1d1a;border:1px solid rgba(242,238,230,.1);border-radius:10px;padding:13px;color:#f2eee6;font:400 15px Geist;outline:none"></input>
+                  <textarea value="{{ inqMsg }}" onChange="{{ onInqMsg }}" rows="5" placeholder="{{ inqPlaceholder }}" style="background:#1f1d1a;border:1px solid rgba(242,238,230,.1);border-radius:10px;padding:13px;color:#f2eee6;font:400 15px/1.45 Geist;outline:none;resize:none"></textarea>
+                  <div style="font:400 12px Geist;color:#8a847b">{{ profile.replyNote }}</div>
+                  <button onClick="{{ sendInquiry }}" style="background:{{ sendBg }};color:{{ sendFg }};border:0;border-radius:12px;padding:14px;font:600 14px Geist;cursor:pointer">Send inquiry</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:34px 20px 44px;display:flex;flex-direction:column;gap:12px;align-items:flex-start">
+                  <div style="width:44px;height:44px;border-radius:50%;background:oklch(0.8 0.12 70);display:grid;place-items:center;color:#0f0e0d;font:600 20px Geist">✓</div>
+                  <div style="font:400 30px/1.05 'Instrument Serif',serif">Sent to {{ profile.first }}.</div>
+                  <div style="font:400 15px/1.5 Geist;color:#a39d93">{{ sentNote }}</div>
+                  <button onClick="{{ closeSheet }}" style="margin-top:8px;align-self:stretch;background:#f2eee6;color:#0f0e0d;border:0;border-radius:12px;padding:14px;font:600 14px Geist;cursor:pointer">Back to portfolio</button>
+                </div>
+              </sc-if>
+            </sc-if>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- STORY -->
+      <sc-if value="{{ isStory }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;overflow:hidden;background:#000">
+          <div onClick="{{ bgTap }}" style="position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;transform:{{ tf }};transition:transform {{ dur }}ms cubic-bezier(.2,.7,.1,1);background:{{ work.bg }}">
+            <span style="position:absolute;left:16px;top:120px;font:400 10px 'Geist Mono',monospace;color:rgba(255,255,255,.45);letter-spacing:.4px">PHOTO · {{ work.label }}</span>
+            <sc-for list="{{ dots }}" as="d" hint-placeholder-count="0">
+              <button onClick="{{ d.onClick }}" style="position:absolute;left:{{ d.left }};top:{{ d.top }};width:44px;height:44px;margin:-22px 0 0 -22px;border:0;padding:0;background:none;cursor:pointer;display:grid;place-items:center;transform:scale({{ inv }});opacity:{{ dotsOpacity }};pointer-events:{{ dotsPE }};transition:opacity .4s">
+                <sc-if value="{{ numbered }}" hint-placeholder-val="{{ true }}">
+                  <span style="width:28px;height:28px;border-radius:50%;background:rgba(15,14,13,.7);border:1.5px solid oklch(0.8 0.12 70);color:#f2eee6;display:grid;place-items:center;font:500 12px 'Geist Mono',monospace;backdrop-filter:blur(6px)">{{ d.num }}</span>
+                </sc-if>
+                <sc-if value="{{ quietDots }}" hint-placeholder-val="{{ false }}">
+                  <span style="width:12px;height:12px;border-radius:50%;background:oklch(0.8 0.12 70);box-shadow:0 0 0 6px oklch(0.8 0.12 70 / .3),0 0 0 14px oklch(0.8 0.12 70 / .12)"></span>
+                </sc-if>
+              </button>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:{{ ringX }}px;top:{{ ringY }}px;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;border:1.5px solid oklch(0.8 0.12 70);box-shadow:0 0 0 1600px rgba(8,7,6,.5);opacity:{{ ringOpacity }};pointer-events:none;transition:left {{ dur }}ms cubic-bezier(.2,.7,.1,1),top {{ dur }}ms cubic-bezier(.2,.7,.1,1),opacity .5s"></div>
+          <div style="position:absolute;inset:0 0 auto 0;height:170px;background:linear-gradient(rgba(0,0,0,.55),transparent);pointer-events:none"></div>
+
+          <sc-if value="{{ storyTaps }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ prev }}" style="position:absolute;left:0;top:110px;width:30%;height:400px;cursor:w-resize"></div>
+            <div onClick="{{ next }}" style="position:absolute;right:0;top:110px;width:70%;height:400px;cursor:e-resize"></div>
+          </sc-if>
+
+          <div style="position:absolute;left:12px;right:12px;top:52px;display:flex;flex-direction:column;gap:12px">
+            <sc-if value="{{ isStoryMode }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:4px">
+                <sc-for list="{{ segs }}" as="s" hint-placeholder-count="4">
+                  <div onClick="{{ s.jump }}" style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden;cursor:pointer"><div style="height:100%;width:{{ s.fill }};background:#f2eee6;transition:width .4s"></div></div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:10px">
+              <button onClick="{{ openWorkArtist }}" style="display:flex;align-items:center;gap:9px;background:none;border:0;padding:0;cursor:pointer;color:#f2eee6;text-align:left;min-width:0">
+                <div style="flex:none;width:32px;height:32px;border-radius:50%;background:{{ artist.color }};display:grid;place-items:center;font:400 17px 'Instrument Serif',serif;color:#0f0e0d">{{ artist.initial }}</div>
+                <div style="display:flex;flex-direction:column;min-width:0"><span style="font:500 13px Geist">{{ artist.name }}</span><span style="font:400 11px Geist;color:rgba(242,238,230,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ work.title }}</span></div>
+              </button>
+              <div style="flex:1"></div>
+              <div style="display:flex;background:rgba(15,14,13,.6);backdrop-filter:blur(10px);border-radius:99px;padding:3px;border:1px solid rgba(242,238,230,.12)">
+                <button onClick="{{ setStory }}" style="border:0;border-radius:99px;padding:7px 12px;font:500 12px Geist;cursor:pointer;background:{{ storyPillBg }};color:{{ storyPillColor }}">Story</button>
+                <button onClick="{{ setExplore }}" style="border:0;border-radius:99px;padding:7px 12px;font:500 12px Geist;cursor:pointer;background:{{ explorePillBg }};color:{{ explorePillColor }}">Explore</button>
+              </div>
+              <button onClick="{{ closeStory }}" style="width:36px;height:36px;border-radius:50%;border:0;background:rgba(15,14,13,.6);color:#f2eee6;font:400 20px Geist;cursor:pointer;backdrop-filter:blur(10px)">×</button>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:10px;right:10px;bottom:24px;background:rgba(18,17,15,.86);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(242,238,230,.1);border-radius:24px;padding:20px 20px 16px;display:flex;flex-direction:column;gap:10px">
+            <sc-if value="{{ isIntro }}" hint-placeholder-val="{{ false }}">
+              <div style="font:400 11px 'Geist Mono',monospace;color:oklch(0.8 0.12 70);letter-spacing:.5px">{{ work.dateUpper }} · {{ chapterCount }} CHAPTERS</div>
+              <div style="font:400 34px/1 'Instrument Serif',serif;letter-spacing:-.3px">{{ work.title }}</div>
+              <div style="font:400 15px/1.5 Geist;color:#d6d1c8;text-wrap:pretty">{{ work.intro }}</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+                <span style="font:400 12px Geist;color:#a39d93">Tap the photo to walk through</span>
+                <button onClick="{{ next }}" style="background:#f2eee6;color:#0f0e0d;border:0;border-radius:99px;padding:10px 16px;font:600 13px Geist;cursor:pointer">Begin →</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isChapter }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font:400 11px 'Geist Mono',monospace;color:oklch(0.8 0.12 70);letter-spacing:.5px">{{ chapterKicker }}</span>
+                <sc-if value="{{ isExploreSel }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ clearSel }}" style="background:none;border:0;color:#a39d93;font:500 12px Geist;cursor:pointer;padding:0">Zoom out</button>
+                </sc-if>
+              </div>
+              <div style="font:400 32px/1.02 'Instrument Serif',serif;letter-spacing:-.3px">{{ ch.t }}</div>
+              <div style="font:400 15px/1.5 Geist;color:#d6d1c8;text-wrap:pretty">{{ ch.b }}</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+                <span style="font:400 11px 'Geist Mono',monospace;color:#a39d93;border:1px solid rgba(242,238,230,.14);border-radius:6px;padding:5px 8px">{{ ch.m }}</span>
+                <div style="flex:1"></div>
+                <button onClick="{{ openThread }}" style="background:rgba(242,238,230,.08);border:0;color:#f2eee6;border-radius:99px;padding:8px 13px;font:500 12px Geist;cursor:pointer">{{ replyLabel }}</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isEnd }}" hint-placeholder-val="{{ false }}">
+              <div style="font:400 11px 'Geist Mono',monospace;color:oklch(0.8 0.12 70);letter-spacing:.5px">END OF STORY</div>
+              <div style="font:400 30px/1.05 'Instrument Serif',serif">Keep looking, or move on.</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+                <button onClick="{{ setExplore }}" style="background:none;color:#f2eee6;border:1px solid rgba(242,238,230,.2);border-radius:12px;padding:12px;font:500 13px Geist;cursor:pointer">Explore freely</button>
+                <button onClick="{{ replay }}" style="background:none;color:#f2eee6;border:1px solid rgba(242,238,230,.2);border-radius:12px;padding:12px;font:500 13px Geist;cursor:pointer">Replay</button>
+                <button onClick="{{ toggleWorkFollow }}" style="background:none;color:#f2eee6;border:1px solid rgba(242,238,230,.2);border-radius:12px;padding:12px;font:500 13px Geist;cursor:pointer">{{ workFollowLabel }}</button>
+                
+                <button onClick="{{ nextWork }}" style="background:#f2eee6;color:#0f0e0d;border:0;border-radius:12px;padding:12px;font:600 13px Geist;cursor:pointer">Next story →</button>
+                <sc-if value="{{ canInquire }}" hint-placeholder-val="{{ true }}"><button onClick="{{ inquireWork }}" style="grid-column:1 / -1;background:none;color:#f2eee6;border:1px solid rgba(242,238,230,.2);border-radius:12px;padding:12px;font:500 13px Geist;cursor:pointer">Ask about a print of this work</button></sc-if>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isExploreIdle }}" hint-placeholder-val="{{ false }}">
+              <div style="font:400 11px 'Geist Mono',monospace;color:oklch(0.8 0.12 70);letter-spacing:.5px">EXPLORE</div>
+              <div style="font:400 15px/1.5 Geist;color:#d6d1c8">Tap any marked point in any order. {{ chapterCount }} notes left by {{ artist.first }}.</div>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ threadOpen }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ closeThread }}" style="position:absolute;inset:0;background:rgba(0,0,0,.4)"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:520px;background:#161513;border-radius:26px 26px 0 0;border-top:1px solid rgba(242,238,230,.1);display:flex;flex-direction:column">
+              <div style="width:36px;height:4px;border-radius:2px;background:rgba(242,238,230,.2);margin:10px auto 0"></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;padding:16px 20px 12px;border-bottom:1px solid rgba(242,238,230,.08)">
+                <div><div style="font:400 11px 'Geist Mono',monospace;color:#8a847b;letter-spacing:.4px">REPLIES ON</div><div style="font:400 24px/1.1 'Instrument Serif',serif;margin-top:4px">{{ ch.t }}</div></div>
+                <button onClick="{{ closeThread }}" style="background:none;border:0;color:#a39d93;font:500 13px Geist;cursor:pointer">Done</button>
+              </div>
+              <div style="flex:1;overflow-y:auto;padding:14px 20px;display:flex;flex-direction:column;gap:16px">
+                <sc-if value="{{ noReplies }}" hint-placeholder-val="{{ false }}">
+                  <div style="font:400 14px Geist;color:#8a847b;padding-top:8px">No replies on this detail yet.</div>
+                </sc-if>
+                <sc-for list="{{ replies }}" as="r" hint-placeholder-count="2">
+                  <div style="display:flex;gap:10px">
+                    <div style="flex:none;width:28px;height:28px;border-radius:50%;background:{{ r.color }};display:grid;place-items:center;font:400 15px 'Instrument Serif',serif;color:#0f0e0d">{{ r.initial }}</div>
+                    <div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 13px Geist">{{ r.n }}</span><span style="font:400 14px/1.45 Geist;color:#d6d1c8">{{ r.t }}</span></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:8px;padding:12px 16px 30px;border-top:1px solid rgba(242,238,230,.08)">
+                <input value="{{ reply }}" onChange="{{ onReply }}" onKeyDown="{{ onReplyKey }}" placeholder="Reply to this detail…" style="flex:1;background:#201e1b;border:1px solid rgba(242,238,230,.1);border-radius:99px;padding:12px 16px;color:#f2eee6;font:400 14px Geist;outline:none"></input>
+                <button onClick="{{ sendReply }}" style="background:#f2eee6;color:#0f0e0d;border:0;border-radius:99px;padding:0 16px;font:600 13px Geist;cursor:pointer">Send</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- CREATE -->
+      <sc-if value="{{ isCreate }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding-top:50px;background:#0f0e0d">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 16px 12px">
+            <button onClick="{{ cancelCreate }}" style="background:none;border:0;color:#a39d93;font:500 14px Geist;cursor:pointer;padding:6px 0">Cancel</button>
+            <div style="flex:1;text-align:center;font:400 11px 'Geist Mono',monospace;color:#8a847b;letter-spacing:.4px">{{ createStepLabel }}</div>
+            <button onClick="{{ publish }}" style="background:{{ publishBg }};color:{{ publishColor }};border:0;border-radius:99px;padding:8px 14px;font:600 13px Geist;cursor:pointer">Publish</button>
+          </div>
+          <sc-if value="{{ isPick }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:8px 20px 16px"><div style="font:400 36px/1 'Instrument Serif',serif">Choose a photograph</div><div style="font:400 14px/1.5 Geist;color:#a39d93;margin-top:8px">You'll mark the details that matter and write what was behind each one.</div></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:0 3px;overflow-y:auto">
+              <sc-for list="{{ roll }}" as="p" hint-placeholder-count="9">
+                <button onClick="{{ p.pick }}" style="aspect-ratio:1;border:0;padding:0;cursor:pointer;background:{{ p.bg }}"></button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isAnnotate }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ photoTap }}" style="position:relative;flex:none;width:390px;height:420px;background:{{ draftBg }};cursor:crosshair">
+              <sc-for list="{{ pins }}" as="p" hint-placeholder-count="0">
+                <span style="position:absolute;left:{{ p.left }};top:{{ p.top }};width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:rgba(15,14,13,.75);border:1.5px solid oklch(0.8 0.12 70);color:#f2eee6;display:grid;place-items:center;font:500 12px 'Geist Mono',monospace">{{ p.num }}</span>
+              </sc-for>
+              <sc-if value="{{ hasGhost }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;left:{{ ghostLeft }};top:{{ ghostTop }};width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:oklch(0.8 0.12 70);box-shadow:0 0 0 8px oklch(0.8 0.12 70 / .25)"></span>
+              </sc-if>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:16px 20px 30px;display:flex;flex-direction:column;gap:12px">
+              <input value="{{ draftTitle }}" onChange="{{ onDraftTitle }}" placeholder="Title this photograph" style="background:none;border:0;border-bottom:1px solid rgba(242,238,230,.12);padding:4px 0 10px;color:#f2eee6;font:400 28px 'Instrument Serif',serif;outline:none"></input>
+              <sc-if value="{{ hasGhost }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="font:400 11px 'Geist Mono',monospace;color:oklch(0.8 0.12 70);letter-spacing:.4px">CHAPTER {{ nextPinNum }}</div>
+                  <input value="{{ dTitle }}" onChange="{{ onDTitle }}" placeholder="What is this detail?" style="background:#1a1816;border:1px solid rgba(242,238,230,.1);border-radius:10px;padding:12px;color:#f2eee6;font:500 15px Geist;outline:none"></input>
+                  <textarea value="{{ dBody }}" onChange="{{ onDBody }}" placeholder="The story behind it — what you saw, waited for, decided." rows="3" style="background:#1a1816;border:1px solid rgba(242,238,230,.1);border-radius:10px;padding:12px;color:#f2eee6;font:400 14px/1.45 Geist;outline:none;resize:none"></textarea>
+                  <div style="display:flex;gap:8px">
+                    <button onClick="{{ discardPin }}" style="flex:1;background:none;color:#a39d93;border:1px solid rgba(242,238,230,.14);border-radius:10px;padding:11px;font:500 13px Geist;cursor:pointer">Discard</button>
+                    <button onClick="{{ addPin }}" style="flex:2;background:#f2eee6;color:#0f0e0d;border:0;border-radius:10px;padding:11px;font:600 13px Geist;cursor:pointer">Add chapter</button>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ showPinHint }}" hint-placeholder-val="{{ true }}">
+                <div style="font:400 14px/1.5 Geist;color:#a39d93">Tap anything in the photograph to start a chapter. Chapters play in the order you add them.</div>
+              </sc-if>
+              <sc-for list="{{ pins }}" as="p" hint-placeholder-count="0">
+                <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid rgba(242,238,230,.08)">
+                  <span style="flex:none;font:500 12px 'Geist Mono',monospace;color:oklch(0.8 0.12 70);padding-top:2px">{{ p.num }}</span>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font:500 14px Geist">{{ p.t }}</span><span style="font:400 13px/1.4 Geist;color:#a39d93">{{ p.b }}</span></div>
+                  <button onClick="{{ p.remove }}" style="background:none;border:0;color:#8a847b;font:400 18px Geist;cursor:pointer;padding:0 4px">×</button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- TAB BAR -->
+      <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;left:0;right:0;bottom:0;height:84px;background:linear-gradient(rgba(15,14,13,0),rgba(15,14,13,.96) 30%);display:flex;align-items:flex-start;justify-content:space-around;padding-top:18px;box-sizing:border-box">
+          <button onClick="{{ goFeed }}" style="background:none;border:0;cursor:pointer;color:{{ navFeedColor }};font:500 12px Geist;width:80px;padding:8px 0">Feed</button>
+          <button onClick="{{ goCreate }}" style="width:48px;height:48px;margin-top:-6px;border-radius:50%;border:0;background:#f2eee6;color:#0f0e0d;font:300 26px/1 Geist;cursor:pointer">+</button>
+          <button onClick="{{ goMe }}" style="background:none;border:0;cursor:pointer;color:{{ navMeColor }};font:500 12px Geist;width:80px;padding:8px 0">Portfolio</button>
+        </div>
+      </sc-if>
+
+      <div style="position:absolute;left:0;right:0;top:0;height:48px;display:flex;align-items:center;justify-content:space-between;padding:6px 32px 0;box-sizing:border-box;font:600 15px Geist;color:#f2eee6;pointer-events:none">
+        <span>9:41</span>
+        <span style="width:24px;height:11px;border:1px solid rgba(242,238,230,.6);border-radius:3px;padding:1px;box-sizing:border-box"><span style="display:block;width:75%;height:100%;background:#f2eee6;border-radius:1px"></span></span>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:0 1 280px;display:flex;flex-direction:column;gap:14px;color:#a39d93;font:400 14px/1.55 Geist">
+    <div style="font:400 44px/1 'Instrument Serif',serif;color:#f2eee6">Vela</div>
+    <div style="text-wrap:pretty">Photographs where you can see the story. Artists pin details in their work and write what's behind each one. Viewers either walk through the pins in order or tap them in any order.</div>
+    <div style="font:400 11px 'Geist Mono',monospace;color:#8a847b;letter-spacing:.4px;margin-top:8px">TRY</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div>1. Tap <span style="color:#f2eee6">Walk through</span> on a post. Tap the right side of the photo to go forward and the left side to go back.</div>
+      <div>2. Switch to <span style="color:#f2eee6">Explore</span> to tap the details in any order.</div>
+      <div>3. Open the replies on a detail and add one.</div>
+      <div>4. Tap <span style="color:#f2eee6">+</span> to annotate a photo and publish it to your portfolio.</div>
+    </div>
+    <div style="font:400 11px 'Geist Mono',monospace;color:#8a847b;margin-top:8px">The photos are placeholders. Send real images and I'll use them.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;hotspotStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;numbered&quot;,&quot;glow&quot;],&quot;default&quot;:&quot;numbered&quot;,&quot;tsType&quot;:&quot;'numbered'|'glow'&quot;},&quot;autoplay&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;zoom&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0.6,&quot;max&quot;:1.6,&quot;step&quot;:0.1,&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;transitionMs&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:300,&quot;max&quot;:1600,&quot;step&quot;:100,&quot;default&quot;:900,&quot;unit&quot;:&quot;ms&quot;,&quot;tsType&quot;:&quot;number&quot;}}">
+const W = 390, H = 844;
+const ARTISTS = {
+  ines: { name: 'Ines Okafor', loc: 'Lisbon', disc: 'Coastal & documentary', bio: 'Coastlines at the edge of the day. Shoots mostly on a 1970s rangefinder and a lot of patience.', followers: '2.4k', following: 312, color: '#d39a74',
+    avail: 'Open for commissions', email: 'hello@inesokafor.com', site: 'inesokafor.com', handle: '@ines.tides', studio: 'Lisbon · visits by appointment', reply: 'Usually replies within 2 days.',
+    services: [{ t: 'Commissions', d: 'Coastal, travel and editorial assignments', p: 'from €800/day' }, { t: 'Prints', d: 'Archival pigment, editions of 25', p: 'from €120' }, { t: 'Licensing', d: 'Editorial, book covers, campaigns', p: 'on request' }],
+    shows: [{ y: '2026', t: 'Edge of Day, Galeria Mar, Lisbon' }, { y: '2025', t: 'Featured in Field & Frame, issue 14' }, { y: '2024', t: 'New Coastal Photography, group show, Porto' }] },
+  teo: { name: 'Teo Varga', loc: 'Budapest', disc: 'Interiors & night', bio: 'Interiors, night streets, and the lights people leave on.', followers: '860', following: 140, color: '#8fb8b0',
+    avail: 'Booking from January', email: 'studio@teovarga.hu', site: 'teovarga.hu', handle: '@teo.after.dark', studio: 'Budapest VII', reply: 'Usually replies within a week.',
+    services: [{ t: 'Interiors', d: 'Architecture and hospitality spaces', p: 'from €600/day' }, { t: 'Prints', d: 'Small editions, signed', p: 'from €90' }],
+    shows: [{ y: '2025', t: 'Lights Left On, Studio Kert, Budapest' }] },
+  mara: { name: 'Mara Lind', loc: 'Tucson', disc: 'Landscape & field studies', bio: 'Field studies of dry places. Every frame is a page from a notebook.', followers: '5.1k', following: 488, color: '#d8c08a',
+    avail: 'Open for print sales', email: 'mara@fieldnotes.studio', site: 'fieldnotes.studio', handle: '@mara.fieldnotes', studio: 'Tucson, AZ', reply: 'Usually replies within 3 days.',
+    services: [{ t: 'Prints', d: 'Large format, editions of 10', p: 'from $240' }, { t: 'Workshops', d: 'Desert field days, small groups', p: '$180/person' }, { t: 'Licensing', d: 'Editorial and publishing', p: 'on request' }],
+    shows: [{ y: '2026', t: 'Field Notes, Center for Desert Art, Tucson' }, { y: '2025', t: 'Dry Places, monograph, 96 pages' }] },
+  you: { name: 'You', loc: 'Your city', disc: 'Photographer', bio: 'Your annotated photographs live here.', followers: '0', following: 1, color: '#c9c3b8',
+    avail: '', email: 'you@example.com', site: 'Add a website', handle: 'Add a handle', studio: 'Add a location', reply: 'Add contact details so people can reach you.', services: [], shows: [] }
+};
+const FOLK = [{ n: 'Ana Ruiz', d: 'Street photographer', color: '#b9a3d0' }, { n: 'Kenji Mori', d: 'Illustrator', color: '#9cc4a3' }, { n: 'Lea Brandt', d: 'Collector', color: '#e0a8a0' }, { n: 'Sam Oyelaran', d: 'Photo editor, Field & Frame', color: '#a8bfe0' }, { n: 'Priya Nair', d: 'Painter', color: '#e3c48f' }, { n: 'Jonas Hale', d: 'Curator', color: '#c7c0b4' }];
+const INQ = ['Commission', 'Buy a print', 'Licensing', 'Collaboration', 'Just saying hi'];
+const WORKS = [
+  { id: 'w1', artist: 'ines', title: 'Low Tide, Second Light', date: 'Mar 2026', label: 'HARBOR AT DUSK',
+    bg: 'linear-gradient(180deg,#24283c 0%,#5a4058 26%,#c0705a 44%,#eab27a 50%,#3a3a44 51%,#1f2430 70%,#0f1218 100%)',
+    intro: 'A ferry, a tide line, and forty minutes of waiting. Walk through what I was looking at.',
+    ch: [
+      { x: .70, y: .47, z: 2.6, t: 'The last ferry', b: 'I waited forty minutes for the boat to cross the sun line. It did it once, for about two seconds.', m: '85mm · f/4 · 1/500' },
+      { x: .30, y: .66, z: 2.2, t: 'Wet sand as a mirror', b: 'The tide had just gone out. I dropped the tripod almost to the ground so the sand would carry the sky down into the frame.', m: 'Tripod at 20cm' },
+      { x: .52, y: .24, z: 1.9, t: "Color I didn't touch", b: "People ask about the grade. There isn't one. This is Portra 400 doing what it does at 7:52pm.", m: 'Portra 400 · no grade' },
+      { x: .16, y: .86, z: 2.8, t: 'Footprints, left in', b: 'My own. I thought about cloning them out and decided they belong to the story.', m: 'Unretouched' }
+    ] },
+  { id: 'w2', artist: 'teo', title: 'Kitchen, 6:40am', date: 'Feb 2026', label: 'WARM INTERIOR, WINDOW LIGHT',
+    bg: 'radial-gradient(ellipse at 72% 30%,#f3d29a 0%,#c98a4a 22%,transparent 48%),linear-gradient(160deg,#3b2a1f 0%,#22180f 60%,#120d09 100%)',
+    intro: "My grandmother's kitchen the week before it was sold. Three things I wanted to keep.",
+    ch: [
+      { x: .72, y: .30, z: 2.3, t: 'The window she never cleaned', b: 'The haze on the glass is forty years of cooking. It made the light soft enough that I could shoot wide open.', m: '35mm · f/1.4 · 1/60' },
+      { x: .30, y: .58, z: 2.5, t: 'Her chair, pulled out', b: 'I left it exactly where it was. Nobody had moved it since March.', m: 'Found, not staged' },
+      { x: .55, y: .80, z: 2.2, t: 'Kettle steam', b: 'I boiled the kettle twice to get the steam to catch the light. The second time worked.', m: 'Second take' }
+    ] },
+  { id: 'w3', artist: 'mara', title: 'Field Notes No. 4', date: 'Jan 2026', label: 'DESERT FLATS, NOON',
+    bg: 'radial-gradient(circle at 30% 26%,#f7e6c4 0%,transparent 18%),linear-gradient(180deg,#d9b48a 0%,#c98f5c 48%,#9a5c34 49%,#6e3f22 75%,#3e2414 100%)',
+    intro: 'A dry lake bed, mapped one detail at a time. Noon light, which everyone tells you to avoid.',
+    ch: [
+      { x: .30, y: .26, z: 2.4, t: 'Why noon', b: 'Hard overhead light flattens everything, and flat was the point. The lake bed should feel like a page.', m: '50mm · f/8 · 1/1000' },
+      { x: .62, y: .49, z: 2.6, t: 'The horizon cut', b: 'I placed the horizon on the exact center. Breaking the rule of thirds made the frame feel still.', m: 'Centered horizon' },
+      { x: .40, y: .78, z: 2.4, t: 'Cracks as contour lines', b: 'From above they read like a topographic map. That is where the series name came from.', m: 'Series: Field Notes' }
+    ] },
+  { id: 'w4', artist: 'teo', title: 'Overpass', date: 'Dec 2025', label: 'NIGHT STREET, SODIUM + LED',
+    bg: 'radial-gradient(ellipse at 50% 40%,#6fd6c8 0%,transparent 30%),linear-gradient(180deg,#0b1a24 0%,#12333d 45%,#0a1418 46%,#05090b 100%)',
+    intro: 'Two kinds of streetlight meeting under one bridge.',
+    ch: [
+      { x: .50, y: .40, z: 2.2, t: 'The new LED', b: 'The city swapped half the lamps last year. The cold half is the future, the warm half is leaving.', m: '28mm · f/2 · 1/30' },
+      { x: .20, y: .70, z: 2.6, t: 'A cyclist, blurred', b: 'One-thirtieth was slow enough to smear him and fast enough to keep the railings sharp.', m: 'Handheld' },
+      { x: .82, y: .58, z: 2.6, t: 'Puddle', b: 'It had rained an hour earlier. The reflection doubles the light without doubling the noise.', m: 'ISO 3200' }
+    ] },
+  { id: 'w5', artist: 'mara', title: 'Saguaro, Backlit', date: 'Nov 2025', label: 'CACTUS SILHOUETTE, SUNSET',
+    bg: 'radial-gradient(circle at 60% 35%,#fff1cf 0%,#f0b26a 14%,transparent 38%),linear-gradient(180deg,#7a4f6a 0%,#d48a5e 55%,#2d1f1a 56%,#120c0a 100%)',
+    intro: 'One cactus, one sun, one try.',
+    ch: [
+      { x: .60, y: .35, z: 2.4, t: 'Sun behind the arm', b: 'I walked about thirty meters sideways until the sun sat behind the left arm.', m: '200mm · f/11' },
+      { x: .30, y: .75, z: 2.2, t: 'Letting the ground go black', b: 'I exposed for the sky and let the ground fall to black.', m: '−2 EV' }
+    ] },
+  { id: 'w6', artist: 'ines', title: 'Ropes', date: 'Oct 2025', label: 'MOORING LINES, CLOSE',
+    bg: 'linear-gradient(135deg,#1c2a2e 0%,#3e5a5c 40%,#b9c4bc 60%,#4a5a58 80%,#1a2224 100%)',
+    intro: 'Mooring lines photographed from close up, like a portrait.',
+    ch: [
+      { x: .45, y: .45, z: 2.5, t: 'The fray', b: 'Salt does this in about a season. I wanted the texture close enough to feel.', m: 'Macro · f/5.6' },
+      { x: .75, y: .70, z: 2.3, t: 'Tide line', b: 'The pale band marks where the water sits most of the day.', m: 'Low tide' }
+    ] }
+];
+const ROLL = [
+  'linear-gradient(180deg,#9fb6c9 0%,#d7dde0 50%,#5c6b5a 51%,#2f3a2c 100%)',
+  'radial-gradient(circle at 40% 40%,#f2c9a0 0%,#7b4b3a 50%,#1e1412 100%)',
+  'linear-gradient(200deg,#2a2440 0%,#7c5b8a 45%,#e3a3a0 70%,#2a1f26 100%)',
+  'linear-gradient(90deg,#3b3a36 0%,#8c877c 30%,#e8e3d6 50%,#8c877c 70%,#3b3a36 100%)',
+  'radial-gradient(ellipse at 50% 80%,#c8e6b0 0%,#4f7a45 40%,#16241a 100%)',
+  'linear-gradient(180deg,#0b0f1d 0%,#1d2b55 50%,#f6c56a 52%,#0b0f1d 54%)',
+  'linear-gradient(160deg,#e9d8c4 0%,#b88f6a 60%,#5a3d2a 100%)',
+  'radial-gradient(circle at 70% 30%,#ffffff 0%,#a7c5d9 20%,#2e4a63 70%)',
+  'linear-gradient(0deg,#1a1a1a 0%,#5a5a5a 50%,#d0d0d0 100%)'
+];
+const SEED = {
+  'w1-0': [{ n: 'Teo Varga', a: 'teo', t: 'Two seconds. Worth the forty minutes.' }, { n: 'Mara Lind', a: 'mara', t: 'The ferry being so small is what makes it.' }],
+  'w1-1': [{ n: 'Mara Lind', a: 'mara', t: 'Twenty centimeters! I always forget how much height changes a reflection.' }],
+  'w1-2': [{ n: 'Teo Varga', a: 'teo', t: 'Portra at golden hour is cheating, and I love it.' }],
+  'w2-1': [{ n: 'Ines Okafor', a: 'ines', t: 'This one got me.' }],
+  'w3-1': [{ n: 'Ines Okafor', a: 'ines', t: 'The centered horizon makes it so calm.' }]
+};
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+class Component extends DCLogic {
+  state = { screen: 'feed', tab: 'following', workId: 'w1', step: 0, mode: 'story', sel: -1, thread: false, reply: '',
+    replies: SEED, following: { ines: true }, profileId: 'ines', created: [], create: null,
+    profileTab: 'works', sheet: null, inqType: 'Commission', inqEmail: '', inqMsg: '', sent: false, copied: null, refWork: null, shared: false };
+
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      const s = this.state;
+      if (!this.props.autoplay || s.screen !== 'story' || s.mode !== 'story' || s.thread) return;
+      const w = this.works().find(x => x.id === s.workId);
+      if (w && s.step >= 1 && s.step <= w.ch.length) this.setState({ step: s.step + 1 });
+    }, 6000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  works() { return WORKS.concat(this.state.created); }
+  openStory(id) { this.setState({ screen: 'story', workId: id, step: 0, mode: 'story', sel: -1, thread: false }); }
+  toggleFollow(a) { this.setState(s => ({ following: { ...s.following, [a]: !s.following[a] } })); }
+  openArtist(a) { this.setState({ screen: 'profile', profileId: a, profileTab: 'works', sheet: null, copied: null, shared: false }); }
+  replyCount(wid, n) { let c = 0; for (let i = 0; i < n; i++) c += (this.state.replies[wid + '-' + i] || []).length; return c; }
+
+  focus(ch) {
+    if (!ch) return { tf: 'translate(0px,0px) scale(1)', inv: 1, rx: W / 2, ry: H * 0.34 };
+    const s = ch.z * (this.props.zoom ?? 1);
+    const tx = clamp(W / 2 - s * ch.x * W, W - s * W, 0);
+    const ty = clamp(H * 0.32 - s * ch.y * H, H - s * H, 0);
+    return { tf: `translate(${tx}px,${ty}px) scale(${s})`, inv: 1 / s, rx: tx + s * ch.x * W, ry: ty + s * ch.y * H };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const works = this.works();
+    const A = id => ARTISTS[id];
+    const marker = this.props.hotspotStyle ?? 'numbered';
+    const dur = this.props.transitionMs ?? 900;
+    const mkCard = w => ({
+      ...w, artistName: A(w.artist).name, artistColor: A(w.artist).color, initial: A(w.artist).name[0], loc: A(w.artist).loc,
+      chapterCount: w.ch.length, replyTotal: this.replyCount(w.id, w.ch.length),
+      dots: w.ch.map(c => ({ left: c.x * 100 + '%', top: c.y * 100 + '%' })),
+      open: () => this.openStory(w.id), openArtist: () => this.openArtist(w.artist),
+      toggleFollow: () => this.toggleFollow(w.artist), followLabel: st.following[w.artist] ? 'Following' : 'Follow'
+    });
+    let feedList = WORKS.slice();
+    if (st.tab === 'following') feedList = feedList.filter(w => st.following[w.artist]).concat(feedList.filter(w => !st.following[w.artist]));
+    else feedList = feedList.slice().reverse();
+
+    // profile
+    const pid = st.profileId, pa = A(pid);
+    const pw = works.filter(w => w.artist === pid);
+    const isMe = pid === 'you';
+    const fl = Object.keys(ARTISTS).filter(k => k !== pid && k !== 'you').map(k => ({ n: ARTISTS[k].name, d: ARTISTS[k].disc, color: ARTISTS[k].color, key: k })).concat(isMe ? [] : FOLK.map(f => ({ ...f, key: f.n })));
+    const myFollowers = isMe ? [] : fl;
+    const cards = pw.map(mkCard);
+    const copy = (k, v) => { try { navigator.clipboard && navigator.clipboard.writeText(v); } catch (e) {} this.setState({ copied: k }); };
+    const tabOn = t => st.profileTab === t;
+    const followersNum = isMe ? '0' : pa.followers;
+    const profile = {
+      name: pa.name, first: pa.name.split(' ')[0], initial: pa.name[0], color: pa.color, locUpper: pa.loc.toUpperCase(), discUpper: pa.disc.toUpperCase(), bio: pa.bio,
+      coverBg: pw[0] ? pw[0].bg : 'linear-gradient(160deg,#2a2724,#141311)', coverTitle: pw[0] ? pw[0].title.toUpperCase() : 'ADD A COVER',
+      availOn: !!pa.avail, avail: pa.avail, isMe,
+      followers: followersNum, followingCount: pa.following, storyCount: pw.length, chapterTotal: pw.reduce((n, w) => n + w.ch.length, 0),
+      faces: myFollowers.slice(0, 3).map((f, i) => ({ initial: f.n[0], color: f.color, ml: i ? '-8px' : '0' })),
+      followedBy: isMe ? 'No followers yet. Publish a story to get started.' : `Followed by ${myFollowers[0].n.split(' ')[0]}, ${myFollowers[1].n.split(' ')[0]} and ${followersNum} others`,
+      openFollowers: () => this.setState({ sheet: 'followers' }),
+      openContact: () => this.setState({ sheet: 'contact', sent: false, refWork: null }),
+      share: () => this.setState({ shared: true }), shareLabel: st.shared ? 'Link copied' : 'Share',
+      canFollow: !isMe, toggleFollow: () => this.toggleFollow(pid),
+      followLabel: st.following[pid] ? 'Following' : 'Follow', followBg: st.following[pid] ? 'transparent' : '#f2eee6', followColor: st.following[pid] ? '#f2eee6' : '#0f0e0d',
+      tabWorks: () => this.setState({ profileTab: 'works' }), tabAbout: () => this.setState({ profileTab: 'about' }),
+      showWorks: tabOn('works'), showAbout: tabOn('about'),
+      worksColor: tabOn('works') ? '#f2eee6' : '#8a847b', worksLine: tabOn('works') ? '#f2eee6' : 'transparent',
+      aboutColor: tabOn('about') ? '#f2eee6' : '#8a847b', aboutLine: tabOn('about') ? '#f2eee6' : 'transparent',
+      empty: pw.length === 0, hasFeatured: cards.length > 0, featured: cards[0] || { dots: [] }, rest: cards.slice(1), hasRest: cards.length > 1,
+      hasServices: pa.services.length > 0, services: pa.services, hasShows: pa.shows.length > 0, shows: pa.shows, replyNote: pa.reply,
+      contacts: [
+        { k: 'email', label: 'Email', value: pa.email, actLabel: st.copied === 'email' ? 'Copied' : 'Copy', act: () => copy('email', pa.email) },
+        { k: 'site', label: 'Website', value: pa.site, actLabel: 'Open ↗', act: () => {} },
+        { k: 'social', label: 'Social', value: pa.handle, actLabel: st.copied === 'social' ? 'Copied' : 'Copy', act: () => copy('social', pa.handle) },
+        { k: 'studio', label: 'Studio', value: pa.studio, actLabel: '', act: () => {} },
+        ...(isMe ? [] : [{ k: 'msg', label: 'Message', value: 'Inquiry form', actLabel: 'Write →', act: () => this.setState({ sheet: 'contact', sent: false, refWork: null }) }])
+      ].map(c => ({ ...c, actColor: st.copied === c.k ? 'oklch(0.8 0.12 70)' : '#a39d93' })),
+      followersList: myFollowers.map(f => ({ ...f, initial: f.n[0],
+        open: () => { if (ARTISTS[f.key]) this.openArtist(f.key); },
+        toggle: () => this.toggleFollow(f.key), label: st.following[f.key] ? 'Following' : 'Follow',
+        bg: st.following[f.key] ? 'transparent' : '#f2eee6', fg: st.following[f.key] ? '#f2eee6' : '#0f0e0d' }))
+    };
+    const inqReady = st.inqEmail.includes('@') && st.inqMsg.trim().length > 0;
+
+    // story
+    const work = works.find(w => w.id === st.workId) || works[0];
+    const n = work.ch.length;
+    const isStoryMode = st.mode === 'story';
+    const chIdx = isStoryMode ? (st.step >= 1 && st.step <= n ? st.step - 1 : -1) : st.sel;
+    const ch = chIdx >= 0 ? work.ch[chIdx] : null;
+    const f = this.focus(ch);
+    const key = work.id + '-' + chIdx;
+    const reps = (st.replies[key] || []).map(r => ({ ...r, initial: r.n[0], color: (ARTISTS[r.a] || ARTISTS.you).color }));
+    const wa = A(work.artist);
+    const idxNext = (works.findIndex(w => w.id === work.id) + 1) % works.length;
+    const next = () => this.setState(s => ({ step: Math.min(s.step + 1, n + 1) }));
+    const prev = () => this.setState(s => ({ step: Math.max(s.step - 1, 0) }));
+    const showDots = !isStoryMode || st.step === 0;
+
+    // create
+    const c = st.create;
+    const setC = patch => this.setState(s => ({ create: { ...s.create, ...patch } }));
+    const sendReply = () => {
+      const t = st.reply.trim(); if (!t) return;
+      this.setState(s => ({ reply: '', replies: { ...s.replies, [key]: [...(s.replies[key] || []), { n: 'You', a: 'you', t }] } }));
+    };
+
+    return {
+      sheetOpen: !!st.sheet, isFollowersSheet: st.sheet === 'followers', isContactSheet: st.sheet === 'contact',
+      sheetTitle: st.sheet === 'followers' ? `${profile.followers} followers` : `Contact ${profile.first}`,
+      closeSheet: () => this.setState({ sheet: null }),
+      notSent: !st.sent, sent: st.sent,
+      sentNote: `Your ${st.inqType.toLowerCase()} inquiry is in ${profile.first}'s inbox. ${pa.reply} Replies go to ${st.inqEmail}.`,
+      inqTypes: INQ.map(t => ({ label: t, pick: () => this.setState({ inqType: t }), bg: st.inqType === t ? '#f2eee6' : 'transparent', fg: st.inqType === t ? '#0f0e0d' : '#f2eee6', line: st.inqType === t ? '#f2eee6' : 'rgba(242,238,230,.2)' })),
+      hasRefWork: !!st.refWork, refWork: st.refWork || { bg: 'none', title: '' },
+      inqEmail: st.inqEmail, inqMsg: st.inqMsg,
+      onInqEmail: e => this.setState({ inqEmail: e.target.value }), onInqMsg: e => this.setState({ inqMsg: e.target.value }),
+      inqPlaceholder: st.inqType === 'Buy a print' ? 'Which work, what size, where should it ship?' : st.inqType === 'Commission' ? 'What you have in mind, dates, location, budget.' : 'Write a few lines about what you have in mind.',
+      sendBg: inqReady ? '#f2eee6' : 'rgba(242,238,230,.12)', sendFg: inqReady ? '#0f0e0d' : '#8a847b',
+      sendInquiry: () => { if (inqReady) this.setState({ sent: true, inqMsg: '' }); },
+      isFeed: st.screen === 'feed', isProfile: st.screen === 'profile', isStory: st.screen === 'story', isCreate: st.screen === 'create',
+      showTabs: st.screen === 'feed' || st.screen === 'profile',
+      navFeedColor: st.screen === 'feed' ? '#f2eee6' : '#8a847b', navMeColor: st.screen === 'profile' && pid === 'you' ? '#f2eee6' : '#8a847b',
+      goFeed: () => this.setState({ screen: 'feed' }), goMe: () => this.openArtist('you'),
+      goCreate: () => this.setState({ screen: 'create', create: { phase: 'pick', bg: null, pins: [], ghost: null, dTitle: '', dBody: '', title: '' } }),
+      tabFollowing: () => this.setState({ tab: 'following' }), tabDiscover: () => this.setState({ tab: 'discover' }),
+      tabFColor: st.tab === 'following' ? '#f2eee6' : '#8a847b', tabFLine: st.tab === 'following' ? '#f2eee6' : 'transparent',
+      tabDColor: st.tab === 'discover' ? '#f2eee6' : '#8a847b', tabDLine: st.tab === 'discover' ? '#f2eee6' : 'transparent',
+      feed: feedList.map(mkCard), profile,
+
+      work: { ...work, dateUpper: work.date.toUpperCase() }, chapterCount: n,
+      artist: { name: wa.name, initial: wa.name[0], color: wa.color, first: wa.name.split(' ')[0] },
+      tf: f.tf, inv: f.inv, dur, ringX: f.rx, ringY: f.ry, ringOpacity: ch ? 1 : 0,
+      numbered: marker === 'numbered', quietDots: marker !== 'numbered',
+      dotsOpacity: showDots ? 1 : 0, dotsPE: showDots ? 'auto' : 'none',
+      dots: work.ch.map((d, i) => ({ left: d.x * 100 + '%', top: d.y * 100 + '%', num: i + 1,
+        onClick: e => { e.stopPropagation(); this.setState(isStoryMode ? { step: i + 1 } : { sel: i }); } })),
+      bgTap: () => { if (!isStoryMode && st.sel >= 0) this.setState({ sel: -1 }); },
+      storyTaps: isStoryMode && st.step > 0 && st.step <= n,
+      isStoryMode,
+      segs: work.ch.map((_, i) => ({ fill: st.step >= i + 1 ? '100%' : '0%', jump: () => this.setState({ step: i + 1 }) })),
+      next, prev, replay: () => this.setState({ step: 0, mode: 'story' }),
+      setStory: () => this.setState({ mode: 'story', step: 0, sel: -1 }),
+      setExplore: () => this.setState({ mode: 'explore', sel: -1 }),
+      storyPillBg: isStoryMode ? '#f2eee6' : 'transparent', storyPillColor: isStoryMode ? '#0f0e0d' : '#f2eee6',
+      explorePillBg: !isStoryMode ? '#f2eee6' : 'transparent', explorePillColor: !isStoryMode ? '#0f0e0d' : '#f2eee6',
+      closeStory: () => this.setState({ screen: work.artist === 'you' ? 'profile' : 'feed', thread: false }),
+      openWorkArtist: () => this.openArtist(work.artist),
+      isIntro: isStoryMode && st.step === 0, isEnd: isStoryMode && st.step === n + 1,
+      isChapter: !!ch, isExploreSel: !isStoryMode && !!ch, isExploreIdle: !isStoryMode && !ch,
+      clearSel: () => this.setState({ sel: -1 }),
+      ch: ch || { t: '', b: '', m: '' },
+      chapterKicker: `CHAPTER ${String(chIdx + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}`,
+      replyLabel: reps.length ? `${reps.length} ${reps.length === 1 ? 'reply' : 'replies'}` : 'Reply',
+      toggleWorkFollow: () => this.toggleFollow(work.artist),
+      inquireWork: () => this.setState({ screen: 'profile', profileId: work.artist, profileTab: 'works', sheet: 'contact', sent: false, inqType: 'Buy a print', refWork: { bg: work.bg, title: work.title } }),
+      canInquire: work.artist !== 'you', workFollowLabel: work.artist === 'you' ? 'Your portfolio' : (st.following[work.artist] ? `Following ${wa.name.split(' ')[0]}` : `Follow ${wa.name.split(' ')[0]}`),
+      nextWork: () => this.openStory(works[idxNext].id),
+      threadOpen: st.thread, openThread: () => this.setState({ thread: true }), closeThread: () => this.setState({ thread: false }),
+      replies: reps, noReplies: reps.length === 0, reply: st.reply,
+      onReply: e => this.setState({ reply: e.target.value }), onReplyKey: e => { if (e.key === 'Enter') sendReply(); }, sendReply,
+
+      isPick: !!c && c.phase === 'pick', isAnnotate: !!c && c.phase === 'annotate',
+      createStepLabel: c && c.phase === 'annotate' ? `${c.pins.length} CHAPTERS` : 'NEW STORY',
+      cancelCreate: () => this.setState({ screen: 'feed', create: null }),
+      roll: ROLL.map(bg => ({ bg, pick: () => setC({ phase: 'annotate', bg }) })),
+      draftBg: c && c.bg ? c.bg : '#222',
+      pins: c ? c.pins.map((p, i) => ({ ...p, num: i + 1, left: p.x * 100 + '%', top: p.y * 100 + '%',
+        remove: () => setC({ pins: c.pins.filter((_, j) => j !== i) }) })) : [],
+      hasGhost: !!(c && c.ghost), ghostLeft: c && c.ghost ? c.ghost.x * 100 + '%' : '0', ghostTop: c && c.ghost ? c.ghost.y * 100 + '%' : '0',
+      showPinHint: !!c && !c.ghost && c.pins.length === 0, nextPinNum: c ? c.pins.length + 1 : 1,
+      photoTap: e => { const r = e.currentTarget.getBoundingClientRect(); setC({ ghost: { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height } }); },
+      draftTitle: c ? c.title : '', onDraftTitle: e => setC({ title: e.target.value }),
+      dTitle: c ? c.dTitle : '', dBody: c ? c.dBody : '',
+      onDTitle: e => setC({ dTitle: e.target.value }), onDBody: e => setC({ dBody: e.target.value }),
+      discardPin: () => setC({ ghost: null, dTitle: '', dBody: '' }),
+      addPin: () => setC({ pins: [...c.pins, { x: c.ghost.x, y: c.ghost.y, z: 2.4, t: c.dTitle || 'Untitled detail', b: c.dBody || '', m: 'Added today' }], ghost: null, dTitle: '', dBody: '' }),
+      publishBg: c && c.pins.length ? '#f2eee6' : 'rgba(242,238,230,.12)', publishColor: c && c.pins.length ? '#0f0e0d' : '#8a847b',
+      publish: () => {
+        if (!c || !c.pins.length) return;
+        const id = 'c' + Date.now();
+        const w = { id, artist: 'you', title: c.title || 'Untitled study', date: 'Today', label: 'YOUR PHOTO', bg: c.bg,
+          intro: 'A new story with ' + c.pins.length + ' annotated detail' + (c.pins.length > 1 ? 's' : '') + '.', ch: c.pins };
+        this.setState(s => ({ created: [...s.created, w], create: null, screen: 'story', workId: id, step: 0, mode: 'story', sel: -1, profileId: 'you' }));
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
