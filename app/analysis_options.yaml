@@ -12,6 +12,7 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - build/**
+    - packages/vela_api_client/**
     - android/**
     - ios/**
     - web/**

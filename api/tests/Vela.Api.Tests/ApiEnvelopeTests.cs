@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Results = Vela.Api.Common.Results;
 
 namespace Vela.Api.Tests;
 

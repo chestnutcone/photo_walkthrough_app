@@ -1,0 +1,1449 @@
+openapi: 3.0.3
+info:
+  title: Vela API
+  version: 1.0.0
+  description: >
+    Source of truth for the Vela API. Every response, success or failure, uses the
+    standard envelope (success, data, error, page). Lists use cursor pagination and
+    return page.nextCursor.
+servers:
+  - url: http://localhost:5080
+    description: Local development
+tags:
+  - {name: Auth}
+  - {name: Me}
+  - {name: Artists}
+  - {name: Works}
+  - {name: Replies}
+  - {name: Notifications}
+  - {name: Search}
+  - {name: Safety}
+security:
+  - bearerAuth: []
+paths:
+  /v1/auth/sso:
+    post:
+      operationId: ssoSignIn
+      tags: [Auth]
+      summary: "Sign in with Apple or Google"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SsoSignInRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/auth/email/request:
+    post:
+      operationId: emailRequest
+      tags: [Auth]
+      summary: "Request an email one-time code"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequestRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/auth/email/verify:
+    post:
+      operationId: emailVerify
+      tags: [Auth]
+      summary: "Verify an email one-time code"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/auth/refresh:
+    post:
+      operationId: refresh
+      tags: [Auth]
+      summary: "Rotate a refresh token"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [Auth]
+      summary: "Revoke a refresh token"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/me:
+    get:
+      operationId: getMe
+      tags: [Me]
+      summary: "Get the signed-in profile"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+    delete:
+      operationId: deleteAccount
+      tags: [Me]
+      summary: "Delete the account and all data"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/me/onboarding:
+    post:
+      operationId: completeOnboarding
+      tags: [Me]
+      summary: "Finish onboarding"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteOnboardingRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/me/profile:
+    patch:
+      operationId: updateProfile
+      tags: [Me]
+      summary: "Update profile fields"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/me/avatar-upload:
+    post:
+      operationId: avatarUpload
+      tags: [Me]
+      summary: "Get a signed avatar upload URL"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadTicketEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/me/export:
+    post:
+      operationId: requestExport
+      tags: [Me]
+      summary: "Request a data export"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJobEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/me/export/{id}:
+    get:
+      operationId: getExport
+      tags: [Me]
+      summary: "Get a data export"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJobEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/artists/suggested:
+    get:
+      operationId: suggestedArtists
+      tags: [Artists]
+      summary: "Suggested artists to follow"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileListEnvelope'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/artists/{handle}:
+    get:
+      operationId: getArtist
+      tags: [Artists]
+      summary: "Get an artist by handle"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/handle'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/artists/{handle}/works:
+    get:
+      operationId: listArtistWorks
+      tags: [Artists]
+      summary: "List an artist's published works"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/handle'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkListEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/artists/{id}/follow:
+    put:
+      operationId: follow
+      tags: [Artists]
+      summary: "Follow an artist"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+    delete:
+      operationId: unfollow
+      tags: [Artists]
+      summary: "Unfollow an artist"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/artists/{id}/followers:
+    get:
+      operationId: listFollowers
+      tags: [Artists]
+      summary: "List an artist's followers"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileListEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/artists/{id}/inquiries:
+    post:
+      operationId: sendInquiry
+      tags: [Artists]
+      summary: "Send an inquiry to an artist"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendInquiryRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/feed:
+    get:
+      operationId: getFeed
+      tags: [Works]
+      summary: "Following or discover feed"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/tab'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkListEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/works:
+    post:
+      operationId: createDraft
+      tags: [Works]
+      summary: "Create a draft and get an upload URL"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDraftRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateDraftResultEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/works/{id}:
+    get:
+      operationId: getWork
+      tags: [Works]
+      summary: "Get a work"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+    put:
+      operationId: updateWork
+      tags: [Works]
+      summary: "Update a work's title and chapters"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+    delete:
+      operationId: deleteWork
+      tags: [Works]
+      summary: "Delete a work"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/works/{id}/publish:
+    post:
+      operationId: publishWork
+      tags: [Works]
+      summary: "Publish a draft"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/works/{id}/chapters/{index}/replies:
+    get:
+      operationId: listReplies
+      tags: [Replies]
+      summary: "List replies on a chapter"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/index'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyListEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+    post:
+      operationId: addReply
+      tags: [Replies]
+      summary: "Reply to a chapter"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/index'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddReplyRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/replies/{id}:
+    delete:
+      operationId: deleteReply
+      tags: [Replies]
+      summary: "Delete a reply"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/notifications:
+    get:
+      operationId: listNotifications
+      tags: [Notifications]
+      summary: "List notifications"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/notifications/unread-count:
+    get:
+      operationId: unreadCount
+      tags: [Notifications]
+      summary: "Count unread notifications"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadCountEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/notifications/read:
+    post:
+      operationId: markRead
+      tags: [Notifications]
+      summary: "Mark notifications read"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkReadRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/search:
+    get:
+      operationId: search
+      tags: [Search]
+      summary: "Search artists or stories"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/q'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResultsListEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/reports:
+    post:
+      operationId: report
+      tags: [Safety]
+      summary: "Report a work or reply"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+  /v1/blocks/{userId}:
+    put:
+      operationId: block
+      tags: [Safety]
+      summary: "Block a user"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+    delete:
+      operationId: unblock
+      tags: [Safety]
+      summary: "Unblock a user"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      description: "Resource id"
+      schema:
+        type: string
+        format: uuid
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: "User id"
+      schema:
+        type: string
+        format: uuid
+    handle:
+      name: handle
+      in: path
+      required: true
+      description: "Artist handle (lowercase)"
+      schema:
+        type: string
+    index:
+      name: index
+      in: path
+      required: true
+      description: "Zero-based chapter index"
+      schema:
+        type: integer
+        minimum: 0
+    cursor:
+      name: cursor
+      in: query
+      required: false
+      description: "Opaque cursor from the previous page"
+      schema:
+        type: string
+    limit:
+      name: limit
+      in: query
+      required: false
+      description: "Page size, 1 to 50, default 20"
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 20
+    tab:
+      name: tab
+      in: query
+      required: true
+      description: "Feed tab"
+      schema:
+        type: string
+        enum: [following, discover]
+    q:
+      name: q
+      in: query
+      required: true
+      description: "Search text"
+      schema:
+        type: string
+    type:
+      name: type
+      in: query
+      required: false
+      description: "What to search"
+      schema:
+        type: string
+        enum: [artists, stories]
+  responses:
+    BadRequest:
+      description: "Error 400 (default code validation_failed)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    Unauthorized:
+      description: "Error 401 (default code unauthorized)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    Forbidden:
+      description: "Error 403 (default code forbidden)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    NotFound:
+      description: "Error 404 (default code not_found)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    Conflict:
+      description: "Error 409 (default code conflict)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    RateLimited:
+      description: "Error 429 (default code rate_limited)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    NotImplemented:
+      description: "Not implemented yet (code not_implemented)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+  schemas:
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string, example: not_found}
+        message: {type: string}
+    Page:
+      type: object
+      required: [nextCursor]
+      properties:
+        nextCursor: {type: string, nullable: true}
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken, expiresIn, isNewUser]
+      properties:
+        accessToken: {type: string}
+        refreshToken: {type: string}
+        expiresIn: {type: integer, description: Access token lifetime in seconds}
+        isNewUser: {type: boolean, description: True until onboarding is completed}
+    Profile:
+      type: object
+      required: [id, handle, displayName, bio, followerCount, followingCount, workCount, onboardingComplete]
+      properties:
+        id: {type: string, format: uuid}
+        handle: {type: string, minLength: 3, maxLength: 20, pattern: '^[a-z0-9_]{3,20}$'}
+        displayName: {type: string}
+        bio: {type: string, maxLength: 280}
+        avatarUrl: {type: string, nullable: true}
+        followerCount: {type: integer}
+        followingCount: {type: integer}
+        workCount: {type: integer}
+        isFollowing: {type: boolean, nullable: true, description: Null when anonymous or viewing self}
+        onboardingComplete: {type: boolean}
+    Chapter:
+      type: object
+      required: [x, y, title, body]
+      properties:
+        x: {type: number, format: double, minimum: 0, maximum: 1}
+        y: {type: number, format: double, minimum: 0, maximum: 1}
+        zoom: {type: number, format: double, nullable: true, description: Null means stay put; 2.4 when set by default}
+        title: {type: string}
+        body: {type: string}
+        meta: {type: string, nullable: true}
+        altText: {type: string, nullable: true}
+    Work:
+      type: object
+      required: [id, author, title, status, chapters, createdAt, shareUrl]
+      properties:
+        id: {type: string, format: uuid}
+        author: {$ref: '#/components/schemas/Profile'}
+        title: {type: string}
+        status: {type: string, enum: [draft, pending, published, blocked, removed]}
+        imageUrl: {type: string, nullable: true}
+        imageWidth: {type: integer, nullable: true}
+        imageHeight: {type: integer, nullable: true}
+        chapters:
+          type: array
+          maxItems: 40
+          items: {$ref: '#/components/schemas/Chapter'}
+        createdAt: {type: string, format: date-time}
+        publishedAt: {type: string, format: date-time, nullable: true}
+        draftExpiresAt: {type: string, format: date-time, nullable: true}
+        shareUrl: {type: string}
+    Reply:
+      type: object
+      required: [id, workId, chapterIndex, author, body, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        workId: {type: string, format: uuid}
+        chapterIndex: {type: integer}
+        author: {$ref: '#/components/schemas/Profile'}
+        body: {type: string}
+        createdAt: {type: string, format: date-time}
+    Notification:
+      type: object
+      required: [id, type, actor, createdAt, read]
+      properties:
+        id: {type: string, format: uuid}
+        type: {type: string, enum: [follow, reply, inquiry, moderation]}
+        actor: {$ref: '#/components/schemas/Profile'}
+        workId: {type: string, format: uuid, nullable: true}
+        createdAt: {type: string, format: date-time}
+        read: {type: boolean}
+    Inquiry:
+      type: object
+      required: [id, artistId, message, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        artistId: {type: string, format: uuid}
+        workId: {type: string, format: uuid, nullable: true}
+        message: {type: string}
+        createdAt: {type: string, format: date-time}
+    ExportJob:
+      type: object
+      required: [id, status, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        status: {type: string, enum: [pending, ready, failed]}
+        downloadUrl: {type: string, nullable: true}
+        createdAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time, nullable: true}
+    UploadTicket:
+      type: object
+      required: [uploadUrl]
+      properties:
+        uploadUrl: {type: string, description: Short-lived signed blob URL}
+    CreateDraftResult:
+      type: object
+      required: [workId, uploadUrl]
+      properties:
+        workId: {type: string, format: uuid}
+        uploadUrl: {type: string}
+    UnreadCount:
+      type: object
+      required: [count]
+      properties:
+        count: {type: integer}
+    SearchResults:
+      type: object
+      required: [artists, stories]
+      properties:
+        artists:
+          type: array
+          items: {$ref: '#/components/schemas/Profile'}
+        stories:
+          type: array
+          items: {$ref: '#/components/schemas/Work'}
+    SsoSignInRequest:
+      type: object
+      required: [provider, idToken, nonce]
+      properties:
+        provider: {type: string, enum: [apple, google]}
+        idToken: {type: string}
+        nonce: {type: string}
+    EmailRequestRequest:
+      type: object
+      required: [email]
+      properties:
+        email: {type: string, format: email}
+    EmailVerifyRequest:
+      type: object
+      required: [email, code]
+      properties:
+        email: {type: string, format: email}
+        code: {type: string, pattern: '^[0-9]{6}$'}
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: {type: string}
+    LogoutRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: {type: string}
+    CompleteOnboardingRequest:
+      type: object
+      required: [displayName, handle, ageConfirmed, termsAccepted, followArtistIds]
+      properties:
+        displayName: {type: string}
+        handle: {type: string, pattern: '^[a-z0-9_]{3,20}$'}
+        ageConfirmed: {type: boolean}
+        termsAccepted: {type: boolean}
+        followArtistIds:
+          type: array
+          items: {type: string, format: uuid}
+    UpdateProfileRequest:
+      type: object
+      properties:
+        displayName: {type: string}
+        handle: {type: string, pattern: '^[a-z0-9_]{3,20}$'}
+        bio: {type: string, maxLength: 280}
+        avatarUploaded: {type: boolean, description: Set true after uploading to the avatar upload URL}
+    SendInquiryRequest:
+      type: object
+      required: [message]
+      properties:
+        message: {type: string}
+        workId: {type: string, format: uuid, nullable: true}
+    CreateDraftRequest:
+      type: object
+      required: [contentType]
+      properties:
+        title: {type: string, nullable: true}
+        contentType: {type: string, enum: [image/jpeg, image/png, image/webp]}
+    UpdateWorkRequest:
+      type: object
+      required: [title, chapters]
+      properties:
+        title: {type: string}
+        chapters:
+          type: array
+          maxItems: 40
+          items: {$ref: '#/components/schemas/Chapter'}
+    AddReplyRequest:
+      type: object
+      required: [body]
+      properties:
+        body: {type: string}
+    MarkReadRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          nullable: true
+          items: {type: string, format: uuid}
+        all: {type: boolean}
+    ReportRequest:
+      type: object
+      required: [targetType, targetId, reason]
+      properties:
+        targetType: {type: string, enum: [work, reply]}
+        targetId: {type: string, format: uuid}
+        reason: {type: string}
+    Envelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          nullable: true
+          type: object
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    CreateDraftResultEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/CreateDraftResult'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ExportJobEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/ExportJob'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    InquiryEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Inquiry'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ProfileEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Profile'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ReplyEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Reply'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    TokenPairEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/TokenPair'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    UnreadCountEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/UnreadCount'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    UploadTicketEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/UploadTicket'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    WorkEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Work'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    NotificationListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ProfileListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ReplyListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reply'
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    SearchResultsListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/SearchResults'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    WorkListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Work'
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true

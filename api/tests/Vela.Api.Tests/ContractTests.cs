@@ -1,0 +1,122 @@
+using System.Net;
+using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.OpenApi;
+using Microsoft.OpenApi.Reader;
+using Microsoft.OpenApi.YamlReader;
+
+namespace Vela.Api.Tests;
+
+public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private static readonly string[] PublicOperations =
+    [
+        "ssoSignIn", "emailRequest", "emailVerify", "refresh", "logout",
+        "getArtist", "listArtistWorks", "suggestedArtists", "getWork", "listReplies", "search",
+    ];
+
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public ContractTests(WebApplicationFactory<Program> factory) => _factory = factory;
+
+    private static string ContractPath()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "contract", "openapi.yaml")))
+            dir = dir.Parent;
+        return dir is null
+            ? throw new FileNotFoundException("contract/openapi.yaml not found above " + AppContext.BaseDirectory)
+            : Path.Combine(dir.FullName, "contract", "openapi.yaml");
+    }
+
+    private static async Task<(OpenApiDocument Doc, IList<OpenApiError> Errors)> LoadContract()
+    {
+        await using var stream = File.OpenRead(ContractPath());
+        var settings = new OpenApiReaderSettings();
+        settings.AddYamlReader();
+        var result = await OpenApiDocument.LoadAsync(stream, "yaml", settings);
+        return (result.Document!, result.Diagnostic?.Errors ?? []);
+    }
+
+    private static IEnumerable<(string Path, HttpMethod Method, OpenApiOperation Op)> Operations(OpenApiDocument doc) =>
+        doc.Paths.SelectMany(p => p.Value.Operations!.Select(o => (p.Key, o.Key, o.Value)));
+
+    private static Dictionary<string, RouteEndpoint> RegisteredEndpoints(WebApplicationFactory<Program> factory) =>
+        factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .OfType<RouteEndpoint>()
+            .Select(e => (Name: e.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName, Endpoint: e))
+            .Where(x => x.Name is not null)
+            .ToDictionary(x => x.Name!, x => x.Endpoint);
+
+    [Fact]
+    public async Task Contract_is_valid_openapi_3()
+    {
+        var (doc, errors) = await LoadContract();
+
+        Assert.NotNull(doc);
+        Assert.Empty(errors);
+        Assert.Equal(35, Operations(doc).Count());
+        Assert.All(Operations(doc), o => Assert.False(string.IsNullOrWhiteSpace(o.Op.OperationId)));
+        Assert.All(Operations(doc), o => Assert.StartsWith("/v1/", o.Path));
+        Assert.Equal(Operations(doc).Count(), Operations(doc).Select(o => o.Op.OperationId).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task Public_operations_are_exactly_those_declared_public_and_the_rest_require_bearer()
+    {
+        var (doc, _) = await LoadContract();
+
+        foreach (var (path, method, op) in Operations(doc))
+        {
+            var isPublic = PublicOperations.Contains(op.OperationId);
+            if (isPublic)
+                Assert.True(op.Security is { Count: 0 }, $"{op.OperationId} must declare security: []");
+            else
+                Assert.True(op.Security is { Count: > 0 }, $"{method} {path} ({op.OperationId}) must declare a bearer security requirement");
+        }
+        Assert.Equal(PublicOperations.Length, Operations(doc).Count(o => PublicOperations.Contains(o.Op.OperationId)));
+    }
+
+    [Fact]
+    public async Task Every_operationId_has_a_mapped_endpoint()
+    {
+        var (doc, _) = await LoadContract();
+        var endpoints = RegisteredEndpoints(_factory);
+
+        foreach (var (path, method, op) in Operations(doc))
+        {
+            Assert.True(endpoints.ContainsKey(op.OperationId!), $"no endpoint named {op.OperationId}");
+            var ep = endpoints[op.OperationId!];
+            Assert.Equal(path, "/" + ep.RoutePattern.RawText!.TrimStart('/'));
+            Assert.Contains(method.Method, ep.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods);
+        }
+    }
+
+    [Fact]
+    public async Task Stub_endpoint_returns_501_not_implemented_envelope()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsync("/v1/auth/sso", new StringContent("{}"));
+
+        Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.False(body.RootElement.GetProperty("success").GetBoolean());
+        Assert.Equal("not_implemented", body.RootElement.GetProperty("error").GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Required_schemas_exist()
+    {
+        var (doc, _) = await LoadContract();
+        string[] names = ["TokenPair", "Profile", "Work", "Chapter", "Reply", "Notification", "Inquiry", "Page", "ErrorBody", "Envelope"];
+
+        Assert.All(names, n => Assert.True(doc.Components!.Schemas!.ContainsKey(n), n));
+        Assert.True(doc.Components!.SecuritySchemes!.ContainsKey("bearerAuth"));
+    }
+}

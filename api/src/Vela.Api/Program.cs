@@ -1,5 +1,5 @@
 using Vela.Api.Branding;
-using Results = Vela.Api.Common.Results;
+using Vela.Api.Stubs;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
@@ -7,6 +7,7 @@ builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Br
 var app = builder.Build();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapContractStubs();
 
 app.Run();
 
