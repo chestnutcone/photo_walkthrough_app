@@ -43,5 +43,11 @@ void main() {
       // TODO
     });
 
+    // Server-computed, ignored on input. Visible replies for the viewer.
+    // int replyCount
+    test('to test the property `replyCount`', () async {
+      // TODO
+    });
+
   });
 }

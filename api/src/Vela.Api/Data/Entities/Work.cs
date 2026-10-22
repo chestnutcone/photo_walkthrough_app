@@ -18,4 +18,9 @@ public class Work
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? PublishedAt { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
+    /// <summary>When publish was requested; the moderation sweep picks up works that stay pending.</summary>
+    public DateTimeOffset? PendingSince { get; set; }
+    /// <summary>Failed moderation scans so far (fail-open after 3).</summary>
+    public int ScanAttempts { get; set; }
+    public DateTimeOffset? LastScanAttemptAt { get; set; }
 }

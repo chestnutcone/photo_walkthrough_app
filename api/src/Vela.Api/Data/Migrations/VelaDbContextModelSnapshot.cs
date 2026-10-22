@@ -772,9 +772,17 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("intro");
 
+                    b.Property<DateTimeOffset?>("LastScanAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_scan_attempt_at");
+
                     b.Property<bool>("ModerationOverride")
                         .HasColumnType("boolean")
                         .HasColumnName("moderation_override");
+
+                    b.Property<DateTimeOffset?>("PendingSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pending_since");
 
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
@@ -783,6 +791,10 @@ namespace Vela.Api.Data.Migrations
                     b.Property<bool>("ReportHidden")
                         .HasColumnType("boolean")
                         .HasColumnName("report_hidden");
+
+                    b.Property<int>("ScanAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("scan_attempts");
 
                     b.Property<string>("Status")
                         .IsRequired()

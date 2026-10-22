@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Vela.Api.Auth;
+using Vela.Api.Common;
+using Vela.Api.Moderation;
 using Vela.Api.Images;
 using Vela.Api.Profiles;
 
@@ -14,11 +16,23 @@ public static class WorkEndpoints
     private static readonly string[] ContentTypes = ["image/jpeg", "image/png", "image/webp"];
 
     public static IServiceCollection AddWorks(this IServiceCollection services) =>
-        services.AddScoped<IQuotaService, QuotaService>();
+        services.AddScoped<IQuotaService, QuotaService>()
+            .AddScoped<WorkReader>().AddScoped<IWorkService, WorkService>()
+            .AddScoped<IDomainEventBus, DomainEventBus>()
+            .AddSingleton<PublishPipeline>();
 
     public static IEndpointRouteBuilder MapWorkEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/v1/works", CreateDraftAsync).RequireAuthorization().WithName("createDraft");
+        app.MapGet("/v1/works/{id}", (string id, ICurrentUser me, IWorkService svc) =>
+            Run(async () => Guid.TryParse(id, out var wid) && await svc.GetAsync(wid, me.UserId) is { } work ? Results.Ok(work) : NotFound())).WithName("getWork");
+        app.MapPut("/v1/works/{id}", (string id, HttpContext ctx, ICurrentUser me, IWorkService svc) =>
+            Run(async () => Results.Ok(await svc.UpdateAsync(me.UserId!.Value, ParseId(id), await ReadUpdateAsync(ctx)))))
+            .RequireAuthorization().WithName("updateWork");
+        app.MapPost("/v1/works/{id}/publish", (string id, ICurrentUser me, IWorkService svc) =>
+            Run(async () => Results.Ok(await svc.RequestPublishAsync(me.UserId!.Value, ParseId(id))))).RequireAuthorization().WithName("publishWork");
+        app.MapDelete("/v1/works/{id}", (string id, ICurrentUser me, IWorkService svc) =>
+            Run(async () => { await svc.DeleteAsync(me.UserId!.Value, ParseId(id)); return Results.Ok<object?>(null); })).RequireAuthorization().WithName("deleteWork");
         return app;
     }
 
@@ -40,6 +54,22 @@ public static class WorkEndpoints
         {
             return Results.Fail(e.Status, e.Code, e.Message);
         }
+    }
+
+    private static Guid ParseId(string id) => Guid.TryParse(id, out var g) ? g : throw WorkException.NotFound();
+
+    private static IResult NotFound() => Results.Fail(StatusCodes.Status404NotFound, "work_not_found", "No such story.");
+
+    private static async Task<IResult> Run(Func<Task<IResult>> action)
+    {
+        try { return await action(); }
+        catch (WorkException e) { return Results.Fail(e.Status, e.Code, e.Message); }
+    }
+
+    private static async Task<UpdateWorkRequest> ReadUpdateAsync(HttpContext ctx)
+    {
+        try { return await ctx.Request.ReadFromJsonAsync<UpdateWorkRequest>() ?? throw WorkException.Validation("body", "must be a JSON object."); }
+        catch (JsonException) { throw WorkException.Validation("body", "must be valid JSON with the documented fields."); }
     }
 
     private static async Task<string?> ReadRequestAsync(HttpContext ctx)

@@ -219,6 +219,8 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
             b.UseSetting("Storage:ConnectionString", "UseDevelopmentStorage=true");
             b.UseSetting("Storage:PublicBaseUrl", "https://cdn.example.test/");
+            b.UseSetting("ContentSafety:Endpoint", "https://safety.example.test/");
+            b.UseSetting("ContentSafety:Key", "test-key");
         });
         var ex = Assert.Throws<InvalidOperationException>(() => f.CreateClient());
         Assert.Contains("Auth:EmailCode:Pepper", ex.Message);
@@ -250,6 +252,8 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
             b.UseSetting("Storage:ConnectionString", "UseDevelopmentStorage=true");
             b.UseSetting("Storage:PublicBaseUrl", "https://cdn.example.test/");
+            b.UseSetting("ContentSafety:Endpoint", "https://safety.example.test/");
+            b.UseSetting("ContentSafety:Key", "test-key");
         });
         using var scope = f.Services.CreateScope();
         Assert.IsType(expected, scope.ServiceProvider.GetRequiredService<IEmailSender>());
@@ -317,6 +321,8 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
             b.UseSetting("Email:SenderAddress", "noreply@example.test");
             b.UseSetting("Storage:ConnectionString", "UseDevelopmentStorage=true");
             b.UseSetting("Storage:PublicBaseUrl", "https://cdn.example.test/");
+            b.UseSetting("ContentSafety:Endpoint", "https://safety.example.test/");
+            b.UseSetting("ContentSafety:Key", "test-key");
             b.UseSetting("Auth:ReviewMode", "true");
             b.UseSetting("Auth:ReviewEmails:0", "reviewer@example.test");
             b.UseSetting("Auth:ReviewCode", "987654");

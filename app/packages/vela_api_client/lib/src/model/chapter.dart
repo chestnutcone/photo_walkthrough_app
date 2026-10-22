@@ -31,6 +31,8 @@ class Chapter {
      this.meta,
 
      this.altText,
+
+     this.replyCount,
   });
 
           // minimum: 0
@@ -122,6 +124,19 @@ class Chapter {
 
 
 
+      /// Server-computed, ignored on input. Visible replies for the viewer.
+  @JsonKey(
+    
+    name: r'replyCount',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final int? replyCount;
+
+
+
 
 
     @override
@@ -132,7 +147,8 @@ class Chapter {
       other.title == title &&
       other.body == body &&
       other.meta == meta &&
-      other.altText == altText;
+      other.altText == altText &&
+      other.replyCount == replyCount;
 
     @override
     int get hashCode =>
@@ -142,7 +158,8 @@ class Chapter {
         title.hashCode +
         body.hashCode +
         (meta == null ? 0 : meta.hashCode) +
-        (altText == null ? 0 : altText.hashCode);
+        (altText == null ? 0 : altText.hashCode) +
+        replyCount.hashCode;
 
   factory Chapter.fromJson(Map<String, dynamic> json) => _$ChapterFromJson(json);
 

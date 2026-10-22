@@ -4,6 +4,7 @@ README.md
 analysis_options.yaml
 build.yaml
 doc/AddReplyRequest.md
+doc/ArtistSummary.md
 doc/ArtistsApi.md
 doc/AuthApi.md
 doc/Chapter.md
@@ -74,6 +75,7 @@ lib/src/auth/bearer_auth.dart
 lib/src/auth/oauth.dart
 lib/src/deserialize.dart
 lib/src/model/add_reply_request.dart
+lib/src/model/artist_summary.dart
 lib/src/model/chapter.dart
 lib/src/model/complete_onboarding_request.dart
 lib/src/model/create_draft_request.dart
@@ -123,6 +125,7 @@ lib/src/model/work_list_envelope.dart
 lib/vela_api_client.dart
 pubspec.yaml
 test/add_reply_request_test.dart
+test/artist_summary_test.dart
 test/artists_api_test.dart
 test/auth_api_test.dart
 test/chapter_test.dart

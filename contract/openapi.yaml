@@ -570,6 +570,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '501':
           $ref: '#/components/responses/NotImplemented'
     delete:
@@ -611,6 +613,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1072,15 +1076,33 @@ components:
         body: {type: string}
         meta: {type: string, nullable: true}
         altText: {type: string, nullable: true}
-    Work:
+        replyCount: {type: integer, description: "Server-computed, ignored on input. Visible replies for the viewer."}
+    ArtistSummary:
       type: object
-      required: [id, author, title, status, chapters, createdAt, shareUrl]
+      required: [id, handle, displayName]
       properties:
         id: {type: string, format: uuid}
-        author: {$ref: '#/components/schemas/Profile'}
+        handle: {type: string}
+        displayName: {type: string}
+        avatarUrl: {type: string, nullable: true}
+    Work:
+      type: object
+      required: [id, author, title, chapters, createdAt, shareUrl, isOwner]
+      properties:
+        id: {type: string, format: uuid}
+        author: {$ref: '#/components/schemas/ArtistSummary'}
         title: {type: string}
-        status: {type: string, enum: [draft, pending, published, blocked, removed]}
-        imageUrl: {type: string, nullable: true}
+        intro: {type: string}
+        altText: {type: string, nullable: true}
+        isOwner: {type: boolean}
+        status:
+          type: string
+          nullable: true
+          enum: [draft, pending, published, blocked, removed]
+          description: Present only for the owner and admins.
+        imageUrl: {type: string, nullable: true, description: Full-size variant}
+        thumbUrl: {type: string, nullable: true}
+        feedUrl: {type: string, nullable: true}
         imageWidth: {type: integer, nullable: true}
         imageHeight: {type: integer, nullable: true}
         chapters:
@@ -1239,7 +1261,9 @@ components:
       type: object
       required: [title, chapters]
       properties:
-        title: {type: string}
+        title: {type: string, minLength: 1, maxLength: 200}
+        intro: {type: string, maxLength: 1000}
+        altText: {type: string, nullable: true, maxLength: 300}
         chapters:
           type: array
           maxItems: 40

@@ -37,6 +37,7 @@ public sealed class TestUser(HttpClient client, Guid id)
     public Task<Reply> Get(string url) => Send(HttpMethod.Get, url, null);
     public Task<Reply> Post(string url, object body) => Send(HttpMethod.Post, url, body);
     public Task<Reply> Put(string url) => Send(HttpMethod.Put, url, null);
+    public Task<Reply> Put(string url, object body) => Send(HttpMethod.Put, url, body);
     public Task<Reply> Delete(string url) => Send(HttpMethod.Delete, url, null);
     public Task<Reply> Patch(string url, object body) => Send(HttpMethod.Patch, url, body);
 
@@ -53,7 +54,7 @@ public sealed class ProfileTestHost : IDisposable
     public MutableTimeProvider Clock { get; } = new(Now);
     public InMemoryBlobStore Blobs { get; } = new();
 
-    public ProfileTestHost(PostgresFixture pg, IReadOnlyDictionary<string, string>? settings = null, string? connectionString = null)
+    public ProfileTestHost(PostgresFixture pg, IReadOnlyDictionary<string, string>? settings = null, string? connectionString = null, Action<IServiceCollection>? configureServices = null)
     {
         _cs = connectionString ?? pg.ConnectionString;
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
@@ -69,6 +70,7 @@ public sealed class ProfileTestHost : IDisposable
             {
                 s.AddSingleton<TimeProvider>(Clock);
                 s.AddSingleton<IBlobStore>(Blobs);
+                configureServices?.Invoke(s);
             });
         });
     }

@@ -17,6 +17,7 @@ Chapter _$ChapterFromJson(Map<String, dynamic> json) =>
         body: $checkedConvert('body', (v) => v as String),
         meta: $checkedConvert('meta', (v) => v as String?),
         altText: $checkedConvert('altText', (v) => v as String?),
+        replyCount: $checkedConvert('replyCount', (v) => (v as num?)?.toInt()),
       );
       return val;
     });
@@ -29,4 +30,5 @@ Map<String, dynamic> _$ChapterToJson(Chapter instance) => <String, dynamic>{
   'body': instance.body,
   'meta': ?instance.meta,
   'altText': ?instance.altText,
+  'replyCount': ?instance.replyCount,
 };

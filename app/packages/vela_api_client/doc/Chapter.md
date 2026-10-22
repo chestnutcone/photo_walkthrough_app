@@ -15,6 +15,7 @@ Name | Type | Description | Notes
 **body** | **String** |  | 
 **meta** | **String** |  | [optional] 
 **altText** | **String** |  | [optional] 
+**replyCount** | **int** | Server-computed, ignored on input. Visible replies for the viewer. | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

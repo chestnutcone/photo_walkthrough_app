@@ -7,6 +7,7 @@ using Vela.Api.Auth;
 using Vela.Api.Auth.EmailCodes;
 using Vela.Api.Auth.Identity;
 using Vela.Api.Images;
+using Vela.Api.Moderation;
 using Vela.Api.Profiles;
 using Vela.Api.Works;
 using Vela.Api.Social;
@@ -57,6 +58,8 @@ builder.Services.AddSafety(builder.Configuration);
 builder.Services.AddImageStorage(builder.Configuration, builder.Environment);
 builder.Services.AddProfiles();
 builder.Services.AddWorks();
+builder.Services.AddContentSafety(builder.Configuration, builder.Environment);
+if (!builder.Environment.IsEnvironment("Test")) builder.Services.AddHostedService<Vela.Api.Moderation.PublishPipelineWorker>();
 
 var app = builder.Build();
 if (app.Services.GetRequiredService<EmailCodeSettings>().ReviewMode && !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Test"))

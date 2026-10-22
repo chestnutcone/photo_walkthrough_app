@@ -21,6 +21,10 @@ class UpdateWorkRequest {
 
     required  this.title,
 
+     this.intro,
+
+     this.altText,
+
     required  this.chapters,
   });
 
@@ -33,6 +37,30 @@ class UpdateWorkRequest {
 
 
   final String title;
+
+
+
+  @JsonKey(
+    
+    name: r'intro',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final String? intro;
+
+
+
+  @JsonKey(
+    
+    name: r'altText',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final String? altText;
 
 
 
@@ -53,11 +81,15 @@ class UpdateWorkRequest {
     @override
     bool operator ==(Object other) => identical(this, other) || other is UpdateWorkRequest &&
       other.title == title &&
+      other.intro == intro &&
+      other.altText == altText &&
       other.chapters == chapters;
 
     @override
     int get hashCode =>
         title.hashCode +
+        intro.hashCode +
+        (altText == null ? 0 : altText.hashCode) +
         chapters.hashCode;
 
   factory UpdateWorkRequest.fromJson(Map<String, dynamic> json) => _$UpdateWorkRequestFromJson(json);

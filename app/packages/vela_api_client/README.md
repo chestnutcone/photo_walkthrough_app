@@ -107,6 +107,7 @@ Class | Method | HTTP request | Description
 ## Documentation For Models
 
  - [AddReplyRequest](doc/AddReplyRequest.md)
+ - [ArtistSummary](doc/ArtistSummary.md)
  - [Chapter](doc/Chapter.md)
  - [CompleteOnboardingRequest](doc/CompleteOnboardingRequest.md)
  - [CreateDraftRequest](doc/CreateDraftRequest.md)

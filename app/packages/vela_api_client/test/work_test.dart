@@ -12,7 +12,7 @@ void main() {
       // TODO
     });
 
-    // Profile author
+    // ArtistSummary author
     test('to test the property `author`', () async {
       // TODO
     });
@@ -22,13 +22,40 @@ void main() {
       // TODO
     });
 
+    // String intro
+    test('to test the property `intro`', () async {
+      // TODO
+    });
+
+    // String altText
+    test('to test the property `altText`', () async {
+      // TODO
+    });
+
+    // bool isOwner
+    test('to test the property `isOwner`', () async {
+      // TODO
+    });
+
+    // Present only for the owner and admins.
     // String status
     test('to test the property `status`', () async {
       // TODO
     });
 
+    // Full-size variant
     // String imageUrl
     test('to test the property `imageUrl`', () async {
+      // TODO
+    });
+
+    // String thumbUrl
+    test('to test the property `thumbUrl`', () async {
+      // TODO
+    });
+
+    // String feedUrl
+    test('to test the property `feedUrl`', () async {
       // TODO
     });
 

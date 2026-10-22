@@ -1,4 +1,5 @@
 import 'package:vela_api_client/src/model/add_reply_request.dart';
+import 'package:vela_api_client/src/model/artist_summary.dart';
 import 'package:vela_api_client/src/model/chapter.dart';
 import 'package:vela_api_client/src/model/complete_onboarding_request.dart';
 import 'package:vela_api_client/src/model/create_draft_request.dart';
@@ -66,6 +67,8 @@ final _regMap = RegExp(r'^Map<String,(.*)>$');
           return (value is double ? value : double.parse('$value')) as ReturnType;
         case 'AddReplyRequest':
           return AddReplyRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'ArtistSummary':
+          return ArtistSummary.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'Chapter':
           return Chapter.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'CompleteOnboardingRequest':
