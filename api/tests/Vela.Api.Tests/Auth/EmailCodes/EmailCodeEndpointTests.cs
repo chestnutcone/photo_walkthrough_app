@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Vela.Api.Auth.EmailCodes;
 using Vela.Api.Common;
@@ -266,5 +267,60 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
         var ctx = new DefaultHttpContext();
         ctx.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("203.0.113.9");
         Assert.Equal("203.0.113.9", new RemoteAddressClientIpResolver().Resolve(ctx).ToString());
+    }
+
+    [Fact]
+    public async Task Thirty_first_verify_from_one_ip_returns_429_with_exact_retry_after()
+    {
+        var c = Factory().CreateClient();
+        var ip = NewIp();
+        for (var i = 0; i < 30; i++)
+        {
+            var (r0, _) = await Post(c, "/v1/auth/email/verify", new { email = NewEmail(), code = "123456" }, ip);
+            Assert.Equal(HttpStatusCode.BadRequest, r0.StatusCode);
+        }
+
+        var (r, b) = await Post(c, "/v1/auth/email/verify", new { email = NewEmail(), code = "123456" }, ip);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, r.StatusCode);
+        Assert.Equal("rate_limited", b.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal(TimeSpan.FromSeconds(3600), r.Headers.RetryAfter?.Delta);
+    }
+
+    private sealed class CaptureLogger(List<string> sink, LogLevel[] levels) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (sink) { sink.Add($"{logLevel}|{formatter(state, exception)}"); }
+        }
+    }
+
+    private sealed class CaptureProvider(List<string> sink) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new CaptureLogger(sink, []);
+        public void Dispose() { }
+    }
+
+    [Fact]
+    public void Review_mode_outside_development_logs_a_warning_without_email_or_code()
+    {
+        var logs = new List<string>();
+        var f = Factory("Production", b =>
+        {
+            b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");
+            b.UseSetting("Email:SenderAddress", "noreply@example.test");
+            b.UseSetting("Auth:ReviewMode", "true");
+            b.UseSetting("Auth:ReviewEmails:0", "reviewer@example.test");
+            b.UseSetting("Auth:ReviewCode", "987654");
+            b.ConfigureLogging(l => l.AddProvider(new CaptureProvider(logs)));
+        });
+        f.CreateClient();
+
+        var warning = Assert.Single(logs, l => l.StartsWith("Warning|") && l.Contains("Review mode", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain("reviewer@example.test", warning);
+        Assert.DoesNotContain("987654", warning);
+        Assert.DoesNotContain(logs, l => l.Contains("reviewer@example.test") || l.Contains("987654"));
     }
 }

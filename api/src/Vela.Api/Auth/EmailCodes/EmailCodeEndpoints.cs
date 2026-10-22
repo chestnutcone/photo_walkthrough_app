@@ -66,6 +66,10 @@ public static class EmailCodeEndpoints
             var expiresIn = (int)Math.Round((r.Pair.AccessExpiresAt - clock.GetUtcNow()).TotalSeconds);
             return Results.Ok(new TokenPairResponse(r.Pair.AccessToken, r.Pair.RefreshToken, expiresIn, !onboarded));
         }
+        catch (RateLimitedException e)
+        {
+            return RateLimited(ctx, e);
+        }
         catch (InvalidCodeException)
         {
             return Results.Fail(StatusCodes.Status400BadRequest, "invalid_code", "The code is invalid or has expired.");

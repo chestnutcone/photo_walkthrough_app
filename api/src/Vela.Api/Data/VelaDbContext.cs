@@ -9,6 +9,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
     public DbSet<Identity> Identities => Set<Identity>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<EmailCode> EmailCodes => Set<EmailCode>();
+    public DbSet<VerifyAttempt> VerifyAttempts => Set<VerifyAttempt>();
     public DbSet<Tier> Tiers => Set<Tier>();
     public DbSet<Profile> Profiles => Set<Profile>();
     public DbSet<Follow> Follows => Set<Follow>();
@@ -57,6 +58,11 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         {
             e.HasIndex(x => new { x.Email, x.CreatedAt });
             e.HasIndex(x => new { x.RequestIp, x.CreatedAt });
+        });
+        b.Entity<VerifyAttempt>(e =>
+        {
+            e.HasIndex(x => new { x.Ip, x.Kind, x.CreatedAt });
+            e.HasIndex(x => new { x.Email, x.Kind, x.CreatedAt });
         });
     }
 

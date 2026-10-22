@@ -16,6 +16,8 @@ public sealed class EmailCodeService(
     public const int MaxAttempts = 5;
     public const int MaxRequestsPerEmailPerHour = 5;
     public const int MaxRequestsPerIpPerHour = 20;
+    public const int MaxVerifiesPerIpPerHour = 30;
+    public const int MaxReviewFailuresPerHour = 5;
     public static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan Window = TimeSpan.FromHours(1);
 
@@ -52,6 +54,7 @@ public sealed class EmailCodeService(
 
     public async Task<EmailSignInResult> VerifyAsync(string email, string code, string ip)
     {
+        await EnforceVerifyIpLimitAsync(ip);
         var normalized = Normalize(email) ?? throw new InvalidCodeException();
         if (!await CodeAcceptedAsync(normalized, code ?? "")) throw new InvalidCodeException();
 
@@ -62,7 +65,7 @@ public sealed class EmailCodeService(
     private async Task<bool> CodeAcceptedAsync(string email, string code)
     {
         if (settings.IsReviewEmail(email))
-            return FixedTimeEquals(code, settings.ReviewCode);
+            return await ReviewCodeAcceptedAsync(email, code);
 
         var now = clock.GetUtcNow();
         var row = await db.EmailCodes.AsNoTracking()
@@ -82,6 +85,42 @@ public sealed class EmailCodeService(
         var consumed = await db.EmailCodes.Where(c => c.Id == row.Id && c.ConsumedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.ConsumedAt, now));
         return consumed == 1;
+    }
+
+    /// <summary>
+    /// Five wrong guesses per email per hour lock the fixed code (even the correct one). A per-email advisory
+    /// lock serialises concurrent guesses so the limit cannot be exceeded.
+    /// </summary>
+    private async Task<bool> ReviewCodeAcceptedAsync(string email, string code)
+    {
+        var now = clock.GetUtcNow();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtext({"review:" + email}))");
+        var since = now - Window;
+        var failures = await db.VerifyAttempts.CountAsync(a => a.Email == email && a.Kind == VerifyAttempt.ReviewFailure && a.CreatedAt > since);
+        if (failures >= MaxReviewFailuresPerHour) return false;
+        if (FixedTimeEquals(code, settings.ReviewCode)) return true;
+
+        db.VerifyAttempts.Add(new VerifyAttempt
+        {
+            Id = Guid.NewGuid(), Email = email, Kind = VerifyAttempt.ReviewFailure, CreatedAt = now,
+        });
+        await db.SaveChangesAsync();
+        await tx.CommitAsync();
+        return false;
+    }
+
+    private async Task EnforceVerifyIpLimitAsync(string ip)
+    {
+        var now = clock.GetUtcNow();
+        var since = now - Window;
+        var hits = await db.VerifyAttempts.AsNoTracking()
+            .Where(a => a.Ip == ip && a.Kind == VerifyAttempt.Verify && a.CreatedAt > since)
+            .Select(a => a.CreatedAt).ToListAsync();
+        if (RateLimiting.RetryAfter(hits, MaxVerifiesPerIpPerHour, Window, now) is { } wait)
+            throw new RateLimitedException(wait);
+        db.VerifyAttempts.Add(new VerifyAttempt { Id = Guid.NewGuid(), Ip = ip, Kind = VerifyAttempt.Verify, CreatedAt = now });
+        await db.SaveChangesAsync();
     }
 
     private async Task EnforceRateLimitsAsync(string email, string ip, DateTimeOffset now)

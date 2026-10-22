@@ -42,6 +42,8 @@ builder.Services.AddIdentityVerification(builder.Configuration, builder.Environm
 builder.Services.AddEmailCodes(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
+if (app.Services.GetRequiredService<EmailCodeSettings>().ReviewMode && !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Test"))
+    app.Logger.LogWarning("Review mode is ON: a fixed sign-in code is accepted for allow-listed review accounts. Turn Auth:ReviewMode off after app review.");
 app.UseAuthentication();
 app.UseAuthorization();
 

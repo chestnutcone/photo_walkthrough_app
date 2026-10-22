@@ -682,6 +682,44 @@ namespace Vela.Api.Data.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Vela.Api.Data.Entities.VerifyAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Ip")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ip");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.HasKey("Id")
+                        .HasName("pk_verify_attempts");
+
+                    b.HasIndex("Email", "Kind", "CreatedAt")
+                        .HasDatabaseName("ix_verify_attempts_email_kind_created_at");
+
+                    b.HasIndex("Ip", "Kind", "CreatedAt")
+                        .HasDatabaseName("ix_verify_attempts_ip_kind_created_at");
+
+                    b.ToTable("verify_attempts", (string)null);
+                });
+
             modelBuilder.Entity("Vela.Api.Data.Entities.Work", b =>
                 {
                     b.Property<Guid>("Id")

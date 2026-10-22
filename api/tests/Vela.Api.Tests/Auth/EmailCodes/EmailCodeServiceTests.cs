@@ -303,4 +303,84 @@ public class EmailCodeServiceTests(PostgresFixture pg)
         await h.Svc.RequestAsync(email, NewIp());
         await Assert.ThrowsAsync<AccountSuspendedException>(() => h.Svc.VerifyAsync(email, CodeFrom(h.Outbox), NewIp()));
     }
+
+    private Harness CreateReview(params string[] emails) =>
+        Create(new EmailCodeSettings { Pepper = Pepper, ReviewMode = true, ReviewEmails = emails, ReviewCode = ReviewCode });
+
+    [Fact]
+    public async Task Review_code_is_locked_after_five_wrong_guesses_even_for_the_correct_code()
+    {
+        var email = NewEmail();
+        var h = CreateReview(email);
+        for (var i = 0; i < 5; i++)
+            await Assert.ThrowsAsync<InvalidCodeException>(() => h.Svc.VerifyAsync(email, "111111", NewIp()));
+
+        await Assert.ThrowsAsync<InvalidCodeException>(() => h.Svc.VerifyAsync(email, ReviewCode, NewIp()));
+    }
+
+    [Fact]
+    public async Task Review_code_works_after_four_wrong_guesses()
+    {
+        var email = NewEmail();
+        var h = CreateReview(email);
+        for (var i = 0; i < 4; i++)
+            await Assert.ThrowsAsync<InvalidCodeException>(() => h.Svc.VerifyAsync(email, "111111", NewIp()));
+
+        await h.Svc.VerifyAsync(email, ReviewCode, NewIp());
+    }
+
+    [Fact]
+    public async Task Review_lock_expires_after_the_window()
+    {
+        var email = NewEmail();
+        var h = CreateReview(email);
+        for (var i = 0; i < 5; i++)
+            await Assert.ThrowsAsync<InvalidCodeException>(() => h.Svc.VerifyAsync(email, "111111", NewIp()));
+
+        h.Clock.Advance(TimeSpan.FromHours(1) + TimeSpan.FromSeconds(1));
+
+        await h.Svc.VerifyAsync(email, ReviewCode, NewIp());
+    }
+
+    [Fact]
+    public async Task Review_lock_is_per_email()
+    {
+        var a = NewEmail();
+        var b = NewEmail();
+        var h = CreateReview(a, b);
+        for (var i = 0; i < 5; i++)
+            await Assert.ThrowsAsync<InvalidCodeException>(() => h.Svc.VerifyAsync(a, "111111", NewIp()));
+
+        await h.Svc.VerifyAsync(b, ReviewCode, NewIp());
+    }
+
+    [Fact]
+    public async Task Concurrent_wrong_review_guesses_cannot_exceed_the_limit()
+    {
+        var email = NewEmail();
+        var settings = new EmailCodeSettings { Pepper = Pepper, ReviewMode = true, ReviewEmails = [email], ReviewCode = ReviewCode };
+
+        await Task.WhenAll(Enumerable.Range(0, 12).Select(async _ =>
+            await Assert.ThrowsAsync<InvalidCodeException>(() => Create(settings).Svc.VerifyAsync(email, "111111", NewIp()))));
+
+        await using var db = pg.NewContext();
+        Assert.Equal(5, await db.VerifyAttempts.CountAsync(a => a.Email == email && a.Kind == VerifyAttempt.ReviewFailure));
+        await Assert.ThrowsAsync<InvalidCodeException>(() => Create(settings).Svc.VerifyAsync(email, ReviewCode, NewIp()));
+    }
+
+    [Fact]
+    public async Task Verify_is_limited_per_ip_and_reports_exact_retry_after()
+    {
+        var h = Create();
+        var ip = NewIp();
+        for (var i = 0; i < 30; i++)
+            await Assert.ThrowsAsync<InvalidCodeException>(() => h.Svc.VerifyAsync(NewEmail(), "123456", ip));
+        h.Clock.Advance(TimeSpan.FromMinutes(10));
+
+        var ex = await Assert.ThrowsAsync<RateLimitedException>(() => h.Svc.VerifyAsync(NewEmail(), "123456", ip));
+
+        Assert.Equal(TimeSpan.FromMinutes(50), ex.RetryAfter);
+        h.Clock.Advance(TimeSpan.FromMinutes(50) + TimeSpan.FromSeconds(1));
+        await Assert.ThrowsAsync<InvalidCodeException>(() => h.Svc.VerifyAsync(NewEmail(), "123456", ip));
+    }
 }
