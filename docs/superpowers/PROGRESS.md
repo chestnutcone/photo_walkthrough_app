@@ -23,7 +23,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] M0 docs committed and pushed (spec, plan, progress) — commit 310df02
 - [x] M1 Foundation done (T1, T2)
 - [x] M2 API core done (A1-A6)
-- [ ] M3 API features done (A7-A13)
+- [x] M3 API features done (A7-A13)
 - [ ] M4 Admin and safety done (A14-A16)
 - [ ] M5 App core done (B1-B5)
 - [ ] M6 App features done (B6-B14)
@@ -44,7 +44,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A10 Notifications and inquiries (686f382)
 - [x] A11 Search (ff35eb9)
 - [x] A12 Share pages, well-known, legal (1c5df5e)
-- [ ] A13 Account deletion and export
+- [x] A13 Account deletion and export (850a17f)
 - [ ] A14 Admin moderation, ban/restore, evidence hold, DMCA
 - [ ] A15 Abuse and bot protection
 - [ ] A16 Telemetry and crash reporting (API)
@@ -66,6 +66,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [ ] S1 Security review gate
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-22 M3 reached: A7-A13 complete (e631618, 1f75178, 811af34, 686f382, ff35eb9, 1c5df5e, 850a17f). Pushed.
 - 2026-10-22 M2 reached: A1-A6 complete (56fb231, d28b26e, a2277e1, 1fdcd5c, 1d81d0f, ccb8aef). Pushed.
 - 2026-10-22 M1 reached: T1 (a8dca9b), T2 (503a45a). Pushed branch build/mvp.
 - 2026-10-22 Design approved, plan written, progress file created. No code yet.
