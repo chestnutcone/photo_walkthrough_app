@@ -474,8 +474,8 @@ paths:
       operationId: getFeed
       tags: [Works]
       summary: "Following or discover feed"
-      security:
-        - bearerAuth: []
+      description: "Public. `discover` is newest first. `following` lists works by followed artists first, then everyone else's, each newest first; a guest, or a viewer who follows nobody, gets `discover`. Invalid cursor: 400 invalid_cursor."
+      security: []
       parameters:
         - $ref: '#/components/parameters/tab'
         - $ref: '#/components/parameters/cursor'
@@ -489,8 +489,6 @@ paths:
                 $ref: '#/components/schemas/WorkListEnvelope'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/works:
@@ -651,6 +649,7 @@ paths:
       operationId: addReply
       tags: [Replies]
       summary: "Reply to a chapter"
+      description: "Body is trimmed, 1 to 1000 characters; control characters other than newline are refused. A reply the safety scan flags is still returned to its author, with hiddenForOthers true."
       security:
         - bearerAuth: []
       parameters:
@@ -663,7 +662,7 @@ paths:
             schema:
               $ref: '#/components/schemas/AddReplyRequest'
       responses:
-        '200':
+        '201':
           description: OK
           content:
             application/json:
@@ -1085,6 +1084,7 @@ components:
         handle: {type: string}
         displayName: {type: string}
         avatarUrl: {type: string, nullable: true}
+        isFollowing: {type: boolean, nullable: true, description: "Null for guests and for the viewer's own account."}
     Work:
       type: object
       required: [id, author, title, chapters, createdAt, shareUrl, isOwner]
@@ -1123,6 +1123,7 @@ components:
         author: {$ref: '#/components/schemas/Profile'}
         body: {type: string}
         createdAt: {type: string, format: date-time}
+        hiddenForOthers: {type: boolean, description: "True when only the author can see this reply (flagged or reported). Absent or false otherwise."}
     Notification:
       type: object
       required: [id, type, actor, createdAt, read]

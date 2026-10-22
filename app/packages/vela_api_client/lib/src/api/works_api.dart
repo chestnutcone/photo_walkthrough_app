@@ -195,7 +195,7 @@ _responseData = rawData == null ? null : deserialize<Envelope, Envelope>(rawData
   }
 
   /// Following or discover feed
-  /// 
+  /// Public. &#x60;discover&#x60; is newest first. &#x60;following&#x60; lists works by followed artists first, then everyone else&#39;s, each newest first; a guest, or a viewer who follows nobody, gets &#x60;discover&#x60;. Invalid cursor: 400 invalid_cursor.
   ///
   /// Parameters:
   /// * [tab] - Feed tab
@@ -228,13 +228,7 @@ _responseData = rawData == null ? null : deserialize<Envelope, Envelope>(rawData
         ...?headers,
       },
       extra: <String, dynamic>{
-        'secure': <Map<String, String>>[
-          {
-            'type': 'http',
-            'scheme': 'bearer',
-            'name': 'bearerAuth',
-          },
-        ],
+        'secure': <Map<String, String>>[],
         ...?extra,
       },
       validateStatus: validateStatus,

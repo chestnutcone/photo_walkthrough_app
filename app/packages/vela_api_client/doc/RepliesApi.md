@@ -19,6 +19,8 @@ Method | HTTP request | Description
 
 Reply to a chapter
 
+Body is trimmed, 1 to 1000 characters; control characters other than newline are refused. A reply the safety scan flags is still returned to its author, with hiddenForOthers true.
+
 ### Example
 ```dart
 import 'package:vela_api_client/api.dart';

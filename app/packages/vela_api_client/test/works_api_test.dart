@@ -25,6 +25,8 @@ void main() {
 
     // Following or discover feed
     //
+    // Public. `discover` is newest first. `following` lists works by followed artists first, then everyone else's, each newest first; a guest, or a viewer who follows nobody, gets `discover`. Invalid cursor: 400 invalid_cursor.
+    //
     //Future<WorkListEnvelope> getFeed(String tab, { String cursor, int limit }) async
     test('test getFeed', () async {
       // TODO

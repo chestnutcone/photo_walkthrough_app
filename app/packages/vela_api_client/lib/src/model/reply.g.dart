@@ -30,6 +30,7 @@ Reply _$ReplyFromJson(
     ),
     body: $checkedConvert('body', (v) => v as String),
     createdAt: $checkedConvert('createdAt', (v) => DateTime.parse(v as String)),
+    hiddenForOthers: $checkedConvert('hiddenForOthers', (v) => v as bool?),
   );
   return val;
 });
@@ -41,4 +42,5 @@ Map<String, dynamic> _$ReplyToJson(Reply instance) => <String, dynamic>{
   'author': instance.author.toJson(),
   'body': instance.body,
   'createdAt': instance.createdAt.toIso8601String(),
+  'hiddenForOthers': ?instance.hiddenForOthers,
 };

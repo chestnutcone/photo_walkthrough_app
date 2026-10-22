@@ -25,6 +25,8 @@ class ArtistSummary {
     required  this.displayName,
 
      this.avatarUrl,
+
+     this.isFollowing,
   });
 
   @JsonKey(
@@ -75,6 +77,19 @@ class ArtistSummary {
 
 
 
+      /// Null for guests and for the viewer's own account.
+  @JsonKey(
+    
+    name: r'isFollowing',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final bool? isFollowing;
+
+
+
 
 
     @override
@@ -82,14 +97,16 @@ class ArtistSummary {
       other.id == id &&
       other.handle == handle &&
       other.displayName == displayName &&
-      other.avatarUrl == avatarUrl;
+      other.avatarUrl == avatarUrl &&
+      other.isFollowing == isFollowing;
 
     @override
     int get hashCode =>
         id.hashCode +
         handle.hashCode +
         displayName.hashCode +
-        (avatarUrl == null ? 0 : avatarUrl.hashCode);
+        (avatarUrl == null ? 0 : avatarUrl.hashCode) +
+        (isFollowing == null ? 0 : isFollowing.hashCode);
 
   factory ArtistSummary.fromJson(Map<String, dynamic> json) => _$ArtistSummaryFromJson(json);
 

@@ -20,6 +20,7 @@ public sealed class BlockService(VelaDbContext db, TimeProvider clock) : IBlockS
             throw new SafetyException(StatusCodes.Status404NotFound, "user_not_found", "No such user.");
 
         await using var tx = await db.Database.BeginTransactionAsync();
+        await PairLock.AcquireAsync(db, userId, targetId);
         await db.Follows
             .Where(f => (f.FollowerId == userId && f.FolloweeId == targetId) || (f.FollowerId == targetId && f.FolloweeId == userId))
             .ExecuteDeleteAsync();

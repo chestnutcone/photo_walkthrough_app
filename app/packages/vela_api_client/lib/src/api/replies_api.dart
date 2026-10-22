@@ -21,7 +21,7 @@ class RepliesApi {
   const RepliesApi(this._dio);
 
   /// Reply to a chapter
-  /// 
+  /// Body is trimmed, 1 to 1000 characters; control characters other than newline are refused. A reply the safety scan flags is still returned to its author, with hiddenForOthers true.
   ///
   /// Parameters:
   /// * [id] - Resource id

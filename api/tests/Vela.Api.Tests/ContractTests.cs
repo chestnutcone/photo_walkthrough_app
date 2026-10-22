@@ -17,7 +17,7 @@ public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
     private static readonly string[] PublicOperations =
     [
         "ssoSignIn", "emailRequest", "emailVerify", "refresh", "logout",
-        "getArtist", "listArtistWorks", "suggestedArtists", "getWork", "listReplies", "search",
+        "getArtist", "listArtistWorks", "suggestedArtists", "getWork", "listReplies", "getFeed", "search",
     ];
 
     private readonly WebApplicationFactory<Program> _factory;
@@ -102,7 +102,7 @@ public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/v1/feed");
+        var response = await client.GetAsync("/v1/search");
 
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());

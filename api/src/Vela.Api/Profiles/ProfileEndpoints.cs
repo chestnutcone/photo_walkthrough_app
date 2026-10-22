@@ -8,7 +8,7 @@ namespace Vela.Api.Profiles;
 public static class ProfileEndpoints
 {
     public static IServiceCollection AddProfiles(this IServiceCollection services) =>
-        services.AddScoped<WorkCounts>().AddScoped<ArtistQueries>().AddScoped<IProfileService, ProfileService>();
+        services.AddScoped<WorkCounts>().AddScoped<ArtistQueries>().AddScoped<ArtistPresenter>().AddScoped<IProfileService, ProfileService>();
 
     public static IEndpointRouteBuilder MapProfileEndpoints(this IEndpointRouteBuilder app)
     {

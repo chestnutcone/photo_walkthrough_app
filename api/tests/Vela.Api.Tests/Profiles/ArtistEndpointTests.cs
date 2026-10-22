@@ -20,6 +20,13 @@ public class ArtistEndpointTests(PostgresFixture pg) : IDisposable
         return (body.GetProperty("data"), r.StatusCode, body);
     }
 
+    private static async Task<(JsonElement Data, HttpStatusCode Status, JsonElement Body)> AnonOn(ProfileTestHost host, string url)
+    {
+        var r = await host.Anonymous().GetAsync(url);
+        var body = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement.Clone();
+        return (body.GetProperty("data"), r.StatusCode, body);
+    }
+
     private async Task<TestUser> OnboardedWithEmail(string handle, string email)
     {
         var u = await _host.SignIn(email);
@@ -134,19 +141,20 @@ public class ArtistEndpointTests(PostgresFixture pg) : IDisposable
     [Fact]
     public async Task Suggested_orders_by_followers_then_newest_and_excludes_viewer_and_followed()
     {
-        // Unique prefix per run is not possible for a global list, so use a fresh host DB view:
-        var popular = await _host.SignInOnboarded(ProfileTestHost.UniqueHandle("pop"));
-        var fan1 = await _host.SignInOnboarded(ProfileTestHost.UniqueHandle("f"));
-        var fan2 = await _host.SignInOnboarded(ProfileTestHost.UniqueHandle("f"));
-        await using (var db = _host.Db())
+        // A global top-12 on the shared database is flaky, so this test owns an isolated database.
+        using var host = new ProfileTestHost(pg, null, await pg.CreateIsolatedDatabaseAsync());
+        var popular = await host.SignInOnboarded(ProfileTestHost.UniqueHandle("pop"));
+        var fan1 = await host.SignInOnboarded(ProfileTestHost.UniqueHandle("f"));
+        var fan2 = await host.SignInOnboarded(ProfileTestHost.UniqueHandle("f"));
+        await using (var db = host.Db())
         {
             db.Follows.Add(new Follow { FollowerId = fan1.Id, FolloweeId = popular.Id, CreatedAt = ProfileTestHost.Now });
             db.Follows.Add(new Follow { FollowerId = fan2.Id, FolloweeId = popular.Id, CreatedAt = ProfileTestHost.Now });
             await db.SaveChangesAsync();
         }
-        var viewer = await _host.SignInOnboarded(ProfileTestHost.UniqueHandle("v"));
-        var followed = await _host.SignInOnboarded(ProfileTestHost.UniqueHandle("fl"));
-        await using (var db = _host.Db())
+        var viewer = await host.SignInOnboarded(ProfileTestHost.UniqueHandle("v"));
+        var followed = await host.SignInOnboarded(ProfileTestHost.UniqueHandle("fl"));
+        await using (var db = host.Db())
         {
             db.Follows.Add(new Follow { FollowerId = viewer.Id, FolloweeId = followed.Id, CreatedAt = ProfileTestHost.Now });
             // The viewer and the followed artist outrank everyone, so the exclusions are really exercised.
@@ -158,7 +166,7 @@ public class ArtistEndpointTests(PostgresFixture pg) : IDisposable
             await db.SaveChangesAsync();
         }
 
-        var anon = await Anon("/v1/artists/suggested");
+        var anon = await AnonOn(host, "/v1/artists/suggested");
         var mine = await viewer.Get("/v1/artists/suggested");
 
         var anonIds = anon.Data.EnumerateArray().Select(e => e.GetProperty("id").GetGuid()).ToList();

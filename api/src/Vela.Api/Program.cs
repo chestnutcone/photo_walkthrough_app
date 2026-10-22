@@ -55,6 +55,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddIdentityVerification(builder.Configuration, builder.Environment);
 builder.Services.AddEmailCodes(builder.Configuration, builder.Environment);
 builder.Services.AddSafety(builder.Configuration);
+builder.Services.AddSocial();
 builder.Services.AddImageStorage(builder.Configuration, builder.Environment);
 builder.Services.AddProfiles();
 builder.Services.AddWorks();
@@ -74,6 +75,7 @@ app.MapEmailCodeEndpoints();
 app.MapProfileEndpoints();
 app.MapWorkEndpoints();
 app.MapSafetyEndpoints();
+app.MapSocialEndpoints();
 app.MapContractStubs();
 
 app.Run();

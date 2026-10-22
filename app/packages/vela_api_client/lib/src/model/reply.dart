@@ -30,6 +30,8 @@ class Reply {
     required  this.body,
 
     required  this.createdAt,
+
+     this.hiddenForOthers,
   });
 
   @JsonKey(
@@ -104,6 +106,19 @@ class Reply {
 
 
 
+      /// True when only the author can see this reply (flagged or reported). Absent or false otherwise.
+  @JsonKey(
+    
+    name: r'hiddenForOthers',
+    required: false,
+    includeIfNull: false,
+  )
+
+
+  final bool? hiddenForOthers;
+
+
+
 
 
     @override
@@ -113,7 +128,8 @@ class Reply {
       other.chapterIndex == chapterIndex &&
       other.author == author &&
       other.body == body &&
-      other.createdAt == createdAt;
+      other.createdAt == createdAt &&
+      other.hiddenForOthers == hiddenForOthers;
 
     @override
     int get hashCode =>
@@ -122,7 +138,8 @@ class Reply {
         chapterIndex.hashCode +
         author.hashCode +
         body.hashCode +
-        createdAt.hashCode;
+        createdAt.hashCode +
+        hiddenForOthers.hashCode;
 
   factory Reply.fromJson(Map<String, dynamic> json) => _$ReplyFromJson(json);
 

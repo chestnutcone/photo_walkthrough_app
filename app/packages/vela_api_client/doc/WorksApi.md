@@ -106,6 +106,8 @@ Name | Type | Description  | Notes
 
 Following or discover feed
 
+Public. `discover` is newest first. `following` lists works by followed artists first, then everyone else's, each newest first; a guest, or a viewer who follows nobody, gets `discover`. Invalid cursor: 400 invalid_cursor.
+
 ### Example
 ```dart
 import 'package:vela_api_client/api.dart';
@@ -137,7 +139,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[bearerAuth](../README.md#bearerAuth)
+No authorization required
 
 ### HTTP request headers
 

@@ -27,5 +27,11 @@ void main() {
       // TODO
     });
 
+    // Null for guests and for the viewer's own account.
+    // bool isFollowing
+    test('to test the property `isFollowing`', () async {
+      // TODO
+    });
+
   });
 }

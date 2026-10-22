@@ -9,6 +9,8 @@ void main() {
   group(RepliesApi, () {
     // Reply to a chapter
     //
+    // Body is trimmed, 1 to 1000 characters; control characters other than newline are refused. A reply the safety scan flags is still returned to its author, with hiddenForOthers true.
+    //
     //Future<ReplyEnvelope> addReply(String id, int index, AddReplyRequest addReplyRequest) async
     test('test addReply', () async {
       // TODO

@@ -37,5 +37,11 @@ void main() {
       // TODO
     });
 
+    // True when only the author can see this reply (flagged or reported). Absent or false otherwise.
+    // bool hiddenForOthers
+    test('to test the property `hiddenForOthers`', () async {
+      // TODO
+    });
+
   });
 }

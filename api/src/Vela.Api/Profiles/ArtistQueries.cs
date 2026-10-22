@@ -15,6 +15,18 @@ public sealed class ArtistQueries(VelaDbContext db, IVisibility visibility)
     public async Task<Row?> FindByHandleAsync(string handle, Guid? viewerId) =>
         await Rows(await VisibleAsync(HandleRules.Normalize(handle), viewerId), viewerId).FirstOrDefaultAsync();
 
+    /// <summary>Whether the profile exists and is publicly visible to this viewer (active, onboarded, not hidden by a block).</summary>
+    public async Task<bool> IsVisibleAsync(Guid userId, Guid? viewerId) =>
+        await (await VisibleAsync(handle: null, viewerId)).AnyAsync(p => p.UserId == userId);
+
+    /// <summary>Rows for the given ids in the given order; ids that are not visible to the viewer are skipped.</summary>
+    public async Task<List<Row>> ByIdsAsync(IReadOnlyList<Guid> ids, Guid? viewerId)
+    {
+        var ordered = ids.ToArray();
+        var rows = await Rows((await VisibleAsync(handle: null, viewerId)).Where(p => ordered.Contains(p.UserId)), viewerId).ToListAsync();
+        return ordered.Select(id => rows.FirstOrDefault(r => r.Profile.UserId == id)).OfType<Row>().ToList();
+    }
+
     /// <summary>The signed-in user's own profile row, even before onboarding completes.</summary>
     public Task<Row?> FindOwnAsync(Guid userId) =>
         Rows(db.Profiles.AsNoTracking().Where(p => p.UserId == userId), userId).FirstOrDefaultAsync();

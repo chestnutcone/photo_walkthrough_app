@@ -14,6 +14,7 @@ ArtistSummary _$ArtistSummaryFromJson(Map<String, dynamic> json) =>
         handle: $checkedConvert('handle', (v) => v as String),
         displayName: $checkedConvert('displayName', (v) => v as String),
         avatarUrl: $checkedConvert('avatarUrl', (v) => v as String?),
+        isFollowing: $checkedConvert('isFollowing', (v) => v as bool?),
       );
       return val;
     });
@@ -24,4 +25,5 @@ Map<String, dynamic> _$ArtistSummaryToJson(ArtistSummary instance) =>
       'handle': instance.handle,
       'displayName': instance.displayName,
       'avatarUrl': ?instance.avatarUrl,
+      'isFollowing': ?instance.isFollowing,
     };
