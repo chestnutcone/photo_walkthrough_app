@@ -42,7 +42,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A8 Works, chapters, publish, moderation (1f75178)
 - [x] A9 Follows, feed, replies (811af34)
 - [x] A10 Notifications and inquiries (686f382)
-- [ ] A11 Search
+- [x] A11 Search (ff35eb9)
 - [ ] A12 Share pages, well-known, legal
 - [ ] A13 Account deletion and export
 - [ ] A14 Admin moderation, ban/restore, evidence hold, DMCA
