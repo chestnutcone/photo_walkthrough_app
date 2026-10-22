@@ -6,7 +6,7 @@ namespace Vela.Api.Share;
 /// <summary>An HTML response with the standard security headers and a per-request style nonce. Pages contain no script.</summary>
 public sealed class HtmlResult(int status, string cacheControl, Func<string, string> render) : IResult
 {
-    public static IResult Found(Func<string, string> render) => new HtmlResult(StatusCodes.Status200OK, "public, max-age=300", render);
+    public static IResult Found(Func<string, string> render) => new HtmlResult(StatusCodes.Status200OK, "public, max-age=60", render);
 
     public static IResult NotFound(string message) =>
         new HtmlResult(StatusCodes.Status404NotFound, "no-store", nonce => HtmlLayout.Message(nonce, message));

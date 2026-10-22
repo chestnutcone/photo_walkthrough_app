@@ -107,7 +107,7 @@ public class ShareTests(PostgresFixture pg) : IDisposable
         Assert.Equal("DENY", a.Header("X-Frame-Options"));
         Assert.Equal("camera=(), microphone=(), geolocation=()", a.Header("Permissions-Policy"));
         Assert.Contains("public", a.Header("Cache-Control"));
-        Assert.Contains("max-age=300", a.Header("Cache-Control"));
+        Assert.Contains("max-age=60", a.Header("Cache-Control"));
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class ShareTests(PostgresFixture pg) : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, p.Status);
         Assert.Equal("", p.Body);
-        Assert.Contains("max-age=300", p.Header("Cache-Control"));
+        Assert.Contains("max-age=60", p.Header("Cache-Control"));
     }
 
     [Fact]
