@@ -12,6 +12,8 @@ public class Work
     /// <summary>Set when an admin restores the work; it is then never auto-blocked again.</summary>
     public bool ModerationOverride { get; set; }
     public string ImageBlob { get; set; } = "";
+    /// <summary>Maintained by database triggers: lower-cased title, intro and chapter titles. Never written by the app.</summary>
+    public string SearchText { get; private set; } = "";
     public int Width { get; set; }
     public int Height { get; set; }
     public string? AltText { get; set; }

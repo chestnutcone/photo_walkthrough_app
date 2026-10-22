@@ -21,6 +21,7 @@ namespace Vela.Api.Data.Migrations
                 .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Vela.Api.Data.Entities.Block", b =>
@@ -417,6 +418,13 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("reply_time");
 
+                    b.Property<string>("SearchText")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasColumnName("search_text")
+                        .HasComputedColumnSql("lower(handle || ' ' || display_name || ' ' || city || ' ' || discipline)", true);
+
                     b.Property<string>("Social")
                         .IsRequired()
                         .HasColumnType("text")
@@ -471,6 +479,12 @@ namespace Vela.Api.Data.Migrations
                     b.HasIndex("Handle")
                         .IsUnique()
                         .HasDatabaseName("ix_profiles_handle");
+
+                    b.HasIndex("SearchText")
+                        .HasDatabaseName("ix_profiles_search_text_trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchText"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("SearchText"), new[] { "gin_trgm_ops" });
 
                     b.ToTable("profiles", null, t =>
                         {
@@ -830,6 +844,13 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("scan_attempts");
 
+                    b.Property<string>("SearchText")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("")
+                        .HasColumnName("search_text");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -847,6 +868,12 @@ namespace Vela.Api.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_works");
+
+                    b.HasIndex("SearchText")
+                        .HasDatabaseName("ix_works_search_text_trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchText"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("SearchText"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("ArtistId", "Status")
                         .HasDatabaseName("ix_works_artist_id_status");

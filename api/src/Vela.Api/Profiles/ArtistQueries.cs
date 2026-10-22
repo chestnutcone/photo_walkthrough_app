@@ -19,6 +19,9 @@ public sealed class ArtistQueries(VelaDbContext db, IVisibility visibility)
     public async Task<bool> IsVisibleAsync(Guid userId, Guid? viewerId) =>
         await (await VisibleAsync(handle: null, viewerId)).AnyAsync(p => p.UserId == userId);
 
+    /// <summary>Profiles that are publicly visible to this viewer (onboarded, active, not hidden by a block); for search.</summary>
+    public async Task<IQueryable<Profile>> VisibleProfilesAsync(Guid? viewerId) => await VisibleAsync(handle: null, viewerId);
+
     /// <summary>Rows for the given ids in the given order; ids that are not visible to the viewer are skipped.</summary>
     public async Task<List<Row>> ByIdsAsync(IReadOnlyList<Guid> ids, Guid? viewerId)
     {

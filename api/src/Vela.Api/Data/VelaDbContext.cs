@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Vela.Api.Data.Entities;
 
 namespace Vela.Api.Data;
@@ -24,6 +25,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.HasPostgresExtension("pg_trgm");
         ConfigureAccounts(b);
         ConfigureProfiles(b);
         ConfigureWorks(b);
@@ -72,6 +74,9 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
             e.HasKey(x => x.UserId);
             e.HasOne<User>().WithOne().HasForeignKey<Profile>(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.Handle).IsUnique();
+            e.Property(x => x.SearchText).HasComputedColumnSql(
+                "lower(handle || ' ' || display_name || ' ' || city || ' ' || discipline)", stored: true);
+            e.HasIndex(x => x.SearchText).HasMethod("gin").HasOperators("gin_trgm_ops").HasDatabaseName("ix_profiles_search_text_trgm");
             e.ToTable(t => t.HasCheckConstraint("ck_profiles_handle_lowercase", "handle = lower(handle)"));
             e.ComplexCollection(x => x.Services, c => c.ToJson("services"));
             e.ComplexCollection(x => x.Shows, c => c.ToJson("shows"));
@@ -84,6 +89,11 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
             e.HasOne<User>().WithMany().HasForeignKey(x => x.ArtistId).OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.Status).HasConversion(LowerEnum<WorkStatus>()).HasMaxLength(16);
             e.HasIndex(x => new { x.ArtistId, x.Status });
+            // Filled by triggers (see AddSearchIndexes), so EF must neither insert nor update it.
+            e.Property(x => x.SearchText).HasDefaultValue("");
+            e.Property(x => x.SearchText).Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+            e.Property(x => x.SearchText).Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+            e.HasIndex(x => x.SearchText).HasMethod("gin").HasOperators("gin_trgm_ops").HasDatabaseName("ix_works_search_text_trgm");
             e.HasIndex(x => new { x.Status, x.PublishedAt, x.Id });
             e.HasIndex(x => new { x.ArtistId, x.PublishedAt, x.Id }).HasFilter("status = 'published'");
         });

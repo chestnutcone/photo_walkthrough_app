@@ -19,7 +19,7 @@ class SearchApi {
   const SearchApi(this._dio);
 
   /// Search artists or stories
-  /// 
+  /// Public. &#x60;q&#x60; is 2 to 80 characters after trimming (shorter: 400 query_too_short; longer or containing a null character: 400 validation_failed); whitespace-separated terms (first 5) must all match, with typo tolerance. &#x60;type&#x60; defaults to &#x60;artists&#x60;; &#x60;data&#x60; fills only the list for the searched type and the other is empty. Results are ranked best match first and paged with an opaque cursor (invalid: 400 invalid_cursor). Hidden, blocked, suspended and unpublished content never appears.
   ///
   /// Parameters:
   /// * [q] - Search text

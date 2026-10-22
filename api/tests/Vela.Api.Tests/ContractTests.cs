@@ -102,7 +102,7 @@ public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/v1/search");
+        var response = await client.GetAsync($"/v1/me/export/{Guid.NewGuid()}");
 
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());

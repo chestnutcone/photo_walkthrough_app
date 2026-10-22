@@ -41,4 +41,26 @@ public static class Cursor
         catch (Exception e) when (e is FormatException or ArgumentException or InvalidOperationException) { }
         throw new InvalidCursorException();
     }
+
+    /// <summary>Position in a rank-ordered list (rank descending, id ascending), for search.</summary>
+    public readonly record struct RankedPosition(int Rank, Guid Id);
+
+    public const int MaxRank = 3;
+
+    public static string EncodeRanked(int rank, Guid id) =>
+        Base64Url.EncodeToString(Encoding.UTF8.GetBytes(string.Create(CultureInfo.InvariantCulture, $"r|{rank}|{id:N}")));
+
+    public static RankedPosition DecodeRanked(string cursor)
+    {
+        try
+        {
+            var parts = Encoding.UTF8.GetString(Base64Url.DecodeFromChars(cursor)).Split('|');
+            if (parts.Length == 3 && parts[0] == "r"
+                && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var rank) && rank <= MaxRank
+                && Guid.TryParseExact(parts[2], "N", out var id))
+                return new RankedPosition(rank, id);
+        }
+        catch (Exception e) when (e is FormatException or ArgumentException or InvalidOperationException) { }
+        throw new InvalidCursorException();
+    }
 }
