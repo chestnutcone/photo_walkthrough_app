@@ -12,8 +12,6 @@ public static class ContractStubs
         ("POST", "/v1/auth/sso", "ssoSignIn"),
         ("POST", "/v1/auth/email/request", "emailRequest"),
         ("POST", "/v1/auth/email/verify", "emailVerify"),
-        ("POST", "/v1/auth/refresh", "refresh"),
-        ("POST", "/v1/auth/logout", "logout"),
         ("GET", "/v1/me", "getMe"),
         ("POST", "/v1/me/onboarding", "completeOnboarding"),
         ("PATCH", "/v1/me/profile", "updateProfile"),
