@@ -21,7 +21,7 @@ Read this first after any interruption. Update it after every task, then commit.
 
 ## Milestones (commit and push when reached)
 - [x] M0 docs committed and pushed (spec, plan, progress) — commit 310df02
-- [ ] M1 Foundation done (T1, T2)
+- [x] M1 Foundation done (T1, T2)
 - [ ] M2 API core done (A1-A6)
 - [ ] M3 API features done (A7-A13)
 - [ ] M4 Admin and safety done (A14-A16)
@@ -31,7 +31,7 @@ Read this first after any interruption. Update it after every task, then commit.
 
 ## Task checklist (mark `[x]` when merged and tests pass; `[~]` when in progress)
 - [x] T1 Repo scaffold (a8dca9b)
-- [ ] T2 OpenAPI contract and generated client
+- [x] T2 OpenAPI contract and generated client (503a45a)
 - [ ] A1 Schema and migrations
 - [ ] A2 Access and refresh tokens
 - [ ] A3 SSO sign-in
@@ -66,4 +66,5 @@ Read this first after any interruption. Update it after every task, then commit.
 - [ ] S1 Security review gate
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-22 M1 reached: T1 (a8dca9b), T2 (503a45a). Pushed branch build/mvp.
 - 2026-10-22 Design approved, plan written, progress file created. No code yet.
