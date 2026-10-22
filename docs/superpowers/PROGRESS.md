@@ -43,7 +43,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A9 Follows, feed, replies (811af34)
 - [x] A10 Notifications and inquiries (686f382)
 - [x] A11 Search (ff35eb9)
-- [ ] A12 Share pages, well-known, legal
+- [x] A12 Share pages, well-known, legal (1c5df5e)
 - [ ] A13 Account deletion and export
 - [ ] A14 Admin moderation, ban/restore, evidence hold, DMCA
 - [ ] A15 Abuse and bot protection
