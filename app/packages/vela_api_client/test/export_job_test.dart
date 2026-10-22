@@ -12,11 +12,13 @@ void main() {
       // TODO
     });
 
+    // expired = past its 7-day life; request a new export
     // String status
     test('to test the property `status`', () async {
       // TODO
     });
 
+    // Read-only signed URL for the zip, valid for at most 15 minutes; present only while status is ready (fetch the export again for a fresh one)
     // String downloadUrl
     test('to test the property `downloadUrl`', () async {
       // TODO

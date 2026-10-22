@@ -41,6 +41,7 @@ class ExportJob {
 
 
 
+      /// expired = past its 7-day life; request a new export
   @JsonKey(
     
     name: r'status',
@@ -53,6 +54,7 @@ class ExportJob {
 
 
 
+      /// Read-only signed URL for the zip, valid for at most 15 minutes; present only while status is ready (fetch the export again for a fresh one)
   @JsonKey(
     
     name: r'downloadUrl',
@@ -118,14 +120,20 @@ class ExportJob {
 
 }
 
-
+/// expired = past its 7-day life; request a new export
 enum ExportJobStatusEnum {
+    /// expired = past its 7-day life; request a new export
 @JsonValue(r'pending')
 pending(r'pending'),
+    /// expired = past its 7-day life; request a new export
 @JsonValue(r'ready')
 ready(r'ready'),
+    /// expired = past its 7-day life; request a new export
 @JsonValue(r'failed')
-failed(r'failed');
+failed(r'failed'),
+    /// expired = past its 7-day life; request a new export
+@JsonValue(r'expired')
+expired(r'expired');
 
 const ExportJobStatusEnum(this.value);
 

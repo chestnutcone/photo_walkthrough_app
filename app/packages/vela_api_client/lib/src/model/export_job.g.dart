@@ -40,4 +40,5 @@ const _$ExportJobStatusEnumEnumMap = {
   ExportJobStatusEnum.pending: 'pending',
   ExportJobStatusEnum.ready: 'ready',
   ExportJobStatusEnum.failed: 'failed',
+  ExportJobStatusEnum.expired: 'expired',
 };
