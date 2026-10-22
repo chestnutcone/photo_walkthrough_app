@@ -9,8 +9,6 @@ public static class ContractStubs
 {
     private static readonly (string Method, string Route, string OperationId)[] Operations =
     [
-        ("POST", "/v1/auth/email/request", "emailRequest"),
-        ("POST", "/v1/auth/email/verify", "emailVerify"),
         ("GET", "/v1/me", "getMe"),
         ("POST", "/v1/me/onboarding", "completeOnboarding"),
         ("PATCH", "/v1/me/profile", "updateProfile"),

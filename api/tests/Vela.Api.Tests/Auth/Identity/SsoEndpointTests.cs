@@ -27,6 +27,9 @@ public class SsoEndpointTests(PostgresFixture pg) : IDisposable
             b.UseEnvironment(env);
             b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");
+            b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");
+            b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");
+            b.UseSetting("Email:SenderAddress", "noreply@example.test");
             if (configureAudiences)
             {
                 b.UseSetting("Auth:Apple:ClientId", "app.vela.test");

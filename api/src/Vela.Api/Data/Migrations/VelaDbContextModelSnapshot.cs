@@ -134,11 +134,19 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<string>("RequestIp")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("request_ip");
+
                     b.HasKey("Id")
                         .HasName("pk_email_codes");
 
                     b.HasIndex("Email", "CreatedAt")
                         .HasDatabaseName("ix_email_codes_email_created_at");
+
+                    b.HasIndex("RequestIp", "CreatedAt")
+                        .HasDatabaseName("ix_email_codes_request_ip_created_at");
 
                     b.ToTable("email_codes", (string)null);
                 });

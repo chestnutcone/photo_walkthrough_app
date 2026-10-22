@@ -53,7 +53,11 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
             e.HasIndex(x => x.FamilyId);
             e.HasIndex(x => x.UserId);
         });
-        b.Entity<EmailCode>(e => e.HasIndex(x => new { x.Email, x.CreatedAt }));
+        b.Entity<EmailCode>(e =>
+        {
+            e.HasIndex(x => new { x.Email, x.CreatedAt });
+            e.HasIndex(x => new { x.RequestIp, x.CreatedAt });
+        });
     }
 
     private static void ConfigureProfiles(ModelBuilder b) =>

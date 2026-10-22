@@ -8,6 +8,7 @@ public class EmailCode
     public string CodeHash { get; init; } = "";
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset ExpiresAt { get; init; }
+    public string RequestIp { get; init; } = "";
     public int Attempts { get; set; }
     public DateTimeOffset? ConsumedAt { get; set; }
 }

@@ -102,7 +102,7 @@ public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
 
-        var response = await client.PostAsync("/v1/auth/email/request", new StringContent("{}"));
+        var response = await client.GetAsync("/v1/me");
 
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
