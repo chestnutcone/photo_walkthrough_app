@@ -315,12 +315,36 @@ public class WorkTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
-    public async Task Deleting_a_missing_work_is_idempotent_for_the_caller()
+    public async Task Deleting_your_own_work_twice_is_404_the_second_time()
     {
         var u = await Artist();
         var id = await ReadyDraft(_host, u);
 
         Assert.Equal(HttpStatusCode.OK, (await u.Delete($"/v1/works/{id}")).Status);
-        Assert.Equal(HttpStatusCode.OK, (await u.Delete($"/v1/works/{id}")).Status);
+        Assert.Equal("work_not_found", (await u.Delete($"/v1/works/{id}")).ErrorCode);
+    }
+
+    [Fact]
+    public async Task Nonexistent_and_foreign_work_ids_give_identical_responses()
+    {
+        var owner = await Artist();
+        var other = await Artist();
+        var foreign = await ReadyDraft(_host, owner);
+        var missing = Guid.NewGuid();
+
+        async Task<string> Shape(Task<Vela.Api.Tests.Profiles.Reply> r) { var x = await r; return $"{(int)x.Status}|{x.Body.GetProperty("error")}"; }
+        foreach (var call in new Func<Guid, Task<Vela.Api.Tests.Profiles.Reply>>[]
+        {
+            id => other.Put($"/v1/works/{id}", Update()),
+            id => other.Post($"/v1/works/{id}/publish", new { }),
+            id => other.Delete($"/v1/works/{id}"),
+            id => other.Get($"/v1/works/{id}"),
+        })
+        {
+            var a = await Shape(call(foreign));
+            var b = await Shape(call(missing));
+            Assert.Equal(b, a);
+            Assert.StartsWith("404|", a);
+        }
     }
 }

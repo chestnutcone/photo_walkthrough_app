@@ -64,7 +64,6 @@ public sealed class WorkService(VelaDbContext db, WorkReader reader, IBlobStore 
     public async Task DeleteAsync(Guid userId, Guid workId)
     {
         var owner = await db.Works.AsNoTracking().Where(w => w.Id == workId).Select(w => (Guid?)w.ArtistId).FirstOrDefaultAsync();
-        if (owner is null) return;
         if (owner != userId) throw WorkException.NotFound();
         // Blobs first: a failure leaves the row, so a retry cleans up instead of orphaning files.
         await blobs.DeletePrefixAsync(BlobNames.WorkVariantsPrefix(workId));
