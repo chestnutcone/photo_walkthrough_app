@@ -1,0 +1,68 @@
+@page "/admin/users/{id:guid}"
+@model UserModel
+@{
+    ViewData["Title"] = "User";
+    var u = Model.Detail.User;
+}
+<p><a href="/admin/users">Back to search</a></p>
+<h1>@(u.Handle is { } h ? "@" + h : "Account")</h1>
+@if (Model.Flash is { } flash)
+{
+    <p class="@(flash.Error ? "flash err" : "flash")">@flash.Text</p>
+}
+<dl class="facts">
+    <dt>User id</dt><dd>@u.UserId</dd>
+    <dt>Display name</dt><dd>@(u.DisplayName ?? "none")</dd>
+    <dt>State</dt>
+    <dd>
+        @if (u.IsDeleted) { <span class="tag">deleted</span> }
+        @if (u.IsSuspended) { <span class="tag pending">banned</span> }
+        @if (u.IsAdmin) { <span class="tag">admin</span> }
+        @if (!u.IsDeleted && !u.IsSuspended && !u.IsAdmin) { <span class="tag actioned">active</span> }
+    </dd>
+    <dt>Banned sign-in identities</dt><dd>@Model.Detail.BannedIdentityCount</dd>
+    <dt>Reports about their content</dt><dd>@Model.Detail.ReportsAbout</dd>
+    <dt>Removals</dt><dd>@Model.Detail.Removals</dd>
+</dl>
+
+<h2>Actions</h2>
+@if (u.IsAdmin)
+{
+    <p class="muted">Admin accounts cannot be banned.</p>
+}
+else if (!u.IsDeleted && !u.IsSuspended)
+{
+    <form method="post" asp-page-handler="Ban" asp-route-id="@u.UserId" class="stack">
+        <fieldset>
+            <legend>Ban account</legend>
+            <p class="muted">Suspends the account, signs it out everywhere and blocks the same sign-in identities from signing up again.</p>
+            <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to ban">
+            <button type="submit" class="danger">Ban account</button>
+        </fieldset>
+    </form>
+}
+@if (u.IsSuspended || Model.Detail.BannedIdentityCount > 0)
+{
+    <form method="post" asp-page-handler="Reinstate" asp-route-id="@u.UserId" class="stack">
+        <fieldset>
+            <legend>Reinstate</legend>
+            <p class="muted">Lifts the suspension and removes the identity bans.</p>
+            <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to reinstate">
+            <button type="submit">Reinstate</button>
+        </fieldset>
+    </form>
+}
+
+@if (Model.Detail.RecentActions.Count > 0)
+{
+    <h2>Recent actions on this account</h2>
+    <table>
+        <thead><tr><th>When</th><th>Action</th><th>Reason</th></tr></thead>
+        <tbody>
+        @foreach (var a in Model.Detail.RecentActions)
+        {
+            <tr><td>@AdminFormat.When(a.At)</td><td>@a.Action</td><td>@a.Reason</td></tr>
+        }
+        </tbody>
+    </table>
+}

@@ -1,0 +1,41 @@
+@page "/admin/users"
+@model UsersModel
+@{
+    ViewData["Title"] = "Users";
+}
+<h1>Users</h1>
+<form method="get" action="/admin/users" class="filters">
+    <label>Handle, display name or user id
+        <input type="search" name="q" value="@Model.Query" maxlength="100" autofocus>
+    </label>
+    <button type="submit">Search</button>
+</form>
+@if (Model.Query.Length > 0 && Model.Items.Count == 0)
+{
+    <p class="muted">No matching accounts.</p>
+}
+@if (Model.Items.Count > 0)
+{
+    <table>
+        <thead><tr><th>Handle</th><th>Name</th><th>State</th><th>Joined</th></tr></thead>
+        <tbody>
+        @foreach (var u in Model.Items)
+        {
+            <tr>
+                <td><a href="/admin/users/@u.UserId">@(u.Handle is { } h ? "@" + h : u.UserId.ToString())</a></td>
+                <td>@u.DisplayName</td>
+                <td>
+                    @if (u.IsAdmin) { <span class="tag">admin</span> }
+                    @if (u.IsSuspended) { <span class="tag pending">banned</span> }
+                    @if (u.IsDeleted) { <span class="tag">deleted</span> }
+                </td>
+                <td>@AdminFormat.When(u.CreatedAt)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    @if (Model.NextCursor is { } next)
+    {
+        <p><a asp-page="/Users" asp-route-q="@Model.Query" asp-route-cursor="@next">More</a></p>
+    }
+}

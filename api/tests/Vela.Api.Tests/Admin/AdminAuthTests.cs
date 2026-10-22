@@ -208,7 +208,7 @@ public class AdminAuthTests(PostgresFixture pg) : IAsyncLifetime
 
         var b = await _site.AdminBrowser();
         Assert.True(await b.IsSignedIn());
-        var cookie = b.Client.DefaultRequestHeaders; // the jar holds vela_admin; forward it by hand to the API too
+        // The jar holds vela_admin; forward it to the API by hand too.
         var jar = (await b.Client.SendAsync(new HttpRequestMessage(HttpMethod.Get, "/admin"))).RequestMessage!.Headers;
         var raw = jar.TryGetValues("Cookie", out var v) ? string.Join("; ", v) : "";
         Assert.Contains("vela_admin=", raw);
@@ -216,7 +216,6 @@ public class AdminAuthTests(PostgresFixture pg) : IAsyncLifetime
         var req = new HttpRequestMessage(HttpMethod.Get, "/v1/me");
         req.Headers.Add("Cookie", raw);
         Assert.Equal(HttpStatusCode.Unauthorized, (await api.SendAsync(req)).StatusCode);
-        Assert.NotNull(cookie);
     }
 
     [Fact]
@@ -225,7 +224,7 @@ public class AdminAuthTests(PostgresFixture pg) : IAsyncLifetime
         var sources = _site.Host.Services.GetServices<EndpointDataSource>().SelectMany(s => s.Endpoints).OfType<RouteEndpoint>()
             .Select(e => (Path: (e.RoutePattern.RawText ?? "").TrimStart('/').ToLowerInvariant(), E: e))
             .Where(x => x.Path == "admin" || x.Path.StartsWith("admin/")).ToList();
-        Assert.True(sources.Count >= 3, $"expected the admin pages to be mapped, found {sources.Count}");
+        Assert.True(sources.Count >= 7, $"expected the admin pages to be mapped, found {sources.Count}");
         foreach (var (path, e) in sources)
         {
             var policies = e.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(a => a.Policy).ToList();
@@ -237,7 +236,8 @@ public class AdminAuthTests(PostgresFixture pg) : IAsyncLifetime
             Assert.True(policies.Contains(AdminAuth.Policy), $"/{path} is missing the {AdminAuth.Policy} policy");
             Assert.Empty(e.Metadata.GetOrderedMetadata<IAllowAnonymous>());
         }
-        Assert.Contains(sources, x => x.Path == "admin/login");
+        foreach (var expected in new[] { "admin", "admin/login", "admin/logout", "admin/audit", "admin/users", "admin/users/{id:guid}", "admin/reports/{id:guid}" })
+            Assert.Contains(sources, x => x.Path == expected);
     }
 
     [Fact]

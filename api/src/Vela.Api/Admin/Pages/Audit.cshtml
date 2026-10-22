@@ -1,0 +1,32 @@
+@page "/admin/audit"
+@model AuditModel
+@{
+    ViewData["Title"] = "Audit log";
+}
+<h1>Audit log</h1>
+@if (Model.Items.Count == 0)
+{
+    <p class="muted">No admin actions yet.</p>
+}
+else
+{
+    <table>
+        <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Target</th><th>Reason</th></tr></thead>
+        <tbody>
+        @foreach (var a in Model.Items)
+        {
+            <tr>
+                <td>@AdminFormat.When(a.At)</td>
+                <td>@a.AdminId</td>
+                <td>@a.Action</td>
+                <td>@a.TargetType @a.TargetId</td>
+                <td>@a.Reason</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    @if (Model.NextCursor is { } next)
+    {
+        <p><a asp-page="/Audit" asp-route-cursor="@next">Older actions</a></p>
+    }
+}

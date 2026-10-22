@@ -25,7 +25,7 @@ public static class ModerationKit
     }
 
     public static Task RunPipeline(this AdminSite s) =>
-        s.Host.Services.GetRequiredService<PublishPipeline>().RunOnceAsync(ProfileTestHost.Now + TimeSpan.FromSeconds(10), CancellationToken.None);
+        s.Host.Services.GetRequiredService<PublishPipeline>().RunOnceAsync(s.Host.Clock.GetUtcNow() + TimeSpan.FromSeconds(10), CancellationToken.None);
 
     /// <summary>A story that has been requested for publishing and swept by the pipeline (published, or blocked when the title says so).</summary>
     public static async Task<(TestUser Owner, Guid Work)> Story(this AdminSite s, string title = "Quiet harbour", TestUser? owner = null)

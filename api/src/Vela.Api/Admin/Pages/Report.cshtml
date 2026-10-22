@@ -1,0 +1,120 @@
+@page "/admin/reports/{id:guid}"
+@model ReportModel
+@{
+    ViewData["Title"] = "Report";
+    var d = Model.Detail;
+}
+<p><a href="/admin">Back to the queue</a></p>
+<h1>Report: @d.Item.TargetType</h1>
+@if (Model.Flash is { } flash)
+{
+    <p class="@(flash.Error ? "flash err" : "flash")">@flash.Text</p>
+}
+<dl class="facts">
+    <dt>Status</dt><dd><span class="tag @d.Item.Status">@d.Item.Status</span></dd>
+    <dt>Reason</dt><dd>@AdminFormat.Reason(d.Item.Reason)</dd>
+    <dt>Source</dt><dd>@d.Item.Source</dd>
+    <dt>Filed</dt><dd>@AdminFormat.When(d.Item.CreatedAt) (@AdminFormat.Age(d.Item.CreatedAt, Model.Now) ago)</dd>
+    <dt>Reporter</dt><dd>@(d.ReporterHandle is { } rh ? "@" + rh : "none (automatic or deleted)")</dd>
+    <dt>Reporter note</dt><dd>@(string.IsNullOrEmpty(d.Note) ? "none" : d.Note)</dd>
+    <dt>Owner</dt>
+    <dd>
+        @if (d.OwnerId is { } ownerId)
+        {
+            <a href="/admin/users/@ownerId">@(d.OwnerHandle is { } oh ? "@" + oh : ownerId.ToString())</a>
+            @if (d.OwnerIsAdmin) { <span class="tag">admin</span> }
+            @if (d.OwnerSuspended) { <span class="tag pending">banned</span> }
+        }
+        else { <span>unknown</span> }
+    </dd>
+    <dt>Owner history</dt><dd>@d.OwnerReportCount reports about their content (including this one), @d.OwnerRemovals removals</dd>
+</dl>
+
+@if (d.Item.TargetType == "work")
+{
+    <h2>Story</h2>
+    @if (d.WorkTitle is null)
+    {
+        <p class="muted">The story no longer exists.</p>
+    }
+    else
+    {
+        <dl class="facts">
+            <dt>Status</dt><dd>@d.WorkStatus@(d.WorkReportHidden ? " (hidden pending review)" : "")</dd>
+        </dl>
+        @if (Model.ImageUrl is { } image)
+        {
+            <img class="detail-img" src="@image" alt="Submitted image (private original)">
+        }
+        <h2>@d.WorkTitle</h2>
+        <div class="text">@d.WorkIntro</div>
+        @foreach (var c in d.Chapters)
+        {
+            <h2>Chapter @(c.Index + 1): @c.Title</h2>
+            <div class="text">@c.Body</div>
+        }
+    }
+}
+else if (d.Item.TargetType == "reply")
+{
+    <h2>Reply</h2>
+    @if (d.ReplyText is null)
+    {
+        <p class="muted">The reply no longer exists.</p>
+    }
+    else
+    {
+        <p class="muted">by @(d.ReplyAuthorHandle is { } ah ? "@" + ah : "unknown") - @(d.ReplyHidden ? "hidden (" + d.ReplyHiddenBy + ")" : "visible")</p>
+        <div class="text">@d.ReplyText</div>
+    }
+}
+
+<h2>Actions</h2>
+<form method="post" asp-page-handler="Restore" asp-route-id="@d.Item.Id" class="stack">
+    <fieldset>
+        <legend>Restore</legend>
+        <p class="muted">Makes the content visible again (a blocked or removed story is republished and is never auto-blocked again).</p>
+        <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to restore">
+        <button type="submit">Restore</button>
+    </fieldset>
+</form>
+<form method="post" asp-page-handler="Dismiss" asp-route-id="@d.Item.Id" class="stack">
+    <fieldset>
+        <legend>Dismiss</legend>
+        <p class="muted">Closes the report and lifts any report-based hide. Not allowed while the content is still auto-blocked.</p>
+        <input type="text" name="reason" maxlength="500" placeholder="Reason (optional)" aria-label="Reason to dismiss">
+        <button type="submit">Dismiss</button>
+    </fieldset>
+</form>
+@if (d.Item.TargetType == "reply")
+{
+    <form method="post" asp-page-handler="HideReply" asp-route-id="@d.Item.Id" class="stack">
+        <fieldset>
+            <legend>Hide reply</legend>
+            <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to hide the reply">
+            <button type="submit" class="danger">Hide reply</button>
+        </fieldset>
+    </form>
+}
+@if (d.Item.TargetType == "work")
+{
+    <form method="post" asp-page-handler="RemoveWork" asp-route-id="@d.Item.Id" class="stack">
+        <fieldset>
+            <legend>Remove work</legend>
+            <p class="muted">Takes the story offline and deletes its public images. Confirms an automatic block.</p>
+            <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to remove the work">
+            <button type="submit" class="danger">Remove work</button>
+        </fieldset>
+    </form>
+}
+@if (d.OwnerId is not null && !d.OwnerIsAdmin && !d.OwnerSuspended)
+{
+    <form method="post" asp-page-handler="BanOwner" asp-route-id="@d.Item.Id" class="stack">
+        <fieldset>
+            <legend>Ban owner</legend>
+            <p class="muted">Suspends the account, signs it out everywhere and blocks the same sign-in identities from signing up again.</p>
+            <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to ban the owner">
+            <button type="submit" class="danger">Ban account</button>
+        </fieldset>
+    </form>
+}

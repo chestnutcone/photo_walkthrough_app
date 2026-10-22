@@ -3,4 +3,103 @@
 @{
     ViewData["Title"] = "Review queue";
 }
+@section Head {
+    <meta http-equiv="refresh" content="60">
+}
 <h1>Review queue</h1>
+@if (Model.Flash is { } flash)
+{
+    <p class="@(flash.Error ? "flash err" : "flash")">@flash.Text</p>
+}
+<ul class="counts">
+    <li class="@(Model.Counts.Pending > 0 ? "hot" : "")"><b>@Model.Counts.Pending</b><span>Pending</span></li>
+    <li><b>@Model.Counts.Reviewed</b><span>Reviewed</span></li>
+    <li><b>@Model.Counts.Actioned</b><span>Actioned</span></li>
+    <li><b>@Model.Counts.Dismissed</b><span>Dismissed</span></li>
+    <li><b>@(Model.Counts.OldestPendingAt is { } oldest ? AdminFormat.Age(oldest, Model.Now) : "none")</b><span>Oldest pending</span></li>
+</ul>
+
+<form method="get" action="/admin" class="filters">
+    <label>Status
+        <select name="status">
+            @foreach (var s in IndexModel.Statuses)
+            {
+                <option value="@s" selected="@(s == Model.StatusFilter)">@s</option>
+            }
+        </select>
+    </label>
+    <label>Reason
+        <select name="reason">
+            <option value="">any</option>
+            @foreach (var r in IndexModel.Reasons)
+            {
+                <option value="@r" selected="@(r == Model.ReasonFilter)">@r</option>
+            }
+        </select>
+    </label>
+    <label>Source
+        <select name="source">
+            <option value="">any</option>
+            @foreach (var s in IndexModel.Sources)
+            {
+                <option value="@s" selected="@(s == Model.SourceFilter)">@s</option>
+            }
+        </select>
+    </label>
+    <button type="submit">Filter</button>
+</form>
+
+@if (Model.Items.Count == 0)
+{
+    <p class="muted">Nothing here.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr><th>Item</th><th>Target</th><th>Reason</th><th>Source</th><th>Age</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <td>
+                    @if (Model.ThumbnailUrl(item) is { } thumb)
+                    {
+                        <img class="thumb" src="@thumb" alt="Submitted image" loading="lazy" width="72">
+                    }
+                </td>
+                <td>@item.TargetType <span class="tag @item.Status">@item.Status</span></td>
+                <td>@AdminFormat.Reason(item.Reason)</td>
+                <td>@item.Source</td>
+                <td>@AdminFormat.Age(item.CreatedAt, Model.Now)</td>
+                <td>
+                    <a href="/admin/reports/@item.Id">Review</a>
+                    @if (item.Status == "pending")
+                    {
+                        <form method="post" asp-page-handler="Restore" class="inline">
+                            <input type="hidden" name="reportId" value="@item.Id">
+                            <input type="hidden" name="status" value="@Model.StatusFilter">
+                            <input type="hidden" name="reason" value="@Model.ReasonFilter">
+                            <input type="hidden" name="source" value="@Model.SourceFilter">
+                            <input type="text" name="actionReason" maxlength="500" required placeholder="Reason to restore" aria-label="Reason to restore">
+                            <button type="submit">Restore</button>
+                        </form>
+                        <form method="post" asp-page-handler="Dismiss" class="inline">
+                            <input type="hidden" name="reportId" value="@item.Id">
+                            <input type="hidden" name="status" value="@Model.StatusFilter">
+                            <input type="hidden" name="reason" value="@Model.ReasonFilter">
+                            <input type="hidden" name="source" value="@Model.SourceFilter">
+                            <button type="submit">Dismiss</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    @if (Model.NextCursor is { } next)
+    {
+        <p><a asp-page="/Index" asp-route-status="@Model.StatusFilter" asp-route-reason="@Model.ReasonFilter" asp-route-source="@Model.SourceFilter" asp-route-cursor="@next">Older items</a></p>
+    }
+}
