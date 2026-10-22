@@ -4,6 +4,7 @@ using Vela.Api.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Vela.Api.Auth;
+using Vela.Api.Auth.Identity;
 using Vela.Api.Stubs;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,6 +37,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddIdentityVerification(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 app.UseAuthentication();
@@ -43,6 +45,7 @@ app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
+app.MapSsoEndpoint();
 app.MapContractStubs();
 
 app.Run();
