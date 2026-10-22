@@ -36,7 +36,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A2 Access and refresh tokens (d28b26e)
 - [x] A3 SSO sign-in (a2277e1)
 - [x] A4 Email one-time code (1fdcd5c)
-- [ ] A5 Profiles, onboarding, handles
+- [x] A5 Profiles, onboarding, handles (1d81d0f)
 - [ ] A6 Blocks, reports, visibility (report limit, auto-flag)
 - [ ] A7 Quota, drafts, uploads, image variants
 - [ ] A8 Works, chapters, publish, moderation (auto-block)
