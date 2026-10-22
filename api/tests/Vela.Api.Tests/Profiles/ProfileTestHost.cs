@@ -48,16 +48,16 @@ public sealed class ProfileTestHost : IDisposable
 {
     public static readonly DateTimeOffset Now = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
     private readonly WebApplicationFactory<Program> _factory;
-    private readonly PostgresFixture _pg;
+    private readonly string _cs;
     public MutableTimeProvider Clock { get; } = new(Now);
 
-    public ProfileTestHost(PostgresFixture pg, IReadOnlyDictionary<string, string>? settings = null)
+    public ProfileTestHost(PostgresFixture pg, IReadOnlyDictionary<string, string>? settings = null, string? connectionString = null)
     {
-        _pg = pg;
+        _cs = connectionString ?? pg.ConnectionString;
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Test");
-            b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
+            b.UseSetting("ConnectionStrings:Default", _cs);
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");
             b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");
             b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");
@@ -69,7 +69,12 @@ public sealed class ProfileTestHost : IDisposable
 
     public HttpClient Anonymous() => _factory.CreateClient();
 
-    public VelaDbContext Db() => _pg.NewContext();
+    public VelaDbContext Db()
+    {
+        var o = new DbContextOptionsBuilder<VelaDbContext>();
+        o.ConfigureVela(_cs);
+        return new VelaDbContext(o.Options);
+    }
 
     public async Task<TestUser> SignIn(string? email = null)
     {

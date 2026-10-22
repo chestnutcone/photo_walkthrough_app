@@ -151,6 +151,9 @@ public class SafetyTests(PostgresFixture pg) : IDisposable
         var h = Host();
         var ha = ProfileTestHost.UniqueHandle(); var hb = ProfileTestHost.UniqueHandle(); var hc = ProfileTestHost.UniqueHandle();
         var a = await h.SignInOnboarded(ha); var b = await h.SignInOnboarded(hb); var c = await h.SignInOnboarded(hc);
+        // Positive control: visible before the block.
+        Assert.Equal(HttpStatusCode.OK, (await a.Get($"/v1/artists/{hb}")).Status);
+        Assert.Equal(HttpStatusCode.OK, (await b.Get($"/v1/artists/{ha}")).Status);
         await a.Put($"/v1/blocks/{b.Id}");
 
         Assert.Equal("artist_not_found", (await a.Get($"/v1/artists/{hb}")).ErrorCode);
@@ -162,17 +165,148 @@ public class SafetyTests(PostgresFixture pg) : IDisposable
     [Fact]
     public async Task Suggested_excludes_blocked_and_blockers()
     {
-        var h = Host();
-        var a = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
-        var b = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
-        var c = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
+        // Isolated database: only these four users exist, so the 12-row cap cannot hide anyone.
+        var h = new ProfileTestHost(pg, null, await pg.CreateIsolatedDatabaseAsync());
+        _hosts.Add(h);
+        var a = await User(h); var b = await User(h); var c = await User(h); var control = await User(h);
+        Guid[] Ids(Vela.Api.Tests.Profiles.Reply r) => r.Data.EnumerateArray().Select(x => x.GetProperty("id").GetGuid()).ToArray();
+
+        var before = Ids(await a.Get("/v1/artists/suggested"));
+        Assert.Contains(b.Id, before);
+        Assert.Contains(c.Id, before);
+        Assert.Contains(control.Id, before);
+
         await a.Put($"/v1/blocks/{b.Id}");
         await c.Put($"/v1/blocks/{a.Id}");
 
-        var ids = (await a.Get("/v1/artists/suggested")).Data.EnumerateArray().Select(x => x.GetProperty("id").GetGuid()).ToList();
+        var after = Ids(await a.Get("/v1/artists/suggested"));
+        Assert.DoesNotContain(b.Id, after);
+        Assert.DoesNotContain(c.Id, after);
+        Assert.Contains(control.Id, after);
+    }
 
-        Assert.DoesNotContain(b.Id, ids);
-        Assert.DoesNotContain(c.Id, ids);
+    // --- Report targets must be visible to the reporter ---------------------------------
+
+    private async Task<Guid> SeedWorkWith(ProfileTestHost h, Guid artist, WorkStatus status)
+    {
+        await using var db = h.Db();
+        var w = new Work { Id = Guid.NewGuid(), ArtistId = artist, Title = "t", Status = status, ImageBlob = "b", Width = 3, Height = 4, CreatedAt = ProfileTestHost.Now };
+        db.Works.Add(w);
+        await db.SaveChangesAsync();
+        return w.Id;
+    }
+
+    private async Task AssertInvisibleThenQuotaIntact(Func<ProfileTestHost, TestUser, Task<(string Type, Guid Id)>> arrange, Func<ProfileTestHost, Guid, Task>? assertUntouched = null)
+    {
+        var h = Host(); var rep = await User(h);
+        var (type, id) = await arrange(h, rep);
+
+        var r = await rep.Post("/v1/reports", Rep(type, id));
+
+        Assert.Equal(HttpStatusCode.NotFound, r.Status);
+        Assert.Equal("target_not_found", r.ErrorCode);
+        await using (var db = h.Db()) Assert.False(await db.Reports.AnyAsync(x => x.TargetId == id));
+        if (assertUntouched is not null) await assertUntouched(h, id);
+        // 9 more invisible reports plus one valid report: the quota (10) was never consumed.
+        for (var i = 0; i < 9; i++) Assert.Equal(HttpStatusCode.NotFound, (await rep.Post("/v1/reports", Rep(type, id))).Status);
+        var other = await User(h);
+        Assert.Equal(HttpStatusCode.OK, (await rep.Post("/v1/reports", Rep("user", other.Id))).Status);
+    }
+
+    private static async Task AssertWorkNotHidden(ProfileTestHost h, Guid id)
+    {
+        await using var db = h.Db();
+        Assert.False((await db.Works.SingleAsync(w => w.Id == id)).ReportHidden);
+    }
+
+    [Theory]
+    [InlineData(WorkStatus.Draft)]
+    [InlineData(WorkStatus.Pending)]
+    [InlineData(WorkStatus.Blocked)]
+    [InlineData(WorkStatus.Removed)]
+    public async Task Work_not_published_is_404_target_not_found(WorkStatus status) =>
+        await AssertInvisibleThenQuotaIntact(async (h, _) => ("work", await SeedWorkWith(h, (await User(h)).Id, status)), AssertWorkNotHidden);
+
+    [Fact]
+    public async Task Work_of_user_who_blocked_reporter_is_404() =>
+        await AssertInvisibleThenQuotaIntact(async (h, rep) =>
+        {
+            var artist = await User(h);
+            await artist.Put($"/v1/blocks/{rep.Id}");
+            return ("work", await SeedWork(h, artist.Id));
+        }, AssertWorkNotHidden);
+
+    [Fact]
+    public async Task Work_of_user_reporter_blocked_is_404() =>
+        await AssertInvisibleThenQuotaIntact(async (h, rep) =>
+        {
+            var artist = await User(h);
+            await rep.Put($"/v1/blocks/{artist.Id}");
+            return ("work", await SeedWork(h, artist.Id));
+        }, AssertWorkNotHidden);
+
+    private static async Task AssertReplyNotHidden(ProfileTestHost h, Guid id, bool expectedHidden = false)
+    {
+        await using var db = h.Db();
+        Assert.Equal(expectedHidden, (await db.Replies.SingleAsync(r => r.Id == id)).Hidden);
+    }
+
+    [Fact]
+    public async Task Reply_on_draft_work_is_404() =>
+        await AssertInvisibleThenQuotaIntact(async (h, _) =>
+        {
+            var w = await SeedWorkWith(h, (await User(h)).Id, WorkStatus.Draft);
+            return ("reply", await SeedReply(h, w, (await User(h)).Id));
+        }, (h, id) => AssertReplyNotHidden(h, id));
+
+    [Fact]
+    public async Task Auto_hidden_reply_is_404() =>
+        await AssertInvisibleThenQuotaIntact(async (h, _) =>
+        {
+            var w = await SeedWork(h, (await User(h)).Id);
+            return ("reply", await SeedReply(h, w, (await User(h)).Id, true, HiddenBy.Auto));
+        }, async (h, id) =>
+        {
+            await using var db = h.Db();
+            Assert.Equal(HiddenBy.Auto, (await db.Replies.SingleAsync(r => r.Id == id)).HiddenBy);
+        });
+
+    [Fact]
+    public async Task Reply_by_blocked_user_is_404() =>
+        await AssertInvisibleThenQuotaIntact(async (h, rep) =>
+        {
+            var w = await SeedWork(h, (await User(h)).Id);
+            var author = await User(h);
+            await rep.Put($"/v1/blocks/{author.Id}");
+            return ("reply", await SeedReply(h, w, author.Id));
+        }, (h, id) => AssertReplyNotHidden(h, id));
+
+    [Fact]
+    public async Task Blocked_user_as_target_is_404() =>
+        await AssertInvisibleThenQuotaIntact(async (h, rep) =>
+        {
+            var u = await User(h);
+            await u.Put($"/v1/blocks/{rep.Id}");
+            return ("user", u.Id);
+        });
+
+    [Fact]
+    public async Task Already_report_hidden_published_work_can_still_be_reported_by_a_second_user()
+    {
+        var h = Host(); var artist = await User(h); var r1 = await User(h); var r2 = await User(h);
+        var wid = await SeedWork(h, artist.Id);
+        Assert.Equal(HttpStatusCode.OK, (await r1.Post("/v1/reports", Rep("work", wid))).Status);
+        Assert.Equal(HttpStatusCode.OK, (await r2.Post("/v1/reports", Rep("work", wid))).Status);
+        await using var db = h.Db();
+        Assert.Equal(2, await db.Reports.CountAsync(x => x.TargetId == wid));
+    }
+
+    [Fact]
+    public async Task Suspended_user_remains_reportable()
+    {
+        var h = Host(); var rep = await User(h); var u = await User(h);
+        await using (var db = h.Db()) await db.Users.Where(x => x.Id == u.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.SuspendedAt, ProfileTestHost.Now));
+        Assert.Equal(HttpStatusCode.OK, (await rep.Post("/v1/reports", Rep("user", u.Id))).Status);
     }
 
     [Fact]
@@ -260,7 +394,7 @@ public class SafetyTests(PostgresFixture pg) : IDisposable
         var h = Host();
         var target = Guid.NewGuid();
         await using var db = h.Db();
-        var svc = new ReportService(db, TimeProvider.System, Microsoft.Extensions.Options.Options.Create(new ReportOptions()));
+        var svc = new ReportService(db, TimeProvider.System, Microsoft.Extensions.Options.Options.Create(new ReportOptions()), new Visibility(db));
 
         await svc.CreateAutoFlagAsync("reply", target, "hate", 6);
         await svc.CreateAutoFlagAsync("reply", target, "hate", 6);

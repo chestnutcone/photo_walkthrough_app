@@ -17,7 +17,7 @@ public interface IReportService
     Task CreateAsync(Guid reporterId, string targetType, Guid targetId, string reason, string? note);
 }
 
-public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions<ReportOptions> options) : IReportService
+public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions<ReportOptions> options, IVisibility visibility) : IReportService
 {
     public const string SourceUser = "user_report";
     public const string SourceAutoFlag = "auto_flag";
@@ -25,7 +25,7 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
 
     public async Task CreateAsync(Guid reporterId, string targetType, Guid targetId, string reason, string? note)
     {
-        var ownerId = await FindOwnerAsync(targetType, targetId)
+        var ownerId = await FindVisibleOwnerAsync(reporterId, targetType, targetId)
             ?? throw new SafetyException(StatusCodes.Status404NotFound, "target_not_found", "The reported item no longer exists.");
         if (ownerId == reporterId)
             throw new SafetyException(StatusCodes.Status400BadRequest, "cannot_report_own", "You cannot report your own content.");
@@ -73,13 +73,25 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
         }
     }
 
-    private async Task<Guid?> FindOwnerAsync(string targetType, Guid id) => targetType switch
+    /// <summary>
+    /// Owner of the target if the reporter could see it; null (reported as target_not_found) otherwise.
+    /// Works must be published, replies not hidden on a published work, and neither may belong to a blocked relation.
+    /// </summary>
+    private async Task<Guid?> FindVisibleOwnerAsync(Guid reporterId, string targetType, Guid id)
     {
-        "work" => await db.Works.Where(w => w.Id == id).Select(w => (Guid?)w.ArtistId).FirstOrDefaultAsync(),
-        "reply" => await db.Replies.Where(r => r.Id == id).Select(r => (Guid?)r.AuthorId).FirstOrDefaultAsync(),
-        "user" => await db.Users.Where(u => u.Id == id && u.DeletedAt == null).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(),
-        _ => null,
-    };
+        var hidden = (await visibility.HiddenUserIdsAsync(reporterId)).ToArray();
+        return targetType switch
+        {
+            "work" => await db.Works.Where(w => w.Id == id && w.Status == WorkStatus.Published && !hidden.Contains(w.ArtistId))
+                .Select(w => (Guid?)w.ArtistId).FirstOrDefaultAsync(),
+            "reply" => await db.Replies.Where(r => r.Id == id && !r.Hidden && !hidden.Contains(r.AuthorId))
+                .Where(r => db.Works.Any(w => w.Id == r.WorkId && w.Status == WorkStatus.Published && !hidden.Contains(w.ArtistId)))
+                .Select(r => (Guid?)r.AuthorId).FirstOrDefaultAsync(),
+            "user" => await db.Users.Where(u => u.Id == id && u.DeletedAt == null && !hidden.Contains(u.Id))
+                .Select(u => (Guid?)u.Id).FirstOrDefaultAsync(),
+            _ => null,
+        };
+    }
 
     private async Task HideAsync(string targetType, Guid id)
     {
