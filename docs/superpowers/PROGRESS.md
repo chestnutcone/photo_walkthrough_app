@@ -34,7 +34,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] T2 OpenAPI contract and generated client (503a45a)
 - [x] A1 Schema and migrations (56fb231)
 - [x] A2 Access and refresh tokens (d28b26e)
-- [ ] A3 SSO sign-in
+- [x] A3 SSO sign-in (a2277e1)
 - [ ] A4 Email one-time code
 - [ ] A5 Profiles, onboarding, handles
 - [ ] A6 Blocks, reports, visibility (report limit, auto-flag)
