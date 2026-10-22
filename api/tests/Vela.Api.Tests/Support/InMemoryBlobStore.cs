@@ -34,8 +34,12 @@ public sealed class InMemoryBlobStore : IBlobStore
             ? Task.FromResult<Stream>(new MemoryStream(b, writable: false))
             : throw new FileNotFoundException("blob not found");
 
+    /// <summary>Lets a test make selected prefix deletions fail.</summary>
+    public Func<string, bool>? FailDeletes { get; set; }
+
     public Task DeletePrefixAsync(string prefix)
     {
+        if (FailDeletes?.Invoke(prefix) == true) throw new IOException("delete failed");
         foreach (var k in _blobs.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList()) _blobs.TryRemove(k, out _);
         return Task.CompletedTask;
     }

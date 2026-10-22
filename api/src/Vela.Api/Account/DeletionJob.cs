@@ -13,6 +13,9 @@ namespace Vela.Api.Account;
 public sealed class DeletionJob(
     VelaDbContext db, IBlobStore blobs, ICdnPurger cdn, IAppleTokenRevoker apple, IDeletionStepObserver observer, ILogger<DeletionJob> log)
 {
+    /// <summary>How many times new works may appear mid-deletion before the run gives up (and is retried after the back-off).</summary>
+    public const int MaxPasses = 5;
+
     public async Task RunAsync(Guid userId, CancellationToken ct)
     {
         var state = await db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => new { u.DeletedAt }).SingleOrDefaultAsync(ct);
@@ -23,20 +26,22 @@ public sealed class DeletionJob(
             return;
         }
 
-        var workIds = await db.Works.AsNoTracking().Where(w => w.ArtistId == userId).Select(w => w.Id).ToListAsync(ct);
-        var prefixes = await DeleteBlobsAsync(userId, workIds);
-        await PurgeCdnAsync(userId, workIds);
-        await RevokeAppleAsync(userId, ct);
-
-        var rows = await DeleteRowsAsync(userId, workIds, ct);
-        if (rows.LateWorkIds.Count > 0)
+        for (var pass = 1; pass <= MaxPasses; pass++)
         {
-            // Works created after step 1 started: their blobs go too, and so do their cached copies.
-            await DeleteBlobsAsync(userId, rows.LateWorkIds);
-            await PurgeCdnAsync(userId, rows.LateWorkIds);
+            // Phase A: no transaction, no lock. Every prefix stays discoverable from DB rows until its blobs are gone.
+            var workIds = await db.Works.AsNoTracking().Where(w => w.ArtistId == userId).Select(w => w.Id).ToListAsync(ct);
+            var prefixes = await DeleteBlobsAsync(userId, workIds);
+            await PurgeCdnAsync(userId, workIds);
+            if (pass == 1) await RevokeAppleAsync(userId, ct);
+
+            // Phase B deletes rows only when no work appeared meanwhile; otherwise it changes nothing and we go round again.
+            var rows = await DeleteRowsAsync(userId, workIds, ct);
+            if (!rows.Done) continue;
+            log.LogInformation("Account {UserId} hard-deleted: {Works} works, {BlobPrefixes} blob prefixes, {Rows} rows, {Passes} passes.",
+                userId, workIds.Count, prefixes, rows.Deleted, pass);
+            return;
         }
-        log.LogInformation("Account {UserId} hard-deleted: {Works} works, {BlobPrefixes} blob prefixes, {Rows} rows.",
-            userId, workIds.Count + rows.LateWorkIds.Count, prefixes, rows.Deleted);
+        throw new InvalidOperationException("late_works_persist");
     }
 
     private async Task<int> DeleteBlobsAsync(Guid userId, IReadOnlyList<Guid> workIds)
@@ -62,7 +67,8 @@ public sealed class DeletionJob(
         foreach (var identity in identities) await apple.RevokeAsync(identity);
     }
 
-    private sealed record RowResult(int Deleted, IReadOnlyList<Guid> LateWorkIds);
+    /// <summary>Done is false when works appeared after phase A listed them: nothing was deleted and the caller must clean up and retry.</summary>
+    private sealed record RowResult(int Deleted, bool Done);
 
     /// <summary>
     /// Phase B: one short transaction of its own (nothing is held while blobs, CDN and Apple are being handled in phase A).
@@ -79,13 +85,13 @@ public sealed class DeletionJob(
     private async Task<RowResult> DeleteRowsInTransactionAsync(Guid userId, IReadOnlyList<Guid> handledWorks, CancellationToken ct)
     {
         var locked = await db.Database.SqlQuery<Guid>($"SELECT id AS \"Value\" FROM users WHERE id = {userId} FOR UPDATE").ToListAsync(ct);
-        if (locked.Count == 0) return new RowResult(0, []);
+        if (locked.Count == 0) return new RowResult(0, true);
 
         var works = db.Works.Where(w => w.ArtistId == userId).Select(w => w.Id);
         var replies = db.Replies.Where(r => r.AuthorId == userId || works.Contains(r.WorkId)).Select(r => r.Id);
         var loginEmails = (await db.Identities.AsNoTracking().Where(i => i.UserId == userId && i.Email != null).Select(i => i.Email!).ToListAsync(ct))
             .Select(EmailCodeService.Normalize).OfType<string>().Distinct().ToList();
-        var lateWorks = (await works.ToListAsync(ct)).Except(handledWorks).ToList();
+        if ((await works.ToListAsync(ct)).Except(handledWorks).Any()) return new RowResult(0, false);
         var deleted = 0;
 
         // Not foreign keys: they point at the user's content (or the user) by id, so cascades never reach them.
@@ -129,6 +135,6 @@ public sealed class DeletionJob(
         await observer.AfterStepAsync();
         deleted += await db.Users.Where(u => u.Id == userId).ExecuteDeleteAsync(ct);
         await observer.AfterStepAsync();
-        return new RowResult(deleted, lateWorks);
+        return new RowResult(deleted, true);
     }
 }
