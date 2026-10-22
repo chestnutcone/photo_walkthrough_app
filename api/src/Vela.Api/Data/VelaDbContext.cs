@@ -22,6 +22,8 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<Block> Blocks => Set<Block>();
     public DbSet<ExportJob> ExportJobs => Set<ExportJob>();
+    public DbSet<AdminAction> AdminActions => Set<AdminAction>();
+    public DbSet<BannedIdentity> BannedIdentities => Set<BannedIdentity>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -30,6 +32,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         ConfigureProfiles(b);
         ConfigureWorks(b);
         ConfigureSocial(b);
+        ConfigureModeration(b);
     }
 
     private static void ConfigureAccounts(ModelBuilder b)
@@ -169,6 +172,20 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.UserId, x.RequestedAt });
             e.HasIndex(x => new { x.Status, x.RequestedAt });
+        });
+    }
+
+    private static void ConfigureModeration(ModelBuilder b)
+    {
+        b.Entity<AdminAction>(e =>
+        {
+            e.Property(x => x.Reason).HasMaxLength(500);
+            e.HasIndex(x => new { x.At, x.Id });
+        });
+        b.Entity<BannedIdentity>(e =>
+        {
+            e.HasKey(x => new { x.Provider, x.SubjectHash });
+            e.HasIndex(x => x.UserRef);
         });
     }
 

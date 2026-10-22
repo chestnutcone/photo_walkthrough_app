@@ -6,11 +6,13 @@ using Vela.Api.Data.Entities;
 namespace Vela.Api.Auth.Identity;
 
 /// <summary>Maps (provider, subject) to a user. Never matches or links by email.</summary>
-public sealed class AccountResolver(VelaDbContext db, TimeProvider clock) : IAccountResolver
+public sealed class AccountResolver(VelaDbContext db, TimeProvider clock, Admin.IBanList? bans = null) : IAccountResolver
 {
     public async Task<(Guid UserId, bool IsNew)> SignInAsync(VerifiedIdentity identity)
     {
         if (await FindAsync(identity) is { } existing) return (existing, false);
+        // A banned identity cannot start over, whether the person deleted the account or never had one here.
+        if (bans is not null && await bans.IsBannedAsync(identity.Provider, identity.Subject)) throw new AccountSuspendedException();
 
         var user = new User { Id = Guid.NewGuid(), TierId = Tier.FreemiumId, CreatedAt = clock.GetUtcNow() };
         db.Users.Add(user);

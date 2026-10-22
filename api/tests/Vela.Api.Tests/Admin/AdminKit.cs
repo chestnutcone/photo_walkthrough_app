@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Http;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Vela.Api.Account;
 using Vela.Api.Admin;
+using Vela.Api.Tests.Account;
 using Vela.Api.Common;
 using Vela.Api.Tests.Profiles;
 using Vela.Api.Tests.Share;
@@ -32,6 +34,7 @@ public sealed class AdminSite : IDisposable
     public string AdminEmail { get; } = $"boss-{Guid.NewGuid():N}@vela-admin.test";
     public MutableAllowList Allow { get; }
     public ProfileTestHost Host { get; }
+    public RecordingCdnPurger Cdn { get; } = new();
     public string? ConnectionString { get; }
 
     private AdminSite(PostgresFixture pg, string? cs, Action<IServiceCollection>? extra, bool noAdmins)
@@ -43,6 +46,7 @@ public sealed class AdminSite : IDisposable
         {
             s.AddSingleton<IAdminAllowList>(Allow);
             s.AddSingleton<IClientIpResolver>(new FixedIp(ip));
+            s.AddSingleton<ICdnPurger>(Cdn);
             extra?.Invoke(s);
         });
     }

@@ -70,6 +70,7 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
         var blobs = sp.GetRequiredService<IBlobStore>();
         var bus = sp.GetRequiredService<IDomainEventBus>();
         var reports = sp.GetRequiredService<ReportService>();
+        var lifecycle = sp.GetRequiredService<Admin.IWorkVariantLifecycle>();
 
         Verdict? verdict = null;
         var failed = false;
@@ -99,6 +100,8 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
             work.Status = WorkStatus.Blocked;
             await db.SaveChangesAsync(ct);
             await reports.CreateAutoFlagAsync("work", work.Id, v.Category, v.Severity);
+            // Blocked content must not stay reachable at its public image URLs. A failure rolls the whole claim back and is retried.
+            await lifecycle.TakeDownAsync(work.Id);
         }
         else await PublishAsync(db, bus, work, now, ct);
 

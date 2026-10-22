@@ -9,6 +9,8 @@ public static class AdminEndpoints
     {
         services.AddSingleton(AdminSettings.Load(config, env));
         services.AddSingleton<IAdminAllowList>(new ConfigAdminAllowList(config));
+        services.AddScoped<IModerationService, ModerationService>().AddScoped<IWorkVariantLifecycle, WorkVariantLifecycle>()
+            .AddScoped<IBanList, BanList>();
         services.AddScoped<AdminSessionValidator>().AddScoped<AdminLoginService>().AddTransient<AdminCookieEvents>();
 
         services.AddAuthentication().AddCookie(AdminAuth.Scheme, o => AdminAuth.ConfigureCookie(o, env));

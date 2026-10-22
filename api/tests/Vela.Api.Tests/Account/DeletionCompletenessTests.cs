@@ -1,3 +1,4 @@
+using Vela.Api.Tests.Profiles;
 using Vela.Api.Tests.Support;
 using static Vela.Api.Tests.Account.AccountKit;
 
@@ -12,6 +13,16 @@ public class DeletionCompletenessTests(PostgresFixture pg)
 {
     /// <summary>Tables that hold no user data at all.</summary>
     private static readonly HashSet<string> NonUserTables = ["__EFMigrationsHistory", "tiers"];
+
+    /// <summary>
+    /// Tables deletion must NOT clear, with the reason. They hold no foreign key to users, so a deleted account leaves them
+    /// untouched: bans must survive deletion (else deleting an account would lift a ban) and the audit trail must stay complete.
+    /// </summary>
+    private static readonly Dictionary<string, string> RetainedTables = new()
+    {
+        ["banned_identities"] = "retained for safety: HMAC hashes only, so a banned person cannot evade the ban by deleting the account",
+        ["admin_actions"] = "retained for legal accountability: the moderation audit trail must outlive admin and target accounts",
+    };
 
     /// <summary>
     /// uuid "_id" columns that cannot hold a user id, with the reason. Everything else ending in "_id" is treated as a
@@ -37,7 +48,7 @@ public class DeletionCompletenessTests(PostgresFixture pg)
         var w = await Seed(h);
         var userId = w.U.Id;
         var tables = (await Query(cs, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"))
-            .Select(r => r[0]).Where(t => !NonUserTables.Contains(t)).OrderBy(t => t).ToList();
+            .Select(r => r[0]).Where(t => !NonUserTables.Contains(t) && !RetainedTables.ContainsKey(t)).OrderBy(t => t).ToList();
         var fkColumns = (await Query(cs,
             "SELECT cl.relname, a.attname FROM pg_constraint c JOIN pg_class cl ON cl.oid = c.conrelid " +
             "JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey) " +
@@ -45,7 +56,7 @@ public class DeletionCompletenessTests(PostgresFixture pg)
         var idColumns = (await Query(cs,
             "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND data_type = 'uuid' " +
             "AND (column_name LIKE '%\\_id' ESCAPE '\\')")).Select(r => (Table: r[0], Column: r[1]))
-            .Where(c => !NonUserTables.Contains(c.Table) && !NotUserReferences.ContainsKey($"{c.Table}.{c.Column}")).ToList();
+            .Where(c => !NonUserTables.Contains(c.Table) && !RetainedTables.ContainsKey(c.Table) && !NotUserReferences.ContainsKey($"{c.Table}.{c.Column}")).ToList();
         var checkedColumns = fkColumns.Concat(idColumns).Distinct().OrderBy(c => c.Table).ThenBy(c => c.Column).ToList();
 
         // Not vacuous: every user table has rows, and every checked column holds the user's id before the job.
@@ -74,6 +85,29 @@ public class DeletionCompletenessTests(PostgresFixture pg)
         // The two other users are intact.
         Assert.Equal(1, await Count(cs, "users", "id", w.O.Id));
         Assert.Equal(1, await Count(cs, "users", "id", w.T.Id));
+    }
+
+    [Fact]
+    public async Task Retained_tables_exist_and_keep_their_rows_when_the_account_is_deleted()
+    {
+        var cs = await pg.CreateIsolatedDatabaseAsync();
+        using var h = NewHost(pg, cs);
+        var w = await Seed(h);
+        await using (var db = h.Db())
+        {
+            db.BannedIdentities.Add(new Vela.Api.Data.Entities.BannedIdentity { Provider = "fake", SubjectHash = new string('a', 64), UserRef = w.U.Id, CreatedAt = ProfileTestHost.Now });
+            db.AdminActions.Add(new Vela.Api.Data.Entities.AdminAction { Id = Guid.NewGuid(), AdminId = w.O.Id, Action = "ban_user", TargetType = "user", TargetId = w.U.Id, Reason = "x", At = ProfileTestHost.Now });
+            db.AdminActions.Add(new Vela.Api.Data.Entities.AdminAction { Id = Guid.NewGuid(), AdminId = w.U.Id, Action = "remove_work", TargetType = "work", TargetId = w.UWork, Reason = "x", At = ProfileTestHost.Now });
+            await db.SaveChangesAsync();
+        }
+        var tables = (await Query(cs, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")).Select(r => r[0]).ToHashSet();
+        foreach (var t in RetainedTables.Keys) Assert.Contains(t, tables);
+
+        await DeleteAndRun(h, w.U);
+
+        Assert.Equal(1, await Count(cs, "banned_identities", "user_ref", w.U.Id));
+        Assert.Equal(1, await Count(cs, "admin_actions", "target_id", w.U.Id));
+        Assert.Equal(1, await Count(cs, "admin_actions", "admin_id", w.U.Id));
     }
 
     [Fact]

@@ -69,7 +69,8 @@ public sealed class WorkReader(VelaDbContext db, IVisibility visibility, IBlobSt
 
     private WorkDto ToDto(Work w, Profile p, List<ChapterDto> chapters, bool isOwner, bool showStatus, bool? isFollowing)
     {
-        var hasImage = w.Width > 0 && w.Height > 0;
+        // Blocked and removed works have their public variants taken down, so no image links are given out for them.
+        var hasImage = w.Width > 0 && w.Height > 0 && w.Status is not (WorkStatus.Blocked or WorkStatus.Removed);
         string? Variant(string name) => hasImage ? blobs.PublicUrl($"{BlobNames.WorkVariantsPrefix(w.Id)}{name}.webp").ToString() : null;
         var avatar = p.AvatarBlob is { Length: > 0 } a ? blobs.PublicUrl(a).ToString() : null;
         return new WorkDto(

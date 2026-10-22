@@ -24,6 +24,77 @@ namespace Vela.Api.Data.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Vela.Api.Data.Entities.AdminAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("AdminId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admin_id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("target_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admin_actions");
+
+                    b.HasIndex("At", "Id")
+                        .HasDatabaseName("ix_admin_actions_at_id");
+
+                    b.ToTable("admin_actions", (string)null);
+                });
+
+            modelBuilder.Entity("Vela.Api.Data.Entities.BannedIdentity", b =>
+                {
+                    b.Property<string>("Provider")
+                        .HasColumnType("text")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("SubjectHash")
+                        .HasColumnType("text")
+                        .HasColumnName("subject_hash");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("UserRef")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_ref");
+
+                    b.HasKey("Provider", "SubjectHash")
+                        .HasName("pk_banned_identities");
+
+                    b.HasIndex("UserRef")
+                        .HasDatabaseName("ix_banned_identities_user_ref");
+
+                    b.ToTable("banned_identities", (string)null);
+                });
+
             modelBuilder.Entity("Vela.Api.Data.Entities.Block", b =>
                 {
                     b.Property<Guid>("BlockerId")
