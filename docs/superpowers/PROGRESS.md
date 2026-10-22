@@ -32,7 +32,7 @@ Read this first after any interruption. Update it after every task, then commit.
 ## Task checklist (mark `[x]` when merged and tests pass; `[~]` when in progress)
 - [x] T1 Repo scaffold (a8dca9b)
 - [x] T2 OpenAPI contract and generated client (503a45a)
-- [ ] A1 Schema and migrations
+- [x] A1 Schema and migrations (56fb231)
 - [ ] A2 Access and refresh tokens
 - [ ] A3 SSO sign-in
 - [ ] A4 Email one-time code
