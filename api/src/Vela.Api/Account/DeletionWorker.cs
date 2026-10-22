@@ -4,14 +4,16 @@ using Vela.Api.Data;
 namespace Vela.Api.Account;
 
 /// <summary>
-/// Every minute: finds accounts marked deleted that still exist and runs <see cref="DeletionJob"/> for a few of them.
-/// A row lock (<c>FOR UPDATE SKIP LOCKED</c>) held for the duration makes parallel instances safe. A failure is counted and the
-/// account is skipped for <see cref="Backoff"/>, so one poison account cannot starve the others.
+/// Every minute: claims accounts marked deleted and runs <see cref="DeletionJob"/> for each. Claiming is a short transaction
+/// (<c>FOR UPDATE SKIP LOCKED</c>) that sets a lease and commits, so parallel instances never take the same account and no row
+/// lock or transaction is held while blobs, CDN and Apple are handled. A failure is counted and the account is skipped for
+/// <see cref="Backoff"/>, so one poison account cannot starve the others. A crashed run is retried when its lease expires.
 /// </summary>
 public sealed class DeletionWorker(IServiceScopeFactory scopes, TimeProvider clock, ILogger<DeletionWorker> log) : BackgroundService
 {
     public const int BatchSize = 5;
     public static readonly TimeSpan Backoff = TimeSpan.FromMinutes(5);
+    public static readonly TimeSpan Lease = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -28,23 +30,18 @@ public sealed class DeletionWorker(IServiceScopeFactory scopes, TimeProvider clo
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    /// <summary>Returns how many accounts were hard-deleted in this sweep.</summary>
+    /// <summary>Returns how many accounts were hard-deleted by this sweep.</summary>
     public async Task<int> RunOnceAsync(DateTimeOffset now, CancellationToken ct)
     {
-        var retryBefore = now - Backoff;
-        List<Guid> candidates;
-        await using (var scope = scopes.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<VelaDbContext>();
-            candidates = await db.Users.AsNoTracking()
-                .Where(u => u.DeletedAt != null && (u.DeletionFailedAt == null || u.DeletionFailedAt <= retryBefore))
-                .OrderBy(u => u.DeletedAt).ThenBy(u => u.Id).Take(BatchSize).Select(u => u.Id).ToListAsync(ct);
-        }
-
         var done = 0;
-        foreach (var id in candidates)
+        foreach (var id in await ClaimAsync(now, ct))
         {
-            try { if (await ProcessAsync(id, now, retryBefore, ct)) done++; }
+            try
+            {
+                await using var scope = scopes.CreateAsyncScope();
+                await scope.ServiceProvider.GetRequiredService<DeletionJob>().RunAsync(id, ct);
+                done++;
+            }
             catch (Exception e) when (e is not OperationCanceledException)
             {
                 log.LogWarning("Account {UserId} hard delete failed ({Reason}); retrying later.", id, e.GetType().Name);
@@ -54,19 +51,20 @@ public sealed class DeletionWorker(IServiceScopeFactory scopes, TimeProvider clo
         return done;
     }
 
-    private async Task<bool> ProcessAsync(Guid id, DateTimeOffset now, DateTimeOffset retryBefore, CancellationToken ct)
+    private async Task<List<Guid>> ClaimAsync(DateTimeOffset now, CancellationToken ct)
     {
+        var retryBefore = now - Backoff;
+        var leaseUntil = now + Lease;
         await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<VelaDbContext>();
         await using var tx = await db.Database.BeginTransactionAsync(ct);
-        var claimed = await db.Database.SqlQuery<Guid>(
-            $"SELECT id AS \"Value\" FROM users WHERE id = {id} AND deleted_at IS NOT NULL AND (deletion_failed_at IS NULL OR deletion_failed_at <= {retryBefore}) FOR UPDATE SKIP LOCKED")
+        var ids = await db.Database.SqlQuery<Guid>(
+            $"SELECT id AS \"Value\" FROM users WHERE deleted_at IS NOT NULL AND (deletion_lease_until IS NULL OR deletion_lease_until <= {now}) AND (deletion_failed_at IS NULL OR deletion_failed_at <= {retryBefore}) ORDER BY deleted_at, id LIMIT {BatchSize} FOR UPDATE SKIP LOCKED")
             .ToListAsync(ct);
-        if (claimed.Count == 0) return false; // another instance has it, or it is already gone
-
-        await scope.ServiceProvider.GetRequiredService<DeletionJob>().RunAsync(id, ct);
+        if (ids.Count > 0)
+            await db.Users.Where(u => ids.Contains(u.Id)).ExecuteUpdateAsync(s => s.SetProperty(u => u.DeletionLeaseUntil, leaseUntil), ct);
         await tx.CommitAsync(ct);
-        return true;
+        return ids;
     }
 
     private async Task RecordFailureAsync(Guid id, DateTimeOffset now)
@@ -76,7 +74,8 @@ public sealed class DeletionWorker(IServiceScopeFactory scopes, TimeProvider clo
             await using var scope = scopes.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<VelaDbContext>();
             await db.Users.Where(u => u.Id == id).ExecuteUpdateAsync(s => s
-                .SetProperty(u => u.DeletionFailures, u => u.DeletionFailures + 1).SetProperty(u => u.DeletionFailedAt, now));
+                .SetProperty(u => u.DeletionFailures, u => u.DeletionFailures + 1).SetProperty(u => u.DeletionFailedAt, now)
+                .SetProperty(u => u.DeletionLeaseUntil, (DateTimeOffset?)null));
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {

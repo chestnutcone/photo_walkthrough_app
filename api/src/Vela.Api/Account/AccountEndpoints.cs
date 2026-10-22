@@ -11,7 +11,7 @@ public static class AccountEndpoints
         services.AddScoped<IAccountDeletionService, AccountDeletionService>().AddScoped<DeletionJob>()
             .AddScoped<IExportService, ExportService>().AddScoped<ExportData>().AddScoped<ExportArchiveBuilder>()
             .AddSingleton<ICdnPurger, NoOpCdnPurger>().AddSingleton<IAppleTokenRevoker, LoggingAppleTokenRevoker>()
-            .AddSingleton<DeletionWorker>().AddSingleton<ExportWorker>();
+            .AddSingleton<IDeletionStepObserver, NoOpDeletionStepObserver>().AddSingleton<DeletionWorker>().AddSingleton<ExportWorker>();
         // Tests drive the sweeps by hand with a controllable clock; a real timer would race them.
         if (!env.IsEnvironment("Test"))
             services.AddHostedService(sp => sp.GetRequiredService<DeletionWorker>()).AddHostedService(sp => sp.GetRequiredService<ExportWorker>());

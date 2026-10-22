@@ -11,10 +11,8 @@ namespace Vela.Api.Account;
 /// The completeness test scans the live schema, so a new user-referencing table or column fails there until it is handled here.
 /// </summary>
 public sealed class DeletionJob(
-    VelaDbContext db, IBlobStore blobs, ICdnPurger cdn, IAppleTokenRevoker apple, ILogger<DeletionJob> log)
+    VelaDbContext db, IBlobStore blobs, ICdnPurger cdn, IAppleTokenRevoker apple, IDeletionStepObserver observer, ILogger<DeletionJob> log)
 {
-    private const string Savepoint = "account_deletion_rows";
-
     public async Task RunAsync(Guid userId, CancellationToken ct)
     {
         var state = await db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => new { u.DeletedAt }).SingleOrDefaultAsync(ct);
@@ -66,24 +64,16 @@ public sealed class DeletionJob(
 
     private sealed record RowResult(int Deleted, IReadOnlyList<Guid> LateWorkIds);
 
-    /// <summary>Joins the caller's transaction (the sweep holds the claim lock in one) through a savepoint, else opens its own.</summary>
+    /// <summary>
+    /// Phase B: one short transaction of its own (nothing is held while blobs, CDN and Apple are being handled in phase A).
+    /// Any failure rolls every row deletion back, so an account is never left half deleted.
+    /// </summary>
     private async Task<RowResult> DeleteRowsAsync(Guid userId, IReadOnlyList<Guid> handledWorks, CancellationToken ct)
     {
-        var outer = db.Database.CurrentTransaction;
-        await using var own = outer is null ? await db.Database.BeginTransactionAsync(ct) : null;
-        var tx = outer ?? own!;
-        if (outer is not null) await tx.CreateSavepointAsync(Savepoint, ct);
-        try
-        {
-            var result = await DeleteRowsInTransactionAsync(userId, handledWorks, ct);
-            if (own is not null) await own.CommitAsync(ct);
-            return result;
-        }
-        catch
-        {
-            if (outer is not null) await outer.RollbackToSavepointAsync(Savepoint, CancellationToken.None);
-            throw;
-        }
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var result = await DeleteRowsInTransactionAsync(userId, handledWorks, ct);
+        await tx.CommitAsync(ct);
+        return result;
     }
 
     private async Task<RowResult> DeleteRowsInTransactionAsync(Guid userId, IReadOnlyList<Guid> handledWorks, CancellationToken ct)
@@ -101,28 +91,44 @@ public sealed class DeletionJob(
         // Not foreign keys: they point at the user's content (or the user) by id, so cascades never reach them.
         deleted += await db.Notifications.Where(n => n.UserId == userId || n.ActorId == userId
             || (n.WorkId != null && works.Contains(n.WorkId.Value)) || (n.ReplyId != null && replies.Contains(n.ReplyId.Value))).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await EvidenceHoldGuard.Deletable(db.Reports).Where(r =>
             (r.TargetType == "user" && r.TargetId == userId) || (r.TargetType == "work" && works.Contains(r.TargetId))
             || (r.TargetType == "reply" && replies.Contains(r.TargetId))).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         // Reports the user filed about others stay for moderation, anonymised.
         await db.Reports.Where(r => r.ReporterId == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(r => r.ReporterId, (Guid?)null).SetProperty(r => r.Note, (string?)null), ct);
+        await observer.AfterStepAsync();
         deleted += await db.Inquiries.Where(i => i.SenderId == userId || i.ArtistId == userId
             || (i.WorkId != null && works.Contains(i.WorkId.Value))).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.EmailCodes.Where(c => loginEmails.Contains(c.Email)).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.VerifyAttempts.Where(a => loginEmails.Contains(a.Email)).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
 
         // Foreign-keyed rows, deleted explicitly rather than trusting the cascade alone.
         deleted += await db.RefreshTokens.Where(t => t.UserId == userId).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.Identities.Where(i => i.UserId == userId).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.Follows.Where(f => f.FollowerId == userId || f.FolloweeId == userId).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.Blocks.Where(b => b.BlockerId == userId || b.BlockedId == userId).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.Replies.Where(r => r.AuthorId == userId || works.Contains(r.WorkId)).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.Chapters.Where(c => works.Contains(c.WorkId)).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.Works.Where(w => w.ArtistId == userId).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.ExportJobs.Where(j => j.UserId == userId).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.Profiles.Where(p => p.UserId == userId).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         deleted += await db.Users.Where(u => u.Id == userId).ExecuteDeleteAsync(ct);
+        await observer.AfterStepAsync();
         return new RowResult(deleted, lateWorks);
     }
 }

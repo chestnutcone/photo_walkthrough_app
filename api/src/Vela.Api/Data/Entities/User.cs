@@ -10,6 +10,8 @@ public class User
     /// <summary>Hard deletions that failed so far; the sweep skips the account for a while after each failure.</summary>
     public int DeletionFailures { get; set; }
     public DateTimeOffset? DeletionFailedAt { get; set; }
+    /// <summary>Set by the sweep that claimed this account for hard deletion; others skip it until it passes.</summary>
+    public DateTimeOffset? DeletionLeaseUntil { get; set; }
     public bool IsAdmin { get; set; }
     public DateTimeOffset? AgeConfirmedAt { get; set; }
     public DateTimeOffset? TermsAcceptedAt { get; set; }

@@ -731,6 +731,10 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("deletion_failures");
 
+                    b.Property<DateTimeOffset?>("DeletionLeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deletion_lease_until");
+
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean")
                         .HasColumnName("is_admin");
