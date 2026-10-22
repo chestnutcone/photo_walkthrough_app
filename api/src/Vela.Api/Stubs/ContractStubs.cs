@@ -9,15 +9,10 @@ public static class ContractStubs
 {
     private static readonly (string Method, string Route, string OperationId)[] Operations =
     [
-        ("GET", "/v1/me", "getMe"),
-        ("POST", "/v1/me/onboarding", "completeOnboarding"),
-        ("PATCH", "/v1/me/profile", "updateProfile"),
         ("POST", "/v1/me/avatar-upload", "avatarUpload"),
         ("DELETE", "/v1/me", "deleteAccount"),
         ("POST", "/v1/me/export", "requestExport"),
         ("GET", "/v1/me/export/{id}", "getExport"),
-        ("GET", "/v1/artists/suggested", "suggestedArtists"),
-        ("GET", "/v1/artists/{handle}", "getArtist"),
         ("GET", "/v1/artists/{handle}/works", "listArtistWorks"),
         ("PUT", "/v1/artists/{id}/follow", "follow"),
         ("DELETE", "/v1/artists/{id}/follow", "unfollow"),

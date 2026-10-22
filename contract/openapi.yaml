@@ -167,7 +167,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileEnvelope'
+                $ref: '#/components/schemas/MeEnvelope'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '501':
@@ -208,7 +208,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileEnvelope'
+                $ref: '#/components/schemas/MeEnvelope'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -236,7 +236,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileEnvelope'
+                $ref: '#/components/schemas/MeEnvelope'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1009,9 +1009,56 @@ components:
         avatarUrl: {type: string, nullable: true}
         followerCount: {type: integer}
         followingCount: {type: integer}
-        workCount: {type: integer}
+        workCount: {type: integer, description: Published stories}
+        chapterCount: {type: integer, description: Chapters of published stories}
         isFollowing: {type: boolean, nullable: true, description: Null when anonymous or viewing self}
         onboardingComplete: {type: boolean}
+        city: {type: string, maxLength: 80}
+        discipline: {type: string, maxLength: 60}
+        availability: {type: string, maxLength: 60}
+        website: {type: string, maxLength: 200}
+        social: {type: string, maxLength: 60}
+        studio: {type: string, maxLength: 120}
+        replyTime: {type: string, maxLength: 120}
+        publicEmail: {type: string, nullable: true, maxLength: 254, description: Optional public contact email; the only email ever exposed}
+        services:
+          type: array
+          maxItems: 10
+          items: {$ref: '#/components/schemas/ServiceItem'}
+        shows:
+          type: array
+          maxItems: 20
+          items: {$ref: '#/components/schemas/ShowItem'}
+    ServiceItem:
+      type: object
+      required: [title, description, price]
+      properties:
+        title: {type: string, maxLength: 80}
+        description: {type: string, maxLength: 300}
+        price: {type: string, maxLength: 40}
+    ShowItem:
+      type: object
+      required: [year, text]
+      properties:
+        year: {type: string, pattern: '^[0-9]{4}$'}
+        text: {type: string, maxLength: 200}
+    Me:
+      type: object
+      required: [id, profile, onboardingComplete, tier, usedWorks]
+      properties:
+        id: {type: string, format: uuid}
+        profile:
+          allOf:
+            - $ref: '#/components/schemas/Profile'
+          nullable: true
+        onboardingComplete: {type: boolean}
+        tier:
+          type: object
+          required: [name, maxWorks]
+          properties:
+            name: {type: string}
+            maxWorks: {type: integer}
+        usedWorks: {type: integer, description: 'Works in draft, pending or published'}
     Chapter:
       type: object
       required: [x, y, title, body]
@@ -1145,13 +1192,30 @@ components:
         termsAccepted: {type: boolean}
         followArtistIds:
           type: array
+          maxItems: 50
           items: {type: string, format: uuid}
     UpdateProfileRequest:
       type: object
       properties:
-        displayName: {type: string}
+        displayName: {type: string, minLength: 1, maxLength: 60}
         handle: {type: string, pattern: '^[a-z0-9_]{3,20}$'}
         bio: {type: string, maxLength: 280}
+        city: {type: string, maxLength: 80}
+        discipline: {type: string, maxLength: 60}
+        availability: {type: string, maxLength: 60}
+        website: {type: string, maxLength: 200}
+        social: {type: string, maxLength: 60}
+        studio: {type: string, maxLength: 120}
+        replyTime: {type: string, maxLength: 120}
+        publicEmail: {type: string, nullable: true, format: email, maxLength: 254}
+        services:
+          type: array
+          maxItems: 10
+          items: {$ref: '#/components/schemas/ServiceItem'}
+        shows:
+          type: array
+          maxItems: 20
+          items: {$ref: '#/components/schemas/ShowItem'}
         avatarUploaded: {type: boolean, description: Set true after uploading to the avatar upload URL}
     SendInquiryRequest:
       type: object
@@ -1272,6 +1336,23 @@ components:
         data:
           allOf:
             - $ref: '#/components/schemas/Profile'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    MeEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Me'
           nullable: true
         error:
           allOf:

@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Vela.Api.Auth;
 using Vela.Api.Auth.EmailCodes;
 using Vela.Api.Auth.Identity;
+using Vela.Api.Profiles;
 using Vela.Api.Stubs;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +28,15 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
     .Configure<TimeProvider>((o, clock) =>
     {
         o.MapInboundClaims = false;
+        // Unauthenticated calls to secured operations get the standard envelope, not an empty 401.
+        o.Events = new JwtBearerEvents
+        {
+            OnChallenge = ctx =>
+            {
+                ctx.HandleResponse();
+                return Results.Fail(StatusCodes.Status401Unauthorized, "unauthorized", "Sign in to continue.").ExecuteAsync(ctx.HttpContext);
+            },
+        };
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidIssuer = jwt.Issuer,
@@ -40,6 +50,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityVerification(builder.Configuration, builder.Environment);
 builder.Services.AddEmailCodes(builder.Configuration, builder.Environment);
+builder.Services.AddProfiles();
 
 var app = builder.Build();
 if (app.Services.GetRequiredService<EmailCodeSettings>().ReviewMode && !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Test"))
@@ -51,6 +62,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapSsoEndpoint();
 app.MapEmailCodeEndpoints();
+app.MapProfileEndpoints();
 app.MapContractStubs();
 
 app.Run();
