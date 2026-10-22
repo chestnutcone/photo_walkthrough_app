@@ -22,7 +22,7 @@ Read this first after any interruption. Update it after every task, then commit.
 ## Milestones (commit and push when reached)
 - [x] M0 docs committed and pushed (spec, plan, progress) — commit 310df02
 - [x] M1 Foundation done (T1, T2)
-- [ ] M2 API core done (A1-A6)
+- [x] M2 API core done (A1-A6)
 - [ ] M3 API features done (A7-A13)
 - [ ] M4 Admin and safety done (A14-A16)
 - [ ] M5 App core done (B1-B5)
@@ -37,7 +37,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A3 SSO sign-in (a2277e1)
 - [x] A4 Email one-time code (1fdcd5c)
 - [x] A5 Profiles, onboarding, handles (1d81d0f)
-- [ ] A6 Blocks, reports, visibility (report limit, auto-flag)
+- [x] A6 Blocks, reports, visibility (ccb8aef)
 - [ ] A7 Quota, drafts, uploads, image variants
 - [ ] A8 Works, chapters, publish, moderation (auto-block)
 - [ ] A9 Follows, feed, replies
@@ -66,5 +66,6 @@ Read this first after any interruption. Update it after every task, then commit.
 - [ ] S1 Security review gate
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-22 M2 reached: A1-A6 complete (56fb231, d28b26e, a2277e1, 1fdcd5c, 1d81d0f, ccb8aef). Pushed.
 - 2026-10-22 M1 reached: T1 (a8dca9b), T2 (503a45a). Pushed branch build/mvp.
 - 2026-10-22 Design approved, plan written, progress file created. No code yet.
