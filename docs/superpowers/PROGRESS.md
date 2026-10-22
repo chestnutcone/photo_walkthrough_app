@@ -39,7 +39,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A5 Profiles, onboarding, handles (1d81d0f)
 - [x] A6 Blocks, reports, visibility (ccb8aef)
 - [x] A7 Quota, drafts, uploads, image variants (e631618)
-- [ ] A8 Works, chapters, publish, moderation (auto-block)
+- [x] A8 Works, chapters, publish, moderation (1f75178)
 - [ ] A9 Follows, feed, replies
 - [ ] A10 Notifications and inquiries
 - [ ] A11 Search
