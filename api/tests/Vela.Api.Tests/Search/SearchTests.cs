@@ -151,6 +151,11 @@ public class SearchTests(PostgresFixture pg) : IDisposable
         var suspended = await Artist(h, ProfileTestHost.UniqueHandle("s"), "Suspended Sculptor");
         var deleted = await Artist(h, ProfileTestHost.UniqueHandle("s"), "Deleted Sculptor");
         var notOnboarded = await h.SignIn();
+        await using (var seed = h.Db())
+        {
+            seed.Profiles.Add(new Profile { UserId = notOnboarded.Id, Handle = ProfileTestHost.UniqueHandle("s"), DisplayName = "Unfinished Sculptor" });
+            await seed.SaveChangesAsync();
+        }
         var shown = await Story(h, a.Id, "Sculpt shown");
         foreach (var s in new[] { WorkStatus.Draft, WorkStatus.Pending, WorkStatus.Blocked, WorkStatus.Removed })
             await Story(h, a.Id, "Sculpt " + s, status: s);
@@ -176,7 +181,7 @@ public class SearchTests(PostgresFixture pg) : IDisposable
         var h = await IsolatedHost();
         var viewer = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
 
-        foreach (var url in new[] { "/v1/search?q=a", "/v1/search?q=%20a%20", "/v1/search?q=", "/v1/search" })
+        foreach (var url in new[] { "/v1/search?q=a", "/v1/search?q=%20a%20", "/v1/search?q=", "/v1/search", "/v1/search?q=%20%20%20", "/v1/search?q=%09%0A" })
         {
             var r = await viewer.Get(url);
             Assert.Equal(HttpStatusCode.BadRequest, r.Status);
@@ -187,6 +192,8 @@ public class SearchTests(PostgresFixture pg) : IDisposable
         Assert.Equal("validation_failed", tooLong.ErrorCode);
         Assert.Equal("validation_failed", (await viewer.Get("/v1/search?q=ab&type=bogus")).ErrorCode);
         Assert.Equal(HttpStatusCode.OK, (await viewer.Get("/v1/search?q=" + new string('a', 80))).Status);
+        Assert.Equal(HttpStatusCode.OK, (await viewer.Get("/v1/search?q=ab")).Status);
+        Assert.Equal(HttpStatusCode.OK, (await viewer.Get("/v1/search?q=%20ab%20&type=stories")).Status);
     }
 
     [Fact]
@@ -247,6 +254,59 @@ public class SearchTests(PostgresFixture pg) : IDisposable
         Assert.Equal(fullStories.Count, fullStories.Distinct().Count());
         Assert.Equal(HttpStatusCode.BadRequest, (await viewer.Get("/v1/search?q=paging&cursor=garbage")).Status);
         Assert.Equal("invalid_cursor", (await viewer.Get("/v1/search?q=paging&cursor=garbage")).ErrorCode);
+    }
+
+    [Fact]
+    public async Task Pagination_spans_every_rank_bucket_without_duplicates_or_gaps()
+    {
+        var h = await IsolatedHost();
+        var viewer = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
+        var owner = await Artist(h, "owner_x", "Plain Owner");
+        // Artists. Rank 3 is an exact handle match, which is unique by definition, so that bucket holds one row.
+        var a3 = new List<Guid> { (await Artist(h, "aurora", "Zed One")).Id };
+        var a2 = new List<Guid>();
+        a2.Add((await Artist(h, "aurora_one", "Pat Quill")).Id); a2.Add((await Artist(h, "aurora_two", "Sam Reed")).Id);
+        a2.Add((await Artist(h, "ap_three", "Aurora Smith")).Id); a2.Add((await Artist(h, "ap_four", "Aurora Jones")).Id);
+        var a1 = new List<Guid>();
+        a1.Add((await Artist(h, "as_one", "The Aurora Collective")).Id); a1.Add((await Artist(h, "as_two", "Studio Aurora")).Id);
+        a1.Add((await Artist(h, "as_three", "Lee Park", "Aurora CO")).Id); a1.Add((await Artist(h, "as_four", "Kim Vale", "", "aurora borealis photography")).Id);
+        var a0 = new List<Guid>();
+        for (var i = 0; i < 4; i++) a0.Add((await Artist(h, $"af_{i}", $"Auroro Vance {i}")).Id);
+
+        var s3 = new List<Guid>(); var s2 = new List<Guid>(); var s1 = new List<Guid>(); var s0 = new List<Guid>();
+        for (var i = 0; i < 4; i++) s3.Add(await Story(h, owner.Id, $"Aurora Rising {i}"));
+        for (var i = 0; i < 4; i++) s2.Add(await Story(h, owner.Id, $"The Tale of Aurora {i}"));
+        for (var i = 0; i < 3; i++) s1.Add(await Story(h, owner.Id, $"Quiet Sky {i}", "watching the aurora all night"));
+        for (var i = 0; i < 2; i++) s1.Add(await Story(h, owner.Id, $"Long Night {i}", "", ["Chasing the aurora"]));
+        for (var i = 0; i < 4; i++) s0.Add(await Story(h, owner.Id, $"Auroro Dreams {i}"));
+
+        static List<Guid> Expected(params List<Guid>[] buckets) =>
+            buckets.SelectMany(b => b.OrderBy(x => x.ToString(), StringComparer.Ordinal)).ToList();
+        var expectedArtists = Expected(a3, a2, a1, a0);
+        var expectedStories = Expected(s3, s2, s1, s0);
+
+        var fullArtists = await AllPages(viewer, "aurora", "artists", 50);
+        var fullStories = await AllPages(viewer, "aurora", "stories", 50);
+
+        Assert.Equal(expectedArtists, fullArtists);
+        Assert.Equal(expectedStories, fullStories);
+        Assert.Equal(a3[0], fullArtists[0]);
+        Assert.Equal(a2.ToHashSet(), fullArtists.Skip(1).Take(4).ToHashSet());
+        Assert.Equal(a1.ToHashSet(), fullArtists.Skip(5).Take(4).ToHashSet());
+        Assert.Equal(a0.ToHashSet(), fullArtists.Skip(9).ToHashSet());
+        Assert.Equal(s3.ToHashSet(), fullStories.Take(4).ToHashSet());
+        Assert.Equal(s2.ToHashSet(), fullStories.Skip(4).Take(4).ToHashSet());
+        Assert.Equal(s1.ToHashSet(), fullStories.Skip(8).Take(5).ToHashSet());
+        Assert.Equal(s0.ToHashSet(), fullStories.Skip(13).ToHashSet());
+        foreach (var limit in new[] { 1, 2, 3, 4, 5 })
+        {
+            var artists = await AllPages(viewer, "aurora", "artists", limit);
+            var stories = await AllPages(viewer, "aurora", "stories", limit);
+            Assert.Equal(expectedArtists, artists);
+            Assert.Equal(expectedStories, stories);
+            Assert.Equal(artists.Count, artists.Distinct().Count());
+            Assert.Equal(stories.Count, stories.Distinct().Count());
+        }
     }
 
     [Fact]
