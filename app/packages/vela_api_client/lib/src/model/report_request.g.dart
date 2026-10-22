@@ -18,7 +18,11 @@ ReportRequest _$ReportRequestFromJson(Map<String, dynamic> json) =>
           (v) => $enumDecode(_$ReportRequestTargetTypeEnumEnumMap, v),
         ),
         targetId: $checkedConvert('targetId', (v) => v as String),
-        reason: $checkedConvert('reason', (v) => v as String),
+        reason: $checkedConvert(
+          'reason',
+          (v) => $enumDecode(_$ReportRequestReasonEnumEnumMap, v),
+        ),
+        note: $checkedConvert('note', (v) => v as String?),
       );
       return val;
     });
@@ -27,10 +31,20 @@ Map<String, dynamic> _$ReportRequestToJson(ReportRequest instance) =>
     <String, dynamic>{
       'targetType': _$ReportRequestTargetTypeEnumEnumMap[instance.targetType]!,
       'targetId': instance.targetId,
-      'reason': instance.reason,
+      'reason': _$ReportRequestReasonEnumEnumMap[instance.reason]!,
+      'note': ?instance.note,
     };
 
 const _$ReportRequestTargetTypeEnumEnumMap = {
   ReportRequestTargetTypeEnum.work: 'work',
   ReportRequestTargetTypeEnum.reply: 'reply',
+  ReportRequestTargetTypeEnum.user: 'user',
+};
+
+const _$ReportRequestReasonEnumEnumMap = {
+  ReportRequestReasonEnum.illegalContent: 'illegal_content',
+  ReportRequestReasonEnum.copyright: 'copyright',
+  ReportRequestReasonEnum.harassment: 'harassment',
+  ReportRequestReasonEnum.spam: 'spam',
+  ReportRequestReasonEnum.other: 'other',
 };

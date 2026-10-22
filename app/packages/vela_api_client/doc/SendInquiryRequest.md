@@ -8,6 +8,8 @@ import 'package:vela_api_client/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**type** | **String** |  | 
+**email** | **String** | Sender's reply email | 
 **message** | **String** |  | 
 **workId** | **String** |  | [optional] 
 

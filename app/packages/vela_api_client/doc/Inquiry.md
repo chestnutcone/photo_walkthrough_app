@@ -8,6 +8,7 @@ import 'package:vela_api_client/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**type** | **String** |  | 
 **id** | **String** |  | 
 **artistId** | **String** |  | 
 **workId** | **String** |  | [optional] 

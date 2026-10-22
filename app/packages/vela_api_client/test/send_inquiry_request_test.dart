@@ -7,6 +7,17 @@ void main() {
   // TODO add properties to the entity
 
   group(SendInquiryRequest, () {
+    // String type
+    test('to test the property `type`', () async {
+      // TODO
+    });
+
+    // Sender's reply email
+    // String email
+    test('to test the property `email`', () async {
+      // TODO
+    });
+
     // String message
     test('to test the property `message`', () async {
       // TODO

@@ -1064,8 +1064,9 @@ components:
         read: {type: boolean}
     Inquiry:
       type: object
-      required: [id, artistId, message, createdAt]
+      required: [id, artistId, type, message, createdAt]
       properties:
+        type: {type: string, enum: [Commission, Buy a print, Licensing, Collaboration, Just saying hi]}
         id: {type: string, format: uuid}
         artistId: {type: string, format: uuid}
         workId: {type: string, format: uuid, nullable: true}
@@ -1154,9 +1155,11 @@ components:
         avatarUploaded: {type: boolean, description: Set true after uploading to the avatar upload URL}
     SendInquiryRequest:
       type: object
-      required: [message]
+      required: [type, email, message]
       properties:
-        message: {type: string}
+        type: {type: string, enum: [Commission, Buy a print, Licensing, Collaboration, Just saying hi]}
+        email: {type: string, format: email, description: Sender's reply email}
+        message: {type: string, minLength: 1}
         workId: {type: string, format: uuid, nullable: true}
     CreateDraftRequest:
       type: object
@@ -1190,9 +1193,10 @@ components:
       type: object
       required: [targetType, targetId, reason]
       properties:
-        targetType: {type: string, enum: [work, reply]}
+        targetType: {type: string, enum: [work, reply, user]}
         targetId: {type: string, format: uuid}
-        reason: {type: string}
+        reason: {type: string, enum: [illegal_content, copyright, harassment, spam, other]}
+        note: {type: string, maxLength: 500}
     Envelope:
       type: object
       required: [success, data, error, page]

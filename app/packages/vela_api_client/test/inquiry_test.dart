@@ -7,6 +7,11 @@ void main() {
   // TODO add properties to the entity
 
   group(Inquiry, () {
+    // String type
+    test('to test the property `type`', () async {
+      // TODO
+    });
+
     // String id
     test('to test the property `id`', () async {
       // TODO

@@ -18,6 +18,8 @@ class Inquiry {
   /// Returns a new [Inquiry] instance.
   Inquiry({
 
+    required  this.type,
+
     required  this.id,
 
     required  this.artistId,
@@ -28,6 +30,18 @@ class Inquiry {
 
     required  this.createdAt,
   });
+
+  @JsonKey(
+    
+    name: r'type',
+    required: true,
+    includeIfNull: false,
+  )
+
+
+  final InquiryTypeEnum type;
+
+
 
   @JsonKey(
     
@@ -93,6 +107,7 @@ class Inquiry {
 
     @override
     bool operator ==(Object other) => identical(this, other) || other is Inquiry &&
+      other.type == type &&
       other.id == id &&
       other.artistId == artistId &&
       other.workId == workId &&
@@ -101,6 +116,7 @@ class Inquiry {
 
     @override
     int get hashCode =>
+        type.hashCode +
         id.hashCode +
         artistId.hashCode +
         (workId == null ? 0 : workId.hashCode) +
@@ -117,4 +133,26 @@ class Inquiry {
   }
 
 }
+
+
+enum InquiryTypeEnum {
+@JsonValue(r'Commission')
+commission(r'Commission'),
+@JsonValue(r'Buy a print')
+buyAPrint(r'Buy a print'),
+@JsonValue(r'Licensing')
+licensing(r'Licensing'),
+@JsonValue(r'Collaboration')
+collaboration(r'Collaboration'),
+@JsonValue(r'Just saying hi')
+justSayingHi(r'Just saying hi');
+
+const InquiryTypeEnum(this.value);
+
+final String value;
+
+@override
+String toString() => value;
+}
+
 

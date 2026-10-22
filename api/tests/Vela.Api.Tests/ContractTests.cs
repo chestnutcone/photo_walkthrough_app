@@ -119,4 +119,42 @@ public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.All(names, n => Assert.True(doc.Components!.Schemas!.ContainsKey(n), n));
         Assert.True(doc.Components!.SecuritySchemes!.ContainsKey("bearerAuth"));
     }
+
+    private static string[] EnumValues(OpenApiDocument doc, string schema, string property) =>
+        doc.Components!.Schemas![schema].Properties![property].Enum!.Select(e => e!.GetValue<string>()).ToArray();
+
+    [Fact]
+    public async Task Inquiry_type_is_a_required_five_value_enum_on_request_and_response()
+    {
+        var (doc, _) = await LoadContract();
+        string[] expected = ["Commission", "Buy a print", "Licensing", "Collaboration", "Just saying hi"];
+
+        Assert.Equal(expected, EnumValues(doc, "SendInquiryRequest", "type"));
+        Assert.Equal(expected, EnumValues(doc, "Inquiry", "type"));
+        Assert.Contains("type", doc.Components!.Schemas!["SendInquiryRequest"].Required!);
+        Assert.Contains("type", doc.Components!.Schemas!["Inquiry"].Required!);
+    }
+
+    [Fact]
+    public async Task Inquiry_request_requires_sender_email_and_non_empty_message()
+    {
+        var (doc, _) = await LoadContract();
+        var request = doc.Components!.Schemas!["SendInquiryRequest"];
+
+        Assert.Contains("email", request.Required!);
+        Assert.Equal("email", request.Properties!["email"].Format);
+        Assert.Equal(1, request.Properties["message"].MinLength);
+    }
+
+    [Fact]
+    public async Task Report_reason_is_an_enum_and_note_is_capped()
+    {
+        var (doc, _) = await LoadContract();
+        var report = doc.Components!.Schemas!["ReportRequest"];
+
+        Assert.Equal(["illegal_content", "copyright", "harassment", "spam", "other"], EnumValues(doc, "ReportRequest", "reason"));
+        Assert.Equal(["work", "reply", "user"], EnumValues(doc, "ReportRequest", "targetType"));
+        Assert.Equal(500, report.Properties!["note"].MaxLength);
+        Assert.DoesNotContain("note", report.Required!);
+    }
 }
