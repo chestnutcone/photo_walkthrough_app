@@ -18,7 +18,7 @@ Method | HTTP request | Description
 
 
 # **createDraft**
-> CreateDraftResultEnvelope createDraft(createDraftRequest)
+> CreateDraftResultEnvelope createDraft(createDraftRequest, xAttestation, xPlatform)
 
 Create a draft and get an upload URL
 
@@ -30,9 +30,11 @@ import 'package:vela_api_client/api.dart';
 
 final api = VelaApiClient().getWorksApi();
 final CreateDraftRequest createDraftRequest = ; // CreateDraftRequest | 
+final String xAttestation = xAttestation_example; // String | App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
+final String xPlatform = xPlatform_example; // String | Platform that minted X-Attestation
 
 try {
-    final response = api.createDraft(createDraftRequest);
+    final response = api.createDraft(createDraftRequest, xAttestation, xPlatform);
     print(response);
 } catch on DioException (e) {
     print('Exception when calling WorksApi->createDraft: $e\n');
@@ -44,6 +46,8 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **createDraftRequest** | [**CreateDraftRequest**](CreateDraftRequest.md)|  | 
+ **xAttestation** | **String**| App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed. | [optional] 
+ **xPlatform** | **String**| Platform that minted X-Attestation | [optional] 
 
 ### Return type
 

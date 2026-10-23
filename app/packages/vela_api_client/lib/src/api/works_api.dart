@@ -27,6 +27,8 @@ class WorksApi {
   ///
   /// Parameters:
   /// * [createDraftRequest] 
+  /// * [xAttestation] - App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
+  /// * [xPlatform] - Platform that minted X-Attestation
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -38,6 +40,8 @@ class WorksApi {
   /// Throws [DioException] if API call or serialization fails
   Future<Response<CreateDraftResultEnvelope>> createDraft({ 
     required CreateDraftRequest createDraftRequest,
+    String? xAttestation,
+    String? xPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -49,6 +53,8 @@ class WorksApi {
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
+        if (xAttestation != null) r'X-Attestation': xAttestation,
+        if (xPlatform != null) r'X-Platform': xPlatform,
         ...?headers,
       },
       extra: <String, dynamic>{

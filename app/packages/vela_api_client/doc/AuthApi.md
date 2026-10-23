@@ -17,9 +17,11 @@ Method | HTTP request | Description
 
 
 # **emailRequest**
-> Envelope emailRequest(emailRequestRequest)
+> Envelope emailRequest(emailRequestRequest, xAttestation, xPlatform)
 
 Request an email one-time code
+
+Errors: 400 invalid_email; 400 disposable_email for throwaway-mailbox domains; 403 attestation_required / attestation_failed when the server enforces app attestation; 429 rate_limited (5 per email and 20 per IP per hour).
 
 ### Example
 ```dart
@@ -27,9 +29,11 @@ import 'package:vela_api_client/api.dart';
 
 final api = VelaApiClient().getAuthApi();
 final EmailRequestRequest emailRequestRequest = ; // EmailRequestRequest | 
+final String xAttestation = xAttestation_example; // String | App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
+final String xPlatform = xPlatform_example; // String | Platform that minted X-Attestation
 
 try {
-    final response = api.emailRequest(emailRequestRequest);
+    final response = api.emailRequest(emailRequestRequest, xAttestation, xPlatform);
     print(response);
 } catch on DioException (e) {
     print('Exception when calling AuthApi->emailRequest: $e\n');
@@ -41,6 +45,8 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **emailRequestRequest** | [**EmailRequestRequest**](EmailRequestRequest.md)|  | 
+ **xAttestation** | **String**| App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed. | [optional] 
+ **xPlatform** | **String**| Platform that minted X-Attestation | [optional] 
 
 ### Return type
 
@@ -181,7 +187,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **ssoSignIn**
-> TokenPairEnvelope ssoSignIn(ssoSignInRequest)
+> TokenPairEnvelope ssoSignIn(ssoSignInRequest, xAttestation, xPlatform)
 
 Sign in with Apple or Google
 
@@ -191,9 +197,11 @@ import 'package:vela_api_client/api.dart';
 
 final api = VelaApiClient().getAuthApi();
 final SsoSignInRequest ssoSignInRequest = ; // SsoSignInRequest | 
+final String xAttestation = xAttestation_example; // String | App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
+final String xPlatform = xPlatform_example; // String | Platform that minted X-Attestation
 
 try {
-    final response = api.ssoSignIn(ssoSignInRequest);
+    final response = api.ssoSignIn(ssoSignInRequest, xAttestation, xPlatform);
     print(response);
 } catch on DioException (e) {
     print('Exception when calling AuthApi->ssoSignIn: $e\n');
@@ -205,6 +213,8 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **ssoSignInRequest** | [**SsoSignInRequest**](SsoSignInRequest.md)|  | 
+ **xAttestation** | **String**| App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed. | [optional] 
+ **xPlatform** | **String**| Platform that minted X-Attestation | [optional] 
 
 ### Return type
 

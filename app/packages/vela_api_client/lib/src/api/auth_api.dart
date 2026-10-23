@@ -24,10 +24,12 @@ class AuthApi {
   const AuthApi(this._dio);
 
   /// Request an email one-time code
-  /// 
+  /// Errors: 400 invalid_email; 400 disposable_email for throwaway-mailbox domains; 403 attestation_required / attestation_failed when the server enforces app attestation; 429 rate_limited (5 per email and 20 per IP per hour).
   ///
   /// Parameters:
   /// * [emailRequestRequest] 
+  /// * [xAttestation] - App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
+  /// * [xPlatform] - Platform that minted X-Attestation
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -39,6 +41,8 @@ class AuthApi {
   /// Throws [DioException] if API call or serialization fails
   Future<Response<Envelope>> emailRequest({ 
     required EmailRequestRequest emailRequestRequest,
+    String? xAttestation,
+    String? xPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -50,6 +54,8 @@ class AuthApi {
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
+        if (xAttestation != null) r'X-Attestation': xAttestation,
+        if (xPlatform != null) r'X-Platform': xPlatform,
         ...?headers,
       },
       extra: <String, dynamic>{
@@ -384,6 +390,8 @@ _responseData = rawData == null ? null : deserialize<TokenPairEnvelope, TokenPai
   ///
   /// Parameters:
   /// * [ssoSignInRequest] 
+  /// * [xAttestation] - App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
+  /// * [xPlatform] - Platform that minted X-Attestation
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -395,6 +403,8 @@ _responseData = rawData == null ? null : deserialize<TokenPairEnvelope, TokenPai
   /// Throws [DioException] if API call or serialization fails
   Future<Response<TokenPairEnvelope>> ssoSignIn({ 
     required SsoSignInRequest ssoSignInRequest,
+    String? xAttestation,
+    String? xPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -406,6 +416,8 @@ _responseData = rawData == null ? null : deserialize<TokenPairEnvelope, TokenPai
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
+        if (xAttestation != null) r'X-Attestation': xAttestation,
+        if (xPlatform != null) r'X-Platform': xPlatform,
         ...?headers,
       },
       extra: <String, dynamic>{

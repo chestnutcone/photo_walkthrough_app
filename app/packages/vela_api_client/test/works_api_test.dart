@@ -11,7 +11,7 @@ void main() {
     //
     // Counts against the tier's story limit. Errors: 409 quota_exceeded (message includes the limit) when the account is at its limit; 409 onboarding_required before onboarding.
     //
-    //Future<CreateDraftResultEnvelope> createDraft(CreateDraftRequest createDraftRequest) async
+    //Future<CreateDraftResultEnvelope> createDraft(CreateDraftRequest createDraftRequest, { String xAttestation, String xPlatform }) async
     test('test createDraft', () async {
       // TODO
     });

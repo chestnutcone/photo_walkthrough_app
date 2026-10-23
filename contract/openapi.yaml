@@ -34,6 +34,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SsoSignInRequest'
+      parameters:
+        - $ref: '#/components/parameters/attestation'
+        - $ref: '#/components/parameters/platform'
       responses:
         '200':
           description: OK
@@ -49,6 +52,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/auth/email/request:
@@ -56,6 +61,7 @@ paths:
       operationId: emailRequest
       tags: [Auth]
       summary: "Request an email one-time code"
+      description: "Errors: 400 invalid_email; 400 disposable_email for throwaway-mailbox domains; 403 attestation_required / attestation_failed when the server enforces app attestation; 429 rate_limited (5 per email and 20 per IP per hour)."
       security: []
       requestBody:
         required: true
@@ -63,6 +69,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EmailRequestRequest'
+      parameters:
+        - $ref: '#/components/parameters/attestation'
+        - $ref: '#/components/parameters/platform'
       responses:
         '200':
           description: OK
@@ -74,6 +83,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/auth/email/verify:
@@ -103,6 +116,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/auth/refresh:
@@ -130,6 +145,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/auth/logout:
@@ -153,6 +172,10 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/me:
@@ -171,6 +194,8 @@ paths:
                 $ref: '#/components/schemas/MeEnvelope'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
     delete:
@@ -188,6 +213,8 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/me/onboarding:
@@ -216,6 +243,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/me/profile:
@@ -247,6 +278,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/me/avatar-upload:
@@ -265,6 +298,8 @@ paths:
                 $ref: '#/components/schemas/UploadTicketEnvelope'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/me/export:
@@ -311,6 +346,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/artists/suggested:
@@ -329,6 +366,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileListEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/artists/{handle}:
@@ -348,6 +387,8 @@ paths:
                 $ref: '#/components/schemas/ProfileEnvelope'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/artists/{handle}/works:
@@ -369,6 +410,8 @@ paths:
                 $ref: '#/components/schemas/WorkListEnvelope'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/artists/{id}/follow:
@@ -393,6 +436,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
     delete:
@@ -414,6 +459,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/artists/{id}/followers:
@@ -438,6 +485,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/artists/{id}/inquiries:
@@ -472,6 +521,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/feed:
@@ -494,6 +545,8 @@ paths:
                 $ref: '#/components/schemas/WorkListEnvelope'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/works:
@@ -510,6 +563,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateDraftRequest'
+      parameters:
+        - $ref: '#/components/parameters/attestation'
+        - $ref: '#/components/parameters/platform'
       responses:
         '200':
           description: OK
@@ -523,6 +579,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/works/{id}:
@@ -542,6 +604,8 @@ paths:
                 $ref: '#/components/schemas/WorkEnvelope'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
     put:
@@ -575,6 +639,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
     delete:
@@ -598,6 +666,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/works/{id}/publish:
@@ -626,6 +696,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/works/{id}/chapters/{index}/replies:
@@ -648,6 +720,8 @@ paths:
                 $ref: '#/components/schemas/ReplyListEnvelope'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
     post:
@@ -683,6 +757,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/replies/{id}:
@@ -707,6 +783,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/notifications:
@@ -728,6 +806,8 @@ paths:
                 $ref: '#/components/schemas/NotificationListEnvelope'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/notifications/unread-count:
@@ -746,6 +826,8 @@ paths:
                 $ref: '#/components/schemas/UnreadCountEnvelope'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/notifications/read:
@@ -772,6 +854,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/search:
@@ -795,6 +881,8 @@ paths:
                 $ref: '#/components/schemas/SearchResultsListEnvelope'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/reports:
@@ -825,6 +913,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/blocks/{userId}:
@@ -847,6 +937,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
     delete:
@@ -866,6 +958,8 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
   /v1/legal/dmca-notices:
@@ -939,6 +1033,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
 components:
@@ -948,6 +1044,21 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    attestation:
+      name: X-Attestation
+      in: header
+      required: false
+      description: "App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed."
+      schema:
+        type: string
+    platform:
+      name: X-Platform
+      in: header
+      required: false
+      description: "Platform that minted X-Attestation"
+      schema:
+        type: string
+        enum: [ios, android]
     id:
       name: id
       in: path
@@ -1051,7 +1162,19 @@ components:
           schema:
             $ref: '#/components/schemas/Envelope'
     RateLimited:
-      description: "Error 429 (default code rate_limited)"
+      description: "Error 429 (code rate_limited). Retry-After says how many seconds to wait."
+      headers:
+        Retry-After:
+          description: "Seconds until the request may be retried"
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    PayloadTooLarge:
+      description: "Error 413 (code payload_too_large). JSON bodies are limited to 1 MB; nesting deeper than 32 levels is 400 invalid_json."
       content:
         application/json:
           schema:

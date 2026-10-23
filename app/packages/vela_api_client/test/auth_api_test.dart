@@ -9,7 +9,9 @@ void main() {
   group(AuthApi, () {
     // Request an email one-time code
     //
-    //Future<Envelope> emailRequest(EmailRequestRequest emailRequestRequest) async
+    // Errors: 400 invalid_email; 400 disposable_email for throwaway-mailbox domains; 403 attestation_required / attestation_failed when the server enforces app attestation; 429 rate_limited (5 per email and 20 per IP per hour).
+    //
+    //Future<Envelope> emailRequest(EmailRequestRequest emailRequestRequest, { String xAttestation, String xPlatform }) async
     test('test emailRequest', () async {
       // TODO
     });
@@ -37,7 +39,7 @@ void main() {
 
     // Sign in with Apple or Google
     //
-    //Future<TokenPairEnvelope> ssoSignIn(SsoSignInRequest ssoSignInRequest) async
+    //Future<TokenPairEnvelope> ssoSignIn(SsoSignInRequest ssoSignInRequest, { String xAttestation, String xPlatform }) async
     test('test ssoSignIn', () async {
       // TODO
     });
