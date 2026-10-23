@@ -45,7 +45,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A11 Search (ff35eb9)
 - [x] A12 Share pages, well-known, legal (1c5df5e)
 - [x] A13 Account deletion and export (850a17f)
-- [~] A14 Admin moderation, ban/restore, evidence hold, DMCA (A14a done 398b597; A14b pending)
+- [x] A14 Admin moderation, ban/restore, evidence hold, DMCA (A14a 398b597; A14b d1cf76b)
 - [ ] A15 Abuse and bot protection
 - [ ] A16 Telemetry and crash reporting (API)
 - [ ] B1 Theme, fonts, branding
@@ -66,6 +66,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [ ] S1 Security review gate
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-23 A14 complete: A14b (e093620, bda3613, 07a0fd6, a77af4b, fix d1cf76b). 771 API tests pass. Not yet pushed (M4 pending A15, A16).
 - 2026-10-22 M3 reached: A7-A13 complete (e631618, 1f75178, 811af34, 686f382, ff35eb9, 1c5df5e, 850a17f). Pushed.
 - 2026-10-22 M2 reached: A1-A6 complete (56fb231, d28b26e, a2277e1, 1fdcd5c, 1d81d0f, ccb8aef). Pushed.
 - 2026-10-22 M1 reached: T1 (a8dca9b), T2 (503a45a). Pushed branch build/mvp.
