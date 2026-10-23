@@ -9,6 +9,7 @@ import '../features/feed/feed_screen.dart';
 import '../features/onboarding/demo_story.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
+import '../features/search/search_screen.dart';
 import '../features/story/story_screen.dart';
 import '../features/profile_edit/edit_profile_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -89,10 +90,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const EditProfileScreen(),
       ),
       GoRoute(path: '/create', builder: (_, _) => const CreateScreen()),
-      GoRoute(
-        path: '/search',
-        builder: (_, _) => const PlaceholderScreen('search'),
-      ),
+      GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
       GoRoute(
         path: '/notifications',
         builder: (_, _) => const PlaceholderScreen('notifications'),

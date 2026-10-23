@@ -10,6 +10,7 @@ import 'package:vela_app/core/require_sign_in.dart';
 import 'package:vela_app/core/router.dart';
 import 'package:vela_app/features/create/create_screen.dart';
 import 'package:vela_app/features/feed/feed_screen.dart';
+import 'package:vela_app/features/search/search_screen.dart';
 import 'package:vela_app/features/onboarding/onboarding_screen.dart';
 
 import 'support/fakes.dart';
@@ -71,7 +72,7 @@ void main() {
 
     router.go('/search');
     await tester.pumpAndSettle();
-    expect(find.text('route:search'), findsOneWidget);
+    expect(find.byType(SearchScreen), findsOneWidget);
   });
 
   for (final path in [
