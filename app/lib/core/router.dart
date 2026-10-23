@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/onboarding_flag.dart';
 import 'auth/auth_controller.dart';
 import '../features/feed/feed_screen.dart';
+import '../features/onboarding/demo_story.dart';
+import '../features/onboarding/onboarding_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
 import '../features/story/story_screen.dart';
 import 'placeholder_screens.dart';
@@ -24,6 +26,10 @@ String _normalize(String path) => path.length > 1 && path.endsWith('/')
     ? path.substring(0, path.length - 1)
     : path;
 
+/// `/onboarding` and its sample story at `/onboarding/demo`.
+bool _isOnboarding(String path) =>
+    path == '/onboarding' || path.startsWith('/onboarding/');
+
 bool _isGated(String path) =>
     _signInRequired.any((base) => path == base || path.startsWith('$base/'));
 
@@ -37,10 +43,10 @@ String? resolveRedirect({
   location = _normalize(location);
   if (sessionLoading) return null;
   if (!isSignedIn) {
-    return _isGated(location) || location == '/onboarding' ? '/' : null;
+    return _isGated(location) || _isOnboarding(location) ? '/' : null;
   }
-  if (needsOnboarding) return location == '/onboarding' ? null : '/onboarding';
-  return location == '/onboarding' ? '/' : null;
+  if (needsOnboarding) return _isOnboarding(location) ? null : '/onboarding';
+  return _isOnboarding(location) ? '/' : null;
 }
 
 /// Guests who deep-link to a gated route are sent to `/`, because a redirect
@@ -97,7 +103,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/onboarding',
-        builder: (_, _) => const PlaceholderScreen('onboarding'),
+        builder: (_, _) => const OnboardingScreen(),
+        routes: [
+          GoRoute(path: 'demo', builder: (_, _) => const DemoStoryScreen()),
+        ],
       ),
     ],
   );

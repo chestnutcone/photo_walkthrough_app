@@ -7,6 +7,7 @@ import 'package:vela_app/core/auth/session_store.dart';
 import 'package:vela_app/core/require_sign_in.dart';
 import 'package:vela_app/core/router.dart';
 import 'package:vela_app/features/feed/feed_screen.dart';
+import 'package:vela_app/features/onboarding/onboarding_screen.dart';
 
 import 'support/fakes.dart';
 
@@ -109,7 +110,7 @@ void main() {
     tester,
   ) async {
     await _pump(tester, _container(signedIn: true, needsOnboarding: true));
-    expect(find.text('route:onboarding'), findsOneWidget);
+    expect(find.byType(OnboardingScreen), findsOneWidget);
   });
 
   test('gating matches sub-paths and trailing slashes', () {
@@ -129,6 +130,24 @@ void main() {
     }
     expect(r('/settingsx'), isNull);
     expect(r('/story/1'), isNull);
+  });
+
+  test('onboarding_sample_story_follows_the_onboarding_rule', () {
+    String? r({
+      required bool signedIn,
+      required bool needs,
+      String l = '/onboarding/demo',
+    }) => resolveRedirect(
+      location: l,
+      isSignedIn: signedIn,
+      sessionLoading: false,
+      needsOnboarding: needs,
+    );
+    expect(r(signedIn: true, needs: true), isNull);
+    expect(r(signedIn: true, needs: true, l: '/story/1'), '/onboarding');
+    expect(r(signedIn: true, needs: false), '/');
+    expect(r(signedIn: false, needs: false), '/');
+    expect(r(signedIn: false, needs: false, l: '/onboardingx'), isNull);
   });
 
   testWidgets('unknown route shows not-found with a link home', (tester) async {
@@ -217,7 +236,9 @@ void main() {
     },
   );
 
-  testWidgets('default launcher returns false', (tester) async {
+  testWidgets('default launcher opens the sign-in sheet; closing it is false', (
+    tester,
+  ) async {
     final c = _container();
     await c.read(sessionProvider.future);
     late BuildContext ctx;
@@ -234,6 +255,11 @@ void main() {
         ),
       ),
     );
-    expect(await c.read(signInSheetLauncherProvider)(ctx), isFalse);
+    final result = c.read(signInSheetLauncherProvider)(ctx);
+    await tester.pumpAndSettle();
+    expect(find.text('Sign in'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('sheet-close')));
+    await tester.pumpAndSettle();
+    expect(await result, isFalse);
   });
 }

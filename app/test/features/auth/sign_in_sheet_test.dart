@@ -170,7 +170,10 @@ void main() {
     });
 
     testWidgets('sign_out_clears_the_hint', (tester) async {
-      await pumpSignIn(tester, api: AuthApi(isNewUser: true, meOnboarded: false));
+      await pumpSignIn(
+        tester,
+        api: AuthApi(isNewUser: true, meOnboarded: false),
+      );
       final c = _container(tester);
       await tester.tap(key('sso-google'));
       await tester.pumpAndSettle();
