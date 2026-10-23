@@ -45,7 +45,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A11 Search (ff35eb9)
 - [x] A12 Share pages, well-known, legal (1c5df5e)
 - [x] A13 Account deletion and export (850a17f)
-- [ ] A14 Admin moderation, ban/restore, evidence hold, DMCA
+- [~] A14 Admin moderation, ban/restore, evidence hold, DMCA (A14a done 398b597; A14b pending)
 - [ ] A15 Abuse and bot protection
 - [ ] A16 Telemetry and crash reporting (API)
 - [ ] B1 Theme, fonts, branding
