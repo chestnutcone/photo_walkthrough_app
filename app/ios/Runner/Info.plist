@@ -66,5 +66,19 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!--
+		OWNER TODO (Google sign-in on iOS): once the iOS OAuth client exists, add
+		a URL scheme equal to its reversed client id, e.g.
+
+		<key>CFBundleURLTypes</key>
+		<array><dict>
+			<key>CFBundleURLSchemes</key>
+			<array><string>com.googleusercontent.apps.REPLACE_WITH_IOS_CLIENT_ID</string></array>
+		</dict></array>
+
+		Pass the client id itself with --dart-define=GOOGLE_CLIENT_ID=... (see
+		app/README.md). Sign in with Apple also needs the capability enabled on
+		the Runner target in Xcode (adds Runner.entitlements).
+	-->
 </dict>
 </plist>

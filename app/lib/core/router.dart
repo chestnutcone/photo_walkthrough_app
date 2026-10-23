@@ -2,15 +2,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/auth/onboarding_flag.dart';
 import 'auth/auth_controller.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
 import '../features/story/story_screen.dart';
 import 'placeholder_screens.dart';
 
-/// Set by the profile feature: true when the signed-in user has not finished
-/// onboarding.
-final needsOnboardingProvider = Provider<bool>((_) => false);
+/// True when the signed-in account has not finished onboarding, from `/v1/me`
+/// (with the sign-in response as a fallback). Tests override it.
+final needsOnboardingProvider = Provider<bool>(deriveNeedsOnboarding);
 
 const _signInRequired = [
   '/create',

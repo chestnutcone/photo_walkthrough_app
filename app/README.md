@@ -1,17 +1,25 @@
-# vela_app
+# Vela app
 
-A new Flutter project.
+Flutter client. Run `source ../scripts/dev-env.sh` first, then `flutter test` / `flutter analyze`.
 
-## Getting Started
+## Build-time configuration (`--dart-define`)
 
-This project is a starting point for a Flutter application.
+| Define | Purpose |
+|---|---|
+| `API_BASE_URL` | API origin. Required in release builds. |
+| `GOOGLE_CLIENT_ID` | iOS OAuth client id for Google sign-in (owner-provided). |
+| `GOOGLE_SERVER_CLIENT_ID` | Web OAuth client id; the token audience on Android (owner-provided). |
+| `VELA_FAKE_SSO=true` | Development only (ignored in release): skip the Apple and Google SDKs and sign in through the API's fake identity provider. |
 
-A few resources to get you started if this is your first Flutter project:
+Both Google client ids must also be listed in the API setting `Auth:Google:ClientIds`;
+the Apple bundle id must be the API's `Auth:Apple:ClientId`.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Sign-in notes
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Each attempt creates a fresh random nonce and sends the raw value to the API.
+  Google receives it unchanged; Apple receives its lowercase hex SHA-256, which is
+  what the API checks.
+- Sign in with Apple needs the capability in Xcode; Google on iOS needs the reversed
+  client id URL scheme (see the commented block in `ios/Runner/Info.plist`).
+- Terms and privacy links are copied to the clipboard, not opened, until
+  `url_launcher` is added (swap `legalLinkOpenerProvider`).

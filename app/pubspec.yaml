@@ -41,6 +41,10 @@ dependencies:
   go_router: 18.1.1
   flutter_secure_storage: 11.2.0
   dio: 5.11.1
+  sign_in_with_apple: 8.2.0
+  google_sign_in: 7.2.0
+  crypto: 3.0.7
+  image_picker: 1.2.4
 
 dev_dependencies:
   flutter_test:
