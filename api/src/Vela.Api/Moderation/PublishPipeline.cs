@@ -1,3 +1,4 @@
+using Vela.Api.Telemetry;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Common;
@@ -81,6 +82,7 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
             catch (Exception e) when (e is not OperationCanceledException)
             {
                 failed = true;
+                VelaMetrics.ScanFailed("work");
                 log.LogWarning("Content scan failed for work {WorkId} ({Reason}).", work.Id, e.GetType().Name);
             }
         }
@@ -110,6 +112,7 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
         // The block is committed first; the images follow. If this fails the reconciler finishes the job.
         if (blockedId is { } blocked)
         {
+            VelaMetrics.Takedown("auto_block");
             try { await lifecycle.TakeDownAsync(blocked); }
             catch (Exception e) when (e is not OperationCanceledException)
             {

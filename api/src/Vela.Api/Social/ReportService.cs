@@ -1,3 +1,4 @@
+using Vela.Api.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -49,6 +50,7 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
             await db.SaveChangesAsync();
             await HideAsync(targetType, targetId);
             await tx.CommitAsync();
+            VelaMetrics.ReportCreated(targetType);
         }
         catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {

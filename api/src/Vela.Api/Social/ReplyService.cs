@@ -1,3 +1,4 @@
+using Vela.Api.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Common;
 using Vela.Api.Data;
@@ -86,6 +87,7 @@ public sealed class ReplyService(
         try { return (await safety.SeverityAsync(body), true); }
         catch (Exception e) when (e is not OperationCanceledException)
         {
+            VelaMetrics.ScanFailed("reply");
             log.LogWarning("Reply scan unavailable ({Reason}).", e.GetType().Name);
             return (0, false);
         }

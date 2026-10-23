@@ -1,3 +1,4 @@
+using Vela.Api.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Auth;
 using Vela.Api.Common;
@@ -170,6 +171,7 @@ public sealed partial class ModerationService(
         Audit(adminId, "remove_work", "work", workId, reason.Trim());
         await db.SaveChangesAsync();
         await tx.CommitAsync();
+        VelaMetrics.Takedown("admin_remove");
         // The removal is committed first; the images follow, and the reconciler finishes the job if this fails.
         try { await lifecycle.TakeDownAsync(workId); }
         catch (Exception e) when (e is not OperationCanceledException)

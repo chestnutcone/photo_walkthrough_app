@@ -20,8 +20,11 @@ using Vela.Api.Search;
 using Vela.Api.Social;
 using Vela.Api.Stubs;
 using Vela.Api.Admin;
+using Vela.Api.Telemetry;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddVelaTelemetry(builder.Configuration);
+builder.WebHost.UseVelaSentry(builder.Configuration, builder.Environment.EnvironmentName);
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
 
 var connectionString = builder.Configuration.GetConnectionString("Default")
@@ -95,6 +98,7 @@ if (!builder.Environment.IsEnvironment("Test")) builder.Services.AddHostedServic
 var app = builder.Build();
 if (app.Services.GetRequiredService<EmailCodeSettings>().ReviewMode && !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Test"))
     app.Logger.LogWarning("Review mode is ON: a fixed sign-in code is accepted for allow-listed review accounts. Turn Auth:ReviewMode off after app review.");
+app.UseVelaExceptionHandling();
 app.UseAdminHeaders();
 app.UseAuthentication();
 app.UseAbuseProtection();
