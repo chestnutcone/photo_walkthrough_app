@@ -21,12 +21,15 @@ public static partial class InquiryValidator
     private static string ValidType(string? type) =>
         type is not null && Types.Contains(type) ? type : throw Invalid("type must be one of the inquiry types.");
 
-    private static string ValidEmail(string? raw)
+    private static string ValidEmail(string? raw) =>
+        TryEmail(raw, out var email) ? email : throw Invalid("email must be a valid email address of at most 254 characters.");
+
+    /// <summary>The trimmed address when it is plain and valid (no spaces, control characters or header-breaking symbols).</summary>
+    public static bool TryEmail(string? raw, out string email)
     {
-        var email = raw?.Trim() ?? "";
-        var ok = email.Length is > 0 and <= MaxEmailLength && email.All(c => c > ' ' && c != '\u007f' && !"<>(),;:\"[]\\".Contains(c))
+        email = raw?.Trim() ?? "";
+        return email.Length is > 0 and <= MaxEmailLength && email.All(c => c > ' ' && c != '\u007f' && !"<>(),;:\"[]\\".Contains(c))
             && EmailPattern().IsMatch(email);
-        return ok ? email : throw Invalid("email must be a valid email address of at most 254 characters.");
     }
 
     private static string ValidMessage(string? raw)

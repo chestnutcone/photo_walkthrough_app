@@ -173,6 +173,122 @@ namespace Vela.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Vela.Api.Data.Entities.DmcaNotice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ClaimantAddress")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("claimant_address");
+
+                    b.Property<string>("ClaimantEmail")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("claimant_email");
+
+                    b.Property<string>("ClaimantName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("claimant_name");
+
+                    b.Property<string>("ClaimantPhone")
+                        .HasColumnType("text")
+                        .HasColumnName("claimant_phone");
+
+                    b.Property<string>("ClientIp")
+                        .HasColumnType("text")
+                        .HasColumnName("client_ip");
+
+                    b.Property<string>("CounterAddress")
+                        .HasColumnType("text")
+                        .HasColumnName("counter_address");
+
+                    b.Property<DateTimeOffset?>("CounterAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("counter_at");
+
+                    b.Property<string>("CounterName")
+                        .HasColumnType("text")
+                        .HasColumnName("counter_name");
+
+                    b.Property<string>("CounterPhone")
+                        .HasColumnType("text")
+                        .HasColumnName("counter_phone");
+
+                    b.Property<string>("CounterStatement")
+                        .HasColumnType("text")
+                        .HasColumnName("counter_statement");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("ForwardedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("forwarded_at");
+
+                    b.Property<bool>("GoodFaithStatement")
+                        .HasColumnType("boolean")
+                        .HasColumnName("good_faith_statement");
+
+                    b.Property<string>("OriginalWorkDescription")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("original_work_description");
+
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<bool>("PerjuryStatement")
+                        .HasColumnType("boolean")
+                        .HasColumnName("perjury_statement");
+
+                    b.Property<string>("SignatureName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("signature_name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("TakedownAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("takedown_at");
+
+                    b.Property<Guid?>("WorkId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("work_id");
+
+                    b.Property<string>("WorkReference")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("work_reference");
+
+                    b.HasKey("Id")
+                        .HasName("pk_dmca_notices");
+
+                    b.HasIndex("ClientIp", "CreatedAt")
+                        .HasDatabaseName("ix_dmca_notices_client_ip_created_at");
+
+                    b.HasIndex("CreatedAt", "Id")
+                        .HasDatabaseName("ix_dmca_notices_created_at_id");
+
+                    b.HasIndex("OwnerUserId", "Status")
+                        .HasDatabaseName("ix_dmca_notices_owner_user_id_status");
+
+                    b.HasIndex("WorkId", "Status")
+                        .HasDatabaseName("ix_dmca_notices_work_id_status");
+
+                    b.ToTable("dmca_notices", (string)null);
+                });
+
             modelBuilder.Entity("Vela.Api.Data.Entities.EmailCode", b =>
                 {
                     b.Property<Guid>("Id")

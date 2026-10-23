@@ -5,6 +5,8 @@ import 'package:vela_api_client/src/model/complete_onboarding_request.dart';
 import 'package:vela_api_client/src/model/create_draft_request.dart';
 import 'package:vela_api_client/src/model/create_draft_result.dart';
 import 'package:vela_api_client/src/model/create_draft_result_envelope.dart';
+import 'package:vela_api_client/src/model/dmca_notice_ack.dart';
+import 'package:vela_api_client/src/model/dmca_notice_ack_envelope.dart';
 import 'package:vela_api_client/src/model/email_request_request.dart';
 import 'package:vela_api_client/src/model/email_verify_request.dart';
 import 'package:vela_api_client/src/model/envelope.dart';
@@ -35,6 +37,7 @@ import 'package:vela_api_client/src/model/send_inquiry_request.dart';
 import 'package:vela_api_client/src/model/service_item.dart';
 import 'package:vela_api_client/src/model/show_item.dart';
 import 'package:vela_api_client/src/model/sso_sign_in_request.dart';
+import 'package:vela_api_client/src/model/submit_dmca_notice_request.dart';
 import 'package:vela_api_client/src/model/token_pair.dart';
 import 'package:vela_api_client/src/model/token_pair_envelope.dart';
 import 'package:vela_api_client/src/model/unread_count.dart';
@@ -79,6 +82,10 @@ final _regMap = RegExp(r'^Map<String,(.*)>$');
           return CreateDraftResult.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'CreateDraftResultEnvelope':
           return CreateDraftResultEnvelope.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'DmcaNoticeAck':
+          return DmcaNoticeAck.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'DmcaNoticeAckEnvelope':
+          return DmcaNoticeAckEnvelope.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'EmailRequestRequest':
           return EmailRequestRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'EmailVerifyRequest':
@@ -139,6 +146,8 @@ final _regMap = RegExp(r'^Map<String,(.*)>$');
           return ShowItem.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'SsoSignInRequest':
           return SsoSignInRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'SubmitDmcaNoticeRequest':
+          return SubmitDmcaNoticeRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'TokenPair':
           return TokenPair.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'TokenPairEnvelope':

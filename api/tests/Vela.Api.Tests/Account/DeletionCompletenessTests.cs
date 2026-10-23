@@ -22,6 +22,7 @@ public class DeletionCompletenessTests(PostgresFixture pg)
     {
         ["banned_identities"] = "retained for safety: HMAC hashes only, so a banned person cannot evade the ban by deleting the account",
         ["evidence_holds"] = "retained for law enforcement: illegal-content evidence is held for at least a year (user_id, work_id and reply_id are plain ids, no foreign keys) and account deletion must never purge it",
+        ["dmca_notices"] = "retained for legal defense: copyright notices (owner_user_id, work_id are plain ids, no foreign keys) must outlive the work and the account; the claimant's details belong to a third party",
         ["admin_actions"] = "retained for legal accountability: the moderation audit trail must outlive admin and target accounts",
     };
 

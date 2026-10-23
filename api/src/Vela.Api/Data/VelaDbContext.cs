@@ -25,6 +25,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
     public DbSet<BannedIdentity> BannedIdentities => Set<BannedIdentity>();
     public DbSet<EvidenceHold> EvidenceHolds => Set<EvidenceHold>();
+    public DbSet<DmcaNotice> DmcaNotices => Set<DmcaNotice>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -187,6 +188,13 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         {
             e.HasKey(x => new { x.Provider, x.SubjectHash });
             e.HasIndex(x => x.UserRef);
+        });
+        b.Entity<DmcaNotice>(e =>
+        {
+            e.HasIndex(x => new { x.WorkId, x.Status });
+            e.HasIndex(x => new { x.OwnerUserId, x.Status });
+            e.HasIndex(x => new { x.ClientIp, x.CreatedAt });
+            e.HasIndex(x => new { x.CreatedAt, x.Id });
         });
         b.Entity<EvidenceHold>(e =>
         {

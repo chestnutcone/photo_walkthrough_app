@@ -16,6 +16,9 @@ public static class Results
     public static IResult Created<T>(T data) =>
         new EnvelopeResult<T>(StatusCodes.Status201Created, new ApiEnvelope<T>(true, data, null, null));
 
+    public static IResult Accepted<T>(T data) =>
+        new EnvelopeResult<T>(StatusCodes.Status202Accepted, new ApiEnvelope<T>(true, data, null, null));
+
     public static IResult Fail(int status, string code, string message) =>
         new EnvelopeResult<object>(
             status,

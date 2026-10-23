@@ -8,7 +8,7 @@ public static class LegalEndpoints
 {
     public static IServiceCollection AddLegal(this IServiceCollection services) =>
         services.AddSingleton(sp => new BrandingOptionsAccessor(sp.GetRequiredService<IOptions<BrandingOptions>>().Value))
-            .AddSingleton<LegalDocuments>();
+            .AddSingleton<LegalDocuments>().AddDmca();
 
     public static IEndpointRouteBuilder MapLegalPages(this IEndpointRouteBuilder app)
     {

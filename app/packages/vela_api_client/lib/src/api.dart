@@ -9,6 +9,7 @@ import 'package:vela_api_client/src/auth/bearer_auth.dart';
 import 'package:vela_api_client/src/auth/oauth.dart';
 import 'package:vela_api_client/src/api/artists_api.dart';
 import 'package:vela_api_client/src/api/auth_api.dart';
+import 'package:vela_api_client/src/api/legal_api.dart';
 import 'package:vela_api_client/src/api/me_api.dart';
 import 'package:vela_api_client/src/api/notifications_api.dart';
 import 'package:vela_api_client/src/api/replies_api.dart';
@@ -77,6 +78,12 @@ class VelaApiClient {
   /// by doing that all interceptors will not be executed
   AuthApi getAuthApi() {
     return AuthApi(dio);
+  }
+
+  /// Get LegalApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  LegalApi getLegalApi() {
+    return LegalApi(dio);
   }
 
   /// Get MeApi instance, base route and serializer can be overridden by a given but be careful,

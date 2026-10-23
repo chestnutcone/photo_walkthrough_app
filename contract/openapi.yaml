@@ -18,6 +18,7 @@ tags:
   - {name: Notifications}
   - {name: Search}
   - {name: Safety}
+  - {name: Legal}
 security:
   - bearerAuth: []
 paths:
@@ -867,6 +868,38 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '501':
           $ref: '#/components/responses/NotImplemented'
+  /v1/legal/dmca-notices:
+    post:
+      operationId: submitDmcaNotice
+      tags: [Legal]
+      summary: "Submit a copyright (DMCA) notice"
+      description: "Public. Always answers 202 with a reference id, whether or not the reference matched a story (it never reveals which stories exist); unmatched notices are handled manually. Free text is stored verbatim; control characters other than new lines are rejected. Rate limited per client address (5 per rolling 24 hours, 429 rate_limited with Retry-After). The body may be at most 20 KB (413 payload_too_large). The claimant gets a plain-text acknowledgement email."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitDmcaNoticeRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DmcaNoticeAckEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: "Error 413 (code payload_too_large)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
 components:
   securitySchemes:
     bearerAuth:
@@ -1260,6 +1293,41 @@ components:
           maxItems: 20
           items: {$ref: '#/components/schemas/ShowItem'}
         avatarUploaded: {type: boolean, description: Set true after uploading to the avatar upload URL}
+    SubmitDmcaNoticeRequest:
+      type: object
+      required: [claimantName, claimantEmail, claimantAddress, workReference, originalWorkDescription, goodFaithStatement, perjuryStatement, signatureName]
+      properties:
+        claimantName: {type: string, minLength: 1, maxLength: 120}
+        claimantEmail: {type: string, format: email, maxLength: 254}
+        claimantAddress: {type: string, minLength: 1, maxLength: 300}
+        claimantPhone: {type: string, maxLength: 40, nullable: true}
+        workReference: {type: string, minLength: 1, maxLength: 500, description: "A story link ending in /s/{id}, or the bare story id"}
+        originalWorkDescription: {type: string, minLength: 1, maxLength: 2000}
+        goodFaithStatement: {type: boolean, enum: [true], description: "Must be true"}
+        perjuryStatement: {type: boolean, enum: [true], description: "Must be true"}
+        signatureName: {type: string, minLength: 1, maxLength: 120}
+    DmcaNoticeAck:
+      type: object
+      required: [noticeId]
+      properties:
+        noticeId: {type: string, format: uuid}
+    DmcaNoticeAckEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/DmcaNoticeAck'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
     SendInquiryRequest:
       type: object
       required: [type, email, message]

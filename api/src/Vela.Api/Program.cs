@@ -111,6 +111,7 @@ app.MapSearchEndpoints();
 app.MapSharePage();
 app.MapWellKnown();
 app.MapLegalPages();
+app.MapDmcaEndpoints();
 app.MapAccountEndpoints();
 app.MapContractStubs();
 app.MapAdmin();

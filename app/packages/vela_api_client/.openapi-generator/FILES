@@ -12,6 +12,8 @@ doc/CompleteOnboardingRequest.md
 doc/CreateDraftRequest.md
 doc/CreateDraftResult.md
 doc/CreateDraftResultEnvelope.md
+doc/DmcaNoticeAck.md
+doc/DmcaNoticeAckEnvelope.md
 doc/EmailRequestRequest.md
 doc/EmailVerifyRequest.md
 doc/Envelope.md
@@ -20,6 +22,7 @@ doc/ExportJob.md
 doc/ExportJobEnvelope.md
 doc/Inquiry.md
 doc/InquiryEnvelope.md
+doc/LegalApi.md
 doc/LogoutRequest.md
 doc/MarkReadRequest.md
 doc/Me.md
@@ -47,6 +50,7 @@ doc/SendInquiryRequest.md
 doc/ServiceItem.md
 doc/ShowItem.md
 doc/SsoSignInRequest.md
+doc/SubmitDmcaNoticeRequest.md
 doc/TokenPair.md
 doc/TokenPairEnvelope.md
 doc/UnreadCount.md
@@ -62,6 +66,7 @@ doc/WorksApi.md
 lib/src/api.dart
 lib/src/api/artists_api.dart
 lib/src/api/auth_api.dart
+lib/src/api/legal_api.dart
 lib/src/api/me_api.dart
 lib/src/api/notifications_api.dart
 lib/src/api/replies_api.dart
@@ -81,6 +86,8 @@ lib/src/model/complete_onboarding_request.dart
 lib/src/model/create_draft_request.dart
 lib/src/model/create_draft_result.dart
 lib/src/model/create_draft_result_envelope.dart
+lib/src/model/dmca_notice_ack.dart
+lib/src/model/dmca_notice_ack_envelope.dart
 lib/src/model/email_request_request.dart
 lib/src/model/email_verify_request.dart
 lib/src/model/envelope.dart
@@ -111,6 +118,7 @@ lib/src/model/send_inquiry_request.dart
 lib/src/model/service_item.dart
 lib/src/model/show_item.dart
 lib/src/model/sso_sign_in_request.dart
+lib/src/model/submit_dmca_notice_request.dart
 lib/src/model/token_pair.dart
 lib/src/model/token_pair_envelope.dart
 lib/src/model/unread_count.dart
@@ -133,6 +141,8 @@ test/complete_onboarding_request_test.dart
 test/create_draft_request_test.dart
 test/create_draft_result_envelope_test.dart
 test/create_draft_result_test.dart
+test/dmca_notice_ack_envelope_test.dart
+test/dmca_notice_ack_test.dart
 test/email_request_request_test.dart
 test/email_verify_request_test.dart
 test/envelope_test.dart
@@ -141,6 +151,7 @@ test/export_job_envelope_test.dart
 test/export_job_test.dart
 test/inquiry_envelope_test.dart
 test/inquiry_test.dart
+test/legal_api_test.dart
 test/logout_request_test.dart
 test/mark_read_request_test.dart
 test/me_api_test.dart
@@ -168,6 +179,7 @@ test/send_inquiry_request_test.dart
 test/service_item_test.dart
 test/show_item_test.dart
 test/sso_sign_in_request_test.dart
+test/submit_dmca_notice_request_test.dart
 test/token_pair_envelope_test.dart
 test/token_pair_test.dart
 test/unread_count_envelope_test.dart
