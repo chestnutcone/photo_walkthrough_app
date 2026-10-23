@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vela_app/features/story/camera_math.dart';
@@ -482,13 +484,21 @@ void main() {
     testWidgets('autoplay_advances_every_6s_and_pauses_when_replies_open', (
       t,
     ) async {
-      await pumpStory(t, autoplay: true);
+      await pumpStory(
+        t,
+        autoplay: true,
+        overrides: [
+          openRepliesSheetProvider.overrideWithValue(
+            (ctx, w, i, {required readOnly}) => Completer<void>().future,
+          ),
+        ],
+      );
       await _begin(t);
       expect(kicker(1, 3), findsOneWidget);
       await t.pump(const Duration(seconds: 6));
       expect(kicker(2, 3), findsOneWidget);
 
-      // Default stub keeps the thread flagged open until the pill is tapped
+      // A never-completing sheet keeps the thread flagged open until the pill is tapped
       // again; autoplay must not advance meanwhile.
       await t.tap(find.text('2 replies'));
       await t.pump();
