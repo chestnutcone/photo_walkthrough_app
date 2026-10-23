@@ -51,7 +51,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B1 Theme, fonts, branding (a57bd35, fix 6e8751b)
 - [x] B2 API wiring, session, router, guest gating (f9e0e28, 63c8c2b + fix)
 - [x] B3 Camera math (7a19b28)
-- [ ] B4 Story viewer
+- [x] B4 Story viewer (9591cce, 6b111eb, f536591, fix 4f4e3f5)
 - [ ] B5 Feed
 - [ ] B6 Replies sheet
 - [ ] B7 Portfolio, followers, contact
