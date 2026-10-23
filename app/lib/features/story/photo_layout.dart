@@ -21,6 +21,14 @@ class PhotoFrame {
 /// The handoff uses `object-fit: cover`. Cover crops, though, and a pin on a
 /// cropped-away edge would be unreachable, so cover is used only when every
 /// pin stays inside the layer; otherwise the photo is contained (letterboxed).
+///
+/// OWNER VISUAL DECISION (ruled for B4 fix round 1): the fallback is per work,
+/// never per pin, so it is deterministic for a given story: if any pin would
+/// be cropped away by cover, the whole work is contained. Consequence: a
+/// 3:4 photo on a 390x844 screen shows only x in [0.19, 0.81] under cover, so
+/// one pin outside that band letterboxes the entire story. This deviates from
+/// the README's plain `object-fit: cover`; revisit if the designer objects.
+///
 /// An unknown [aspect] (width / height) fills the viewport.
 PhotoFrame computePhotoFrame({
   required Size viewport,

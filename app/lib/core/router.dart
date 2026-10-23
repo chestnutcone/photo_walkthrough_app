@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'auth/auth_controller.dart';
+import '../features/story/story_screen.dart';
 import 'placeholder_screens.dart';
 
 /// Set by the profile feature: true when the signed-in user has not finished
@@ -60,7 +61,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (_, _) => const PlaceholderScreen('feed')),
       GoRoute(
         path: '/story/:id',
-        builder: (_, s) => PlaceholderScreen('story/${s.pathParameters['id']}'),
+        builder: (_, s) => StoryScreen(workId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/artist/:handle',

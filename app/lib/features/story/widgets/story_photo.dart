@@ -3,6 +3,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../motion.dart';
 import '../story_settings.dart';
 
 /// The photograph, drawn into [rect] of the camera layer. A blurred thumbnail
@@ -54,7 +55,10 @@ class StoryPhoto extends ConsumerWidget {
                 ? child
                 : AnimatedOpacity(
                     opacity: frame == null ? 0 : 1,
-                    duration: const Duration(milliseconds: 300),
+                    duration: motionDuration(
+                      context,
+                      const Duration(milliseconds: 300),
+                    ),
                     child: child,
                   ),
             errorBuilder: (context, error, stack) {

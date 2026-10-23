@@ -77,16 +77,18 @@ class StoryTopBar extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Segment tap targets carry 6pt padding top and bottom, which makes up
-        // the 12pt gap the handoff puts between the bar and the row.
         if (showSegments)
-          ProgressSegments(
-            count: work.chapters.length,
-            step: step,
-            onJump: onJump,
-          )
-        else
-          const SizedBox(height: 12),
+          // The 15pt tap-target box starts at the bar's y; the 3pt bar sits 6pt
+          // inside it, so lift the box to put the bar at the handoff's y and
+          // leave the row 12pt below the bar.
+          Transform.translate(
+            offset: const Offset(0, -6),
+            child: ProgressSegments(
+              count: work.chapters.length,
+              step: step,
+              onJump: onJump,
+            ),
+          ),
         Row(
           children: [
             Expanded(

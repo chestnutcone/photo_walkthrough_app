@@ -418,15 +418,15 @@ void main() {
         t,
         overrides: [
           openInquirySheetProvider.overrideWithValue(
-            (context, {required artistId, required workId}) async =>
-                calls.add('$artistId/$workId'),
+            (context, {required artistId, required workId, type}) async =>
+                calls.add('$artistId/$workId/$type'),
           ),
         ],
       );
       await toEnd(t);
       await t.tap(find.text('Ask about a print of this work'));
       await t.pumpAndSettle();
-      expect(calls, ['a1/w1']);
+      expect(calls, ['a1/w1/Buy a print']);
     });
 
     testWidgets('owner_sees_portfolio_button_and_no_inquiry', (t) async {
@@ -463,7 +463,12 @@ void main() {
       await pumpStory(
         t,
         overrides: [
-          openRepliesSheetProvider.overrideWithValue((ctx, workId, i) async {
+          openRepliesSheetProvider.overrideWithValue((
+            ctx,
+            workId,
+            i, {
+            required readOnly,
+          }) async {
             calls.add('$workId/$i');
           }),
         ],
@@ -541,7 +546,7 @@ void main() {
       await t.pumpAndSettle();
     });
 
-    for (final status in [404, 403, 410]) {
+    for (final status in [401, 404, 403, 410]) {
       testWidgets('status_${status}_shows_same_unavailable_message', (t) async {
         await pumpStory(t, workStatus: status, errorCode: 'whatever');
         expect(find.text("This story isn't available"), findsOneWidget);

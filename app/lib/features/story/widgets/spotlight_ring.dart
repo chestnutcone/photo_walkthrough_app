@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/tokens.dart';
+import '../motion.dart';
 
 /// Diameter of the spotlight ring.
 const double spotlightDiameter = 132;
@@ -21,7 +22,7 @@ class SpotlightRing extends StatelessWidget {
     child: ExcludeSemantics(
       child: AnimatedOpacity(
         opacity: visible ? 1 : 0,
-        duration: const Duration(milliseconds: 500),
+        duration: motionDuration(context, const Duration(milliseconds: 500)),
         child: SizedBox.expand(
           child: CustomPaint(painter: _RingPainter(center)),
         ),

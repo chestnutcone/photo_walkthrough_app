@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:vela_app/core/auth/auth_controller.dart';
+import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/core/auth/session_store.dart';
 import 'package:vela_app/core/require_sign_in.dart';
 import 'package:vela_app/core/router.dart';
@@ -26,6 +26,9 @@ ProviderContainer _container({
         FakeSessionStorage(signedIn ? _signedIn : null),
       ),
       needsOnboardingProvider.overrideWithValue(needsOnboarding),
+      httpClientAdapterProvider.overrideWithValue(
+        FakeAdapter((_) => jsonResponse(404, errEnvelope('not_found'))),
+      ),
       if (launcher != null)
         signInSheetLauncherProvider.overrideWithValue(launcher),
     ],
@@ -55,7 +58,7 @@ void main() {
 
     router.go('/story/42');
     await tester.pumpAndSettle();
-    expect(find.text('route:story/42'), findsOneWidget);
+    expect(find.text("This story isn't available"), findsOneWidget);
 
     router.go('/artist/ana');
     await tester.pumpAndSettle();

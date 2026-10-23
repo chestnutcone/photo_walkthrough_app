@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/tokens.dart';
+import '../motion.dart';
 
 /// One 3pt segment per chapter; segments up to [step] are filled. Tapping a
 /// segment jumps to that chapter. Each segment has a taller invisible tap
@@ -41,7 +42,10 @@ class ProgressSegments extends StatelessWidget {
                     child: SizedBox(
                       height: 3,
                       child: AnimatedFractionallySizedBox(
-                        duration: const Duration(milliseconds: 400),
+                        duration: motionDuration(
+                          context,
+                          const Duration(milliseconds: 400),
+                        ),
                         alignment: Alignment.centerLeft,
                         widthFactor: step >= i + 1 ? 1 : 0,
                         child: const ColoredBox(color: VelaColors.ink),

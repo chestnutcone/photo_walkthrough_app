@@ -1,8 +1,11 @@
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/tokens.dart';
+import '../camera_math.dart';
+import '../motion.dart';
 
 /// Hit area of a pin on screen.
 const double pinHitSize = 44;
@@ -17,29 +20,60 @@ class PinSpec {
   final String label;
 }
 
-/// Numbered pins on the camera layer, counter-scaled by 1/[scale] so they keep
-/// a constant on-screen size. Centres are pulled inward so the 44pt hit area
-/// of an edge pin (x=0, y=1, ...) never leaves the screen.
+/// Numbered pins on the camera layer, counter-scaled by 1/scale so they keep
+/// a constant on-screen size.
+///
+/// A pin whose true position is on screen is pulled into the safe rectangle:
+/// at least 22pt from every screen edge (so the 44pt hit area stays on screen)
+/// and above [safeBottom] (the top of the bottom card, so the card never
+/// covers a pin). Tradeoff: such a pin's badge can sit up to 22pt (edges) or
+/// more (under the card) away from its true spot, so in Explore the spotlight
+/// ring and the badge of an edge pin can be offset by that much. Pins whose
+/// true position is off screen (zoomed in) are left where they are.
 class PinLayer extends StatelessWidget {
   const PinLayer({
     super.key,
     required this.pins,
-    required this.layerSize,
-    required this.scale,
+    required this.viewport,
+    required this.camera,
+    required this.safeBottom,
     required this.visible,
     required this.onTap,
   });
 
   final List<PinSpec> pins;
-  final Size layerSize;
-  final double scale;
+  final Size viewport;
+  final CameraState camera;
+  final double safeBottom;
   final bool visible;
   final ValueChanged<int> onTap;
+
+  /// Layer-space centre for the pin at [fraction].
+  Offset _centre(Offset fraction) {
+    const half = pinHitSize / 2;
+    final s = camera.scale;
+    final layer = Offset(
+      fraction.dx * viewport.width,
+      fraction.dy * viewport.height,
+    );
+    final screen = Offset(camera.tx + s * layer.dx, camera.ty + s * layer.dy);
+    final onScreen =
+        screen.dx >= 0 &&
+        screen.dx <= viewport.width &&
+        screen.dy >= 0 &&
+        screen.dy <= viewport.height;
+    if (!onScreen) return layer;
+    final maxY = math.max(half, math.min(viewport.height, safeBottom) - half);
+    final safe = Offset(
+      screen.dx.clamp(half, viewport.width - half).toDouble(),
+      screen.dy.clamp(half, maxY).toDouble(),
+    );
+    return Offset((safe.dx - camera.tx) / s, (safe.dy - camera.ty) / s);
+  }
 
   @override
   Widget build(BuildContext context) {
     const half = pinHitSize / 2;
-    final inset = half / scale;
     return IgnorePointer(
       ignoring: !visible,
       child: ExcludeSemantics(
@@ -47,36 +81,29 @@ class PinLayer extends StatelessWidget {
         child: AnimatedOpacity(
           key: const ValueKey('pin-layer'),
           opacity: visible ? 1 : 0,
-          duration: const Duration(milliseconds: 400),
+          duration: motionDuration(context, const Duration(milliseconds: 400)),
           child: Stack(
             children: [
               for (var i = 0; i < pins.length; i++)
-                Positioned(
-                  left:
-                      _centre(
-                        pins[i].layerFraction.dx,
-                        layerSize.width,
-                        inset,
-                      ) -
-                      half,
-                  top:
-                      _centre(
-                        pins[i].layerFraction.dy,
-                        layerSize.height,
-                        inset,
-                      ) -
-                      half,
-                  width: pinHitSize,
-                  height: pinHitSize,
-                  child: Transform.scale(
-                    scale: 1 / scale,
-                    child: _Pin(
-                      key: ValueKey('pin-$i'),
-                      number: i + 1,
-                      label: pins[i].label,
-                      onTap: () => onTap(i),
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    final c = _centre(pins[i].layerFraction);
+                    return Positioned(
+                      left: c.dx - half,
+                      top: c.dy - half,
+                      width: pinHitSize,
+                      height: pinHitSize,
+                      child: Transform.scale(
+                        scale: 1 / camera.scale,
+                        child: _Pin(
+                          key: ValueKey('pin-$i'),
+                          number: i + 1,
+                          label: pins[i].label,
+                          onTap: () => onTap(i),
+                        ),
+                      ),
+                    );
+                  },
                 ),
             ],
           ),
@@ -85,9 +112,6 @@ class PinLayer extends StatelessWidget {
     );
   }
 }
-
-double _centre(double fraction, double extent, double inset) =>
-    (fraction * extent).clamp(inset, extent - inset).toDouble();
 
 class _Pin extends StatelessWidget {
   const _Pin({

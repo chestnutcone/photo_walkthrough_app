@@ -61,7 +61,7 @@ class StoryBottomCard extends StatelessWidget {
     required this.onBegin,
     required this.onZoomOut,
     required this.onReplies,
-    required this.bottomInset,
+    required this.cardKey,
   });
 
   final Work work;
@@ -70,7 +70,7 @@ class StoryBottomCard extends StatelessWidget {
   final VoidCallback onBegin;
   final VoidCallback onZoomOut;
   final void Function(int chapterIndex) onReplies;
-  final double bottomInset;
+  final GlobalKey cardKey;
 
   @override
   Widget build(BuildContext context) {
@@ -99,12 +99,13 @@ class StoryBottomCard extends StatelessWidget {
     return Positioned(
       left: 10,
       right: 10,
-      bottom: bottomInset,
+      bottom: 24,
       child: Semantics(
         key: const ValueKey('bottom-card'),
         liveRegion: true,
         container: true,
         child: ClipRRect(
+          key: cardKey,
           borderRadius: BorderRadius.circular(24),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
@@ -317,21 +318,30 @@ class _EndBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
-      spacing: 8,
+      spacing: 10,
       children: [
         const _Kicker('END OF STORY'),
         Text('Keep looking, or move on.', style: VelaText.serif30),
-        const SizedBox(height: 0),
-        for (var i = 0; i < half.length; i += 2)
-          Row(
+        // 10pt column gap + 6pt grid margin = 16pt before the buttons.
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Column(
             spacing: 8,
             children: [
-              Expanded(child: _EndButton(half[i])),
-              if (i + 1 < half.length) Expanded(child: _EndButton(half[i + 1])),
+              for (var i = 0; i < half.length; i += 2)
+                Row(
+                  spacing: 8,
+                  children: [
+                    Expanded(child: _EndButton(half[i])),
+                    if (i + 1 < half.length)
+                      Expanded(child: _EndButton(half[i + 1])),
+                  ],
+                ),
+              for (final a in full)
+                SizedBox(width: double.infinity, child: _EndButton(a)),
             ],
           ),
-        for (final a in full)
-          SizedBox(width: double.infinity, child: _EndButton(a)),
+        ),
       ],
     );
   }

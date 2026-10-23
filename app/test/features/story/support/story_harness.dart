@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -92,6 +93,7 @@ Future<StoryHarness> pumpStory(
   bool settle = true,
   int followStatus = 200,
   StoryImageProviderFactory? imageFactory,
+  bool networkError = false,
 }) async {
   tester.view.physicalSize = phone;
   tester.view.devicePixelRatio = 1;
@@ -99,6 +101,12 @@ Future<StoryHarness> pumpStory(
 
   final adapter = FakeAdapter((o) {
     if (o.path == '/v1/works/w1') {
+      if (networkError) {
+        throw DioException.connectionError(
+          requestOptions: o,
+          reason: 'offline',
+        );
+      }
       return workStatus == 200
           ? jsonResponse(200, okEnvelope(work ?? workJson()))
           : jsonResponse(workStatus, errEnvelope(errorCode));

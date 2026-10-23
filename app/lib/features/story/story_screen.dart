@@ -8,6 +8,7 @@ import '../../core/theme/tokens.dart';
 import 'camera_tween.dart';
 import 'follow_action.dart';
 import 'inquiry_sheet_hook.dart';
+import 'motion.dart';
 import 'photo_layout.dart';
 import 'replies_sheet_hook.dart';
 import 'story_controller.dart';
@@ -37,7 +38,7 @@ class StoryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final work = ref.watch(workProvider(workId));
     return work.when(
-      data: (w) => _StoryView(work: w, readOnly: readOnly),
+      data: (w) => _StoryView(key: ValueKey(w.id), work: w, readOnly: readOnly),
       loading: () => const _StatusScaffold(
         child: CircularProgressIndicator(color: VelaColors.accent),
       ),
@@ -109,7 +110,7 @@ void _leave(BuildContext context, {String fallback = '/'}) {
 }
 
 class _StoryView extends ConsumerStatefulWidget {
-  const _StoryView({required this.work, required this.readOnly});
+  const _StoryView({super.key, required this.work, required this.readOnly});
 
   final Work work;
   final bool readOnly;
@@ -126,6 +127,9 @@ class _StoryViewState extends ConsumerState<_StoryView> {
 
   /// The ring keeps its last position while it fades out on intro / end.
   Offset _lastSpotlight = Offset.zero;
+
+  final _cardKey = GlobalKey();
+  double _cardTop = double.infinity;
 
   Work get _work => widget.work;
   StoryKey get _key =>
@@ -156,44 +160,59 @@ class _StoryViewState extends ConsumerState<_StoryView> {
     _lastSpotlight = camera.spotlight;
     final pinsVisible = state.mode == StoryMode.explore || state.step == 0;
 
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureCard());
     return Scaffold(
       backgroundColor: Colors.black,
-      body: TweenAnimationBuilder<CameraState>(
-        tween: CameraTween(end: camera),
-        duration: media.disableAnimations ? Duration.zero : cameraDuration,
-        curve: cameraCurve,
-        builder: (context, cam, _) => Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            _photoLayer(cam, viewport, frame, state, pinsVisible),
-            if (_photoFailed) _photoError(),
-            Positioned.fill(
-              child: SpotlightRing(
-                center: cam.spotlight,
-                visible: chapterIdx >= 0,
+      body: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          Positioned.fill(
+            child: TweenAnimationBuilder<CameraState>(
+              tween: CameraTween(end: camera),
+              duration: motionDuration(context, cameraDuration),
+              curve: cameraCurve,
+              builder: (context, cam, _) => Stack(
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  _photoLayer(cam, viewport, frame, state, pinsVisible),
+                  Positioned.fill(
+                    child: SpotlightRing(
+                      center: cam.spotlight,
+                      visible: chapterIdx >= 0,
+                    ),
+                  ),
+                ],
               ),
             ),
-            _topGradient(),
-            if (state.mode == StoryMode.story &&
-                state.step >= 1 &&
-                state.step <= _work.chapters.length)
-              ..._tapZones(viewport.width),
-            _topBar(state, media),
-            StoryBottomCard(
-              work: _work,
-              state: state,
-              endActions: _endActions(),
-              onBegin: _ctl.next,
-              onZoomOut: _ctl.zoomOut,
-              onReplies: _toggleReplies,
-              bottomInset: media.padding.bottom > 24
-                  ? media.padding.bottom
-                  : 24,
-            ),
-          ],
-        ),
+          ),
+          _topGradient(),
+          if (state.mode == StoryMode.story &&
+              state.step >= 1 &&
+              state.step <= _work.chapters.length)
+            ..._tapZones(viewport.width),
+          // Above the tap zones so Retry stays tappable during chapters.
+          if (_photoFailed) _photoError(),
+          _topBar(state, media),
+          StoryBottomCard(
+            work: _work,
+            state: state,
+            endActions: _endActions(),
+            onBegin: _ctl.next,
+            onZoomOut: _ctl.zoomOut,
+            onReplies: _toggleReplies,
+            cardKey: _cardKey,
+          ),
+        ],
       ),
     );
+  }
+
+  /// Top of the bottom card, so pins can stay clear of it.
+  void _measureCard() {
+    final box = _cardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (!mounted || box == null || !box.hasSize) return;
+    final top = box.localToGlobal(Offset.zero).dy;
+    if ((top - _cardTop).abs() > 0.5) setState(() => _cardTop = top);
   }
 
   double? _aspect() {
@@ -282,8 +301,9 @@ class _StoryViewState extends ConsumerState<_StoryView> {
                         label: 'Chapter ${i + 1}: ${_work.chapters[i].title}',
                       ),
                   ],
-                  layerSize: viewport,
-                  scale: cam.scale,
+                  viewport: viewport,
+                  camera: cam,
+                  safeBottom: _cardTop,
                   visible: pinsVisible,
                   onTap: _ctl.selectPin,
                 ),
@@ -396,7 +416,15 @@ class _StoryViewState extends ConsumerState<_StoryView> {
     }
     ctl.setThreadOpen(true);
     try {
-      await ref.read(openRepliesSheetProvider)(context, _work.id, chapterIndex);
+      await ref.read(openRepliesSheetProvider)(
+        context,
+        _work.id,
+        chapterIndex,
+        readOnly: widget.readOnly,
+      );
+    } on Object catch (e) {
+      // Type only: never log user text.
+      debugPrint('replies sheet failed: ${e.runtimeType}');
     } finally {
       if (mounted) ctl.setThreadOpen(false);
     }
@@ -436,6 +464,7 @@ class _StoryViewState extends ConsumerState<_StoryView> {
             context,
             artistId: _work.author.id,
             workId: _work.id,
+            type: 'Buy a print',
           ),
         ),
     ];

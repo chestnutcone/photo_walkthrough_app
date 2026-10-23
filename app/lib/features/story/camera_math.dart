@@ -34,6 +34,18 @@ class CameraState {
   final double tx;
   final double ty;
   final Offset spotlight;
+
+  /// Value equality, so animation builders do not restart on every rebuild.
+  @override
+  bool operator ==(Object other) =>
+      other is CameraState &&
+      other.scale == scale &&
+      other.tx == tx &&
+      other.ty == ty &&
+      other.spotlight == spotlight;
+
+  @override
+  int get hashCode => Object.hash(scale, tx, ty, spotlight);
 }
 
 /// Computes the camera for a pin at fractional position ([x], [y]).

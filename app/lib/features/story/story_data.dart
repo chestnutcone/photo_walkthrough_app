@@ -20,8 +20,10 @@ final workProvider = FutureProvider.autoDispose.family<Work, String>(
 );
 
 /// Missing, removed, blocked and private stories all look the same to the
-/// viewer, so existence is not leaked.
+/// viewer, so existence is not leaked. The contract only documents 404 for
+/// getWork (public endpoint); 401/403/410 are treated the same defensively.
+/// Everything else (network, 429, 5xx) is a retryable failure.
 bool isStoryUnavailable(Object error) =>
     error is ApiException &&
-    (const {403, 404, 410}.contains(error.statusCode) ||
+    (const {401, 403, 404, 410}.contains(error.statusCode) ||
         error.code == 'not_found');
