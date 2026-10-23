@@ -6,6 +6,7 @@ import 'package:vela_app/features/story/photo_layout.dart';
 const _phone = Size(390, 844);
 
 void main() {
+  createFrameTests();
   test('unknown_aspect_fills_the_viewport_with_identity_mapping', () {
     final f = computePhotoFrame(viewport: _phone, aspect: null, pins: const []);
     expect(f.rect, Offset.zero & _phone);
@@ -51,5 +52,41 @@ void main() {
       expect(p.dx, inInclusiveRange(0, 1));
       expect(p.dy, inInclusiveRange(0, 1));
     }
+  });
+}
+
+void createFrameTests() {
+  group('contain frame (authoring)', () {
+    test('toPhotoFraction inverts the pin mapping the viewer uses', () {
+      final frame = computeContainFrame(
+        viewport: const Size(390, 420),
+        aspect: 3 / 4,
+      );
+      for (final pin in const [Offset(0, 0), Offset(1, 1), Offset(0.3, 0.8)]) {
+        final layer = frame.toLayer(pin);
+        final point = Offset(layer.dx * 390, layer.dy * 420);
+        final back = frame.toPhotoFraction(point)!;
+        expect(back.dx, closeTo(pin.dx, 1e-9));
+        expect(back.dy, closeTo(pin.dy, 1e-9));
+      }
+    });
+
+    test('points in the letterbox are not on the photo', () {
+      final frame = computeContainFrame(
+        viewport: const Size(390, 420),
+        aspect: 3 / 4,
+      );
+      expect(frame.toPhotoFraction(const Offset(2, 200)), isNull);
+    });
+
+    test('a very wide photo is letterboxed top and bottom', () {
+      final frame = computeContainFrame(
+        viewport: const Size(390, 420),
+        aspect: 2,
+      );
+      expect(frame.rect.width, 390);
+      expect(frame.rect.height, 195);
+      expect(frame.rect.top, closeTo(112.5, 1e-9));
+    });
   });
 }

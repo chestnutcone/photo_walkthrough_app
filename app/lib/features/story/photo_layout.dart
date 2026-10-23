@@ -14,7 +14,35 @@ class PhotoFrame {
     (rect.left + pin.dx * rect.width) / viewport.width,
     (rect.top + pin.dy * rect.height) / viewport.height,
   );
+
+  /// Inverse of the pin mapping: the fraction of the photo under [point]
+  /// (viewport coordinates), or null when [point] is outside the photo.
+  /// The authoring screen uses this so a tap and the viewer agree.
+  Offset? toPhotoFraction(Offset point) {
+    final inside =
+        point.dx >= rect.left &&
+        point.dx <= rect.right &&
+        point.dy >= rect.top &&
+        point.dy <= rect.bottom;
+    if (!inside) return null;
+    return Offset(
+      (point.dx - rect.left) / rect.width,
+      (point.dy - rect.top) / rect.height,
+    );
+  }
 }
+
+/// The photo fitted entirely inside [viewport] (letterboxed, never cropped).
+/// An unknown or invalid [aspect] fills the viewport.
+PhotoFrame computeContainFrame({
+  required Size viewport,
+  required double? aspect,
+}) => PhotoFrame(
+  rect: aspect == null || aspect <= 0
+      ? Offset.zero & viewport
+      : _fit(viewport, aspect, cover: false),
+  viewport: viewport,
+);
 
 /// Lays the photo out in the viewport.
 ///
