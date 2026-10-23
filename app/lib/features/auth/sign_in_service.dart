@@ -56,11 +56,13 @@ class SignInService {
   /// Development only: the generated enum has no "fake" provider.
   Future<TokenPair> _fakeSso(String idToken, String nonce) async {
     final res = await apiGuard(
-      () => _ref.read(dioProvider).post<Map<String, dynamic>>(
-        '/v1/auth/sso',
-        data: {'provider': 'fake', 'idToken': idToken, 'nonce': nonce},
-        options: Options(contentType: Headers.jsonContentType),
-      ),
+      () => _ref
+          .read(dioProvider)
+          .post<Map<String, dynamic>>(
+            '/v1/auth/sso',
+            data: {'provider': 'fake', 'idToken': idToken, 'nonce': nonce},
+            options: Options(contentType: Headers.jsonContentType),
+          ),
     );
     final data = res.data?['data'];
     if (data is! Map<String, dynamic>) {

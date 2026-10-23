@@ -176,9 +176,7 @@ class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
     String? error;
     var done = false;
     try {
-      await ref
-          .read(signInServiceProvider)
-          .verifyEmailCode(widget.email, code);
+      await ref.read(signInServiceProvider).verifyEmailCode(widget.email, code);
       done = true;
     } on ApiException catch (e) {
       error = _verifyError(e);

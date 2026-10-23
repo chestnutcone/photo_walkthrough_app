@@ -95,10 +95,7 @@ class _Box extends StatelessWidget {
           width: 1.5,
         ),
       ),
-      child: Text(
-        filled ? text[index] : '',
-        style: VelaText.serif28,
-      ),
+      child: Text(filled ? text[index] : '', style: VelaText.serif28),
     );
   }
 }

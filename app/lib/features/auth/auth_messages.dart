@@ -34,8 +34,7 @@ String waitText(Duration? wait) {
 /// User-facing text for a failed sign-in call. Never echoes server text, the
 /// email or the code.
 String signInErrorMessage(ApiException e) => switch (e.code) {
-  'rate_limited' =>
-    'Too many tries. Try again in ${waitText(e.retryAfter)}.',
+  'rate_limited' => 'Too many tries. Try again in ${waitText(e.retryAfter)}.',
   'invalid_email' => 'Enter a valid email address.',
   'disposable_email' => 'Use a permanent email address.',
   'invalid_code' => "That code isn't right, or it has expired.",
