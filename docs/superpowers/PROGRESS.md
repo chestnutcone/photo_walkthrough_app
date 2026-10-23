@@ -50,7 +50,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A16 Telemetry and crash reporting (API) (d89d3ee, f4677dd, 13b2e1d)
 - [x] B1 Theme, fonts, branding (a57bd35, fix 6e8751b)
 - [x] B2 API wiring, session, router, guest gating (f9e0e28, 63c8c2b + fix)
-- [ ] B3 Camera math
+- [x] B3 Camera math (7a19b28)
 - [ ] B4 Story viewer
 - [ ] B5 Feed
 - [ ] B6 Replies sheet
