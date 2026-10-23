@@ -12,7 +12,7 @@ namespace Vela.Api.Admin;
 /// on the same target together, and writes one audit row, all in one transaction.
 /// </summary>
 public sealed partial class ModerationService(
-    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings, IUserStateCache stateCache, IAdminAllowList allow)
+    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings, IUserStateCache stateCache, IAdminAllowList allow, ILogger<ModerationService> log)
     : IModerationService
 {
     public const int MaxReasonLength = 500;
@@ -54,23 +54,10 @@ public sealed partial class ModerationService(
     {
         var work = await db.Works.AsNoTracking().SingleOrDefaultAsync(w => w.Id == workId);
         if (work is null) return ModerationOutcome.NotFound;
-        var republish = work.Status is WorkStatus.Blocked or WorkStatus.Removed;
-        var regenerated = false;
-        try
+        if (work.Status is not (WorkStatus.Blocked or WorkStatus.Removed))
         {
             await using var tx = await db.Database.BeginTransactionAsync();
-            if (republish)
-            {
-                try { await lifecycle.RestoreAsync(workId); regenerated = true; }
-                catch (Exception e) when (e is FileNotFoundException or InvalidImageException) { return ModerationOutcome.VariantsUnavailable; }
-                var now = clock.GetUtcNow();
-                var publishedAt = work.PublishedAt ?? now;
-                await db.Works.Where(w => w.Id == workId).ExecuteUpdateAsync(s => s
-                    .SetProperty(w => w.Status, WorkStatus.Published).SetProperty(w => w.ModerationOverride, true)
-                    .SetProperty(w => w.PublishedAt, publishedAt).SetProperty(w => w.ReportHidden, false));
-                await bus.PublishAsync(new WorkPublished(workId, work.ArtistId), CancellationToken.None);
-            }
-            else if (work.ReportHidden)
+            if (work.ReportHidden)
                 await db.Works.Where(w => w.Id == workId).ExecuteUpdateAsync(s => s.SetProperty(w => w.ReportHidden, false));
             await ResolveAsync("work", workId, ReportStatus.Actioned);
             Audit(adminId, "restore", "work", workId, reason);
@@ -78,9 +65,50 @@ public sealed partial class ModerationService(
             await tx.CommitAsync();
             return ModerationOutcome.Ok;
         }
-        catch when (regenerated)
+        return await Republish(adminId, work, reason);
+    }
+
+    /// <summary>
+    /// Order matters. 1) mark the take-down as owed (committed), so a crash from here on is cleaned up by the reconciler;
+    /// 2) regenerate the variants; 3) in one transaction publish the status. Any failure after generation started takes the
+    /// variants down again, and the work stays blocked/removed.
+    /// </summary>
+    private async Task<ModerationOutcome> Republish(Guid adminId, Work work, string reason)
+    {
+        var workId = work.Id;
+        await db.Works.Where(w => w.Id == workId).ExecuteUpdateAsync(s => s.SetProperty(w => w.TakedownDoneAt, (DateTimeOffset?)null));
+        try
         {
-            await lifecycle.TakeDownAsync(workId); // never leave blocked content reachable after a failed restore
+            try { await lifecycle.RestoreAsync(workId); }
+            catch (Exception e) when (e is FileNotFoundException or InvalidImageException)
+            {
+                await lifecycle.TakeDownAsync(workId);
+                return ModerationOutcome.VariantsUnavailable;
+            }
+            await using var tx = await db.Database.BeginTransactionAsync();
+            // Lock the row: a reconciler take-down in progress finishes first. If one ran while we generated, generate again.
+            var takenDownMeanwhile = (await db.Database.SqlQuery<DateTimeOffset?>(
+                $"SELECT takedown_done_at AS \"Value\" FROM works WHERE id = {workId} FOR UPDATE").ToListAsync()).SingleOrDefault() is not null;
+            if (takenDownMeanwhile) await lifecycle.RestoreAsync(workId);
+            var now = clock.GetUtcNow();
+            var publishedAt = work.PublishedAt ?? now;
+            await db.Works.Where(w => w.Id == workId).ExecuteUpdateAsync(s => s
+                .SetProperty(w => w.Status, WorkStatus.Published).SetProperty(w => w.ModerationOverride, true)
+                .SetProperty(w => w.PublishedAt, publishedAt).SetProperty(w => w.ReportHidden, false)
+                .SetProperty(w => w.TakedownDoneAt, (DateTimeOffset?)null));
+            await bus.PublishAsync(new WorkPublished(workId, work.ArtistId), CancellationToken.None);
+            await ResolveAsync("work", workId, ReportStatus.Actioned);
+            Audit(adminId, "restore", "work", workId, reason);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+            return ModerationOutcome.Ok;
+        }
+        catch (Exception e)
+        {
+            db.ChangeTracker.Clear();
+            try { await lifecycle.TakeDownAsync(workId); }
+            catch (Exception inner) { log.LogError("Take-down after a failed restore of {WorkId} failed ({Reason}); the reconciler will retry.", workId, inner.GetType().Name); }
+            log.LogError("Restore of work {WorkId} failed ({Reason}); it stays unpublished.", workId, e.GetType().Name);
             throw;
         }
     }
@@ -120,12 +148,18 @@ public sealed partial class ModerationService(
         if (status == WorkStatus.Draft) return ModerationOutcome.NotApplicable;
 
         await using var tx = await db.Database.BeginTransactionAsync();
-        await db.Works.Where(w => w.Id == workId).ExecuteUpdateAsync(s => s.SetProperty(w => w.Status, WorkStatus.Removed));
+        await db.Works.Where(w => w.Id == workId).ExecuteUpdateAsync(s => s
+            .SetProperty(w => w.Status, WorkStatus.Removed).SetProperty(w => w.TakedownDoneAt, (DateTimeOffset?)null));
         await ResolveAsync("work", workId, ReportStatus.Actioned);
         Audit(adminId, "remove_work", "work", workId, reason.Trim());
         await db.SaveChangesAsync();
-        await lifecycle.TakeDownAsync(workId); // before commit: a failure rolls the removal back so it can be retried
         await tx.CommitAsync();
+        // The removal is committed first; the images follow, and the reconciler finishes the job if this fails.
+        try { await lifecycle.TakeDownAsync(workId); }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log.LogError("Take-down of removed work {WorkId} failed ({Reason}); it will be retried.", workId, e.GetType().Name);
+        }
         return ModerationOutcome.Ok;
     }
 

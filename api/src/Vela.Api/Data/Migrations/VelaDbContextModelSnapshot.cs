@@ -955,6 +955,10 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("status");
 
+                    b.Property<DateTimeOffset?>("TakedownDoneAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("takedown_done_at");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text")

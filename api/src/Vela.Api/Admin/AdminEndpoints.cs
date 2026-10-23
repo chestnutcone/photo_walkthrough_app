@@ -7,7 +7,7 @@ public static class AdminEndpoints
 {
     public static IServiceCollection AddAdmin(this IServiceCollection services, IConfiguration config, IHostEnvironment env)
     {
-        services.AddSingleton<AdminReconciler>();
+        services.AddSingleton<AdminReconciler>().AddSingleton<Moderation.TakedownReconciler>();
         if (!env.IsEnvironment("Test")) services.AddHostedService<AdminReconcileWorker>();
         services.AddSingleton(AdminSettings.Load(config, env));
         services.AddSingleton<IAdminAllowList>(new ConfigAdminAllowList(config));

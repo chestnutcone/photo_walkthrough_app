@@ -28,4 +28,6 @@ public class Work
     /// <summary>Times publishing this work failed after a clean scan (for example a failing event handler); retried after a gap.</summary>
     public int PublishFailures { get; set; }
     public DateTimeOffset? LastPublishFailureAt { get; set; }
+    /// <summary>For blocked or removed works: when the public variants were deleted and the CDN purged. Null means a take-down is still owed (retried by the reconciler).</summary>
+    public DateTimeOffset? TakedownDoneAt { get; set; }
 }

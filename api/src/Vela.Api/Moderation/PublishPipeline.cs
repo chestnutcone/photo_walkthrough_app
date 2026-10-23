@@ -73,6 +73,7 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
         var lifecycle = sp.GetRequiredService<Admin.IWorkVariantLifecycle>();
 
         Verdict? verdict = null;
+        Guid? blockedId = null;
         var failed = false;
         if (!work.ModerationOverride)
         {
@@ -98,14 +99,23 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
         else if (verdict is { } v && v.Severity >= BlockSeverity)
         {
             work.Status = WorkStatus.Blocked;
+            work.TakedownDoneAt = null; // a take-down is owed until it has actually happened
             await db.SaveChangesAsync(ct);
             await reports.CreateAutoFlagAsync("work", work.Id, v.Category, v.Severity);
-            // Blocked content must not stay reachable at its public image URLs. A failure rolls the whole claim back and is retried.
-            await lifecycle.TakeDownAsync(work.Id);
+            blockedId = work.Id;
         }
         else await PublishAsync(db, bus, work, now, ct);
 
         await tx.CommitAsync(ct);
+        // The block is committed first; the images follow. If this fails the reconciler finishes the job.
+        if (blockedId is { } blocked)
+        {
+            try { await lifecycle.TakeDownAsync(blocked); }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                log.LogError("Take-down of blocked work {WorkId} failed ({Reason}); it will be retried.", blocked, e.GetType().Name);
+            }
+        }
         return true;
     }
 
@@ -171,7 +181,7 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
 }
 
 /// <summary>Sweeps pending works every 30 seconds.</summary>
-public sealed class PublishPipelineWorker(PublishPipeline pipeline, TimeProvider clock, ILogger<PublishPipelineWorker> log) : BackgroundService
+public sealed class PublishPipelineWorker(PublishPipeline pipeline, TakedownReconciler takedowns, TimeProvider clock, ILogger<PublishPipelineWorker> log) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
 
@@ -184,6 +194,11 @@ public sealed class PublishPipelineWorker(PublishPipeline pipeline, TimeProvider
             catch (Exception e) when (e is not OperationCanceledException)
             {
                 log.LogError("Publish pipeline sweep failed ({Reason}).", e.GetType().Name);
+            }
+            try { await takedowns.RunOnceAsync(clock.GetUtcNow(), stoppingToken); }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                log.LogError("Take-down reconciliation failed ({Reason}).", e.GetType().Name);
             }
         } while (await timer.WaitForNextTickAsync(stoppingToken));
     }
