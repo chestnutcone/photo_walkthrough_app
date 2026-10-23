@@ -243,7 +243,10 @@ public class NotificationTests(PostgresFixture pg) : IDisposable
         var h = Host(null, s => s.AddScoped<IDomainEventHandler<ReplyAdded>, ThrowAfterNotifyHandler>());
         var owner = await User(h); var fan = await User(h); var work = await SeedWork(h, owner.Id);
 
-        await Assert.ThrowsAnyAsync<Exception>(() => fan.Post(ReplyUrl(work), new { body = "will roll back" }));
+        var failed = await fan.Post(ReplyUrl(work), new { body = "will roll back" });
+
+        Assert.Equal(HttpStatusCode.InternalServerError, failed.Status);
+        Assert.Equal("internal_error", failed.ErrorCode);
 
         Assert.Empty(await Rows(h, owner.Id));
     }

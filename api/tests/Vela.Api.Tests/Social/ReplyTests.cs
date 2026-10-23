@@ -287,7 +287,10 @@ public class ReplyTests(PostgresFixture pg) : IDisposable
         var h = Host(s => s.AddScoped<IDomainEventHandler<ReplyAdded>, ThrowingReplyHandler>());
         var owner = await User(h); var fan = await User(h); var work = await SeedWork(h, owner.Id);
 
-        await Assert.ThrowsAnyAsync<Exception>(() => fan.Post(Url(work), new { body = "will roll back" }));
+        var failed = await fan.Post(Url(work), new { body = "will roll back" });
+
+        Assert.Equal(HttpStatusCode.InternalServerError, failed.Status);
+        Assert.Equal("internal_error", failed.ErrorCode);
 
         await using var db = h.Db();
         Assert.False(await db.Replies.AnyAsync(r => r.WorkId == work));
