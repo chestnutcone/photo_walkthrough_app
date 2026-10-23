@@ -34,7 +34,7 @@ public class ExportTests(PostgresFixture pg) : IDisposable
 
         Assert.Equal(
             new[] { "README.txt", "account.json", "blocks.json", "follows.json", "images/avatar.webp", $"images/works/{w.UWork}/original.jpg",
-                    "inquiries_received_summary.json", "inquiries_sent.json", "notifications.json", "profile.json", "replies.json", "reports_filed.json", "works.json" }.Order(),
+                    "dmca_notices_about_my_works.json", "inquiries_received_summary.json", "inquiries_sent.json", "notifications.json", "profile.json", "replies.json", "reports_filed.json", "works.json" }.Order(),
             zip.Names.Order());
         var profile = zip.Json("profile.json");
         Assert.Equal("Una U", profile.GetProperty("displayName").GetString());

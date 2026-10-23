@@ -3,8 +3,9 @@ using Vela.Api.Data.Entities;
 namespace Vela.Api.Account;
 
 /// <summary>
-/// Extension point for the illegal-content evidence hold (A14). Account deletion must not remove reports (and the content
-/// they preserve) that are held as evidence. Today nothing is held, so every report is deletable; A14 narrows the query here.
+/// Account deletion and the evidence hold (A14). Held evidence lives in its own table (<c>evidence_holds</c>, no foreign keys) and its
+/// private blob container, both of which deletion never touches; the snapshot already carries the report ids and reasons, so the
+/// report rows themselves remain deletable.
 /// </summary>
 public static class EvidenceHoldGuard
 {

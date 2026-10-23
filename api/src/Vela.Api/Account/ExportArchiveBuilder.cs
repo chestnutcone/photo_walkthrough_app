@@ -36,6 +36,7 @@ public sealed class ExportArchiveBuilder(VelaDbContext db, ExportData data, IBlo
             await AddJsonAsync(zip, files, "inquiries_sent.json", await data.InquiriesSentAsync(userId), ct);
             await AddJsonAsync(zip, files, "inquiries_received_summary.json", await data.InquiriesReceivedAsync(userId), ct);
             await AddJsonAsync(zip, files, "reports_filed.json", await data.ReportsFiledAsync(userId), ct);
+            await AddJsonAsync(zip, files, "dmca_notices_about_my_works.json", await data.DmcaNoticesAboutMyWorksAsync(userId), ct);
             foreach (var work in works)
                 if (await AddImageAsync(zip, BlobNames.WorkOriginal(work.Id), $"images/works/{work.Id}/original", ct) is { } name) files.Add(name);
             var avatarBlob = await db.Profiles.AsNoTracking().Where(p => p.UserId == userId).Select(p => p.AvatarBlob).SingleOrDefaultAsync(ct);

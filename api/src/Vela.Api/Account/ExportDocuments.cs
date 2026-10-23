@@ -22,6 +22,9 @@ public sealed record BlocksDoc(IReadOnlyList<string> Blocked);
 public sealed record NotificationDoc(string Type, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt);
 public sealed record InquirySentDoc(string Type, string? ArtistHandle, string Message, string ReplyEmail, DateTimeOffset CreatedAt);
 public sealed record InquiriesReceivedSummaryDoc(int Count);
+/// <summary>The fact of a copyright notice about the user's own story: reference id, status and dates only. Never the claimant's details.</summary>
+public sealed record DmcaNoticeRefDoc(
+    Guid NoticeId, Guid? WorkId, string Status, DateTimeOffset ReceivedAt, DateTimeOffset? TakedownAt, DateTimeOffset? CounterNoticeAt, DateTimeOffset? ForwardedAt);
 public sealed record ReportFiledDoc(string TargetType, string Reason, string? Note, DateTimeOffset CreatedAt);
 
 /// <summary>Reads one user's own data. It never selects other users' emails, messages, tokens, codes or IP addresses.</summary>
@@ -83,4 +86,8 @@ public sealed class ExportData(VelaDbContext db)
     public async Task<List<ReportFiledDoc>> ReportsFiledAsync(Guid userId) =>
         await db.Reports.AsNoTracking().Where(r => r.ReporterId == userId).OrderBy(r => r.CreatedAt).ThenBy(r => r.Id)
             .Select(r => new ReportFiledDoc(r.TargetType, r.Reason, r.Note, r.CreatedAt)).ToListAsync();
+
+    public async Task<List<DmcaNoticeRefDoc>> DmcaNoticesAboutMyWorksAsync(Guid userId) =>
+        await db.DmcaNotices.AsNoTracking().Where(n => n.OwnerUserId == userId).OrderBy(n => n.CreatedAt).ThenBy(n => n.Id)
+            .Select(n => new DmcaNoticeRefDoc(n.Id, n.WorkId, n.Status, n.CreatedAt, n.TakedownAt, n.CounterAt, n.ForwardedAt)).ToListAsync();
 }

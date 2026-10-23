@@ -100,6 +100,8 @@ public class DeletionCompletenessTests(PostgresFixture pg)
             db.BannedIdentities.Add(new Vela.Api.Data.Entities.BannedIdentity { Provider = "fake", SubjectHash = new string('a', 64), UserRef = w.U.Id, CreatedAt = ProfileTestHost.Now });
             db.AdminActions.Add(new Vela.Api.Data.Entities.AdminAction { Id = Guid.NewGuid(), AdminId = w.O.Id, Action = "ban_user", TargetType = "user", TargetId = w.U.Id, Reason = "x", At = ProfileTestHost.Now });
             db.AdminActions.Add(new Vela.Api.Data.Entities.AdminAction { Id = Guid.NewGuid(), AdminId = w.U.Id, Action = "remove_work", TargetType = "work", TargetId = w.UWork, Reason = "x", At = ProfileTestHost.Now });
+            db.EvidenceHolds.Add(new Vela.Api.Data.Entities.EvidenceHold { Id = Guid.NewGuid(), UserId = w.U.Id, WorkId = w.UWork, TargetType = "work", BlobPrefix = "evidence/x/", Reason = "r", HoldUntil = ProfileTestHost.Now.AddDays(365), CreatedByAdminId = w.O.Id, CreatedAt = ProfileTestHost.Now });
+            db.DmcaNotices.Add(new Vela.Api.Data.Entities.DmcaNotice { Id = Guid.NewGuid(), WorkId = w.UWork, OwnerUserId = w.U.Id, ClaimantName = "c", ClaimantEmail = "c@c.test", ClaimantAddress = "a", WorkReference = "r", OriginalWorkDescription = "d", SignatureName = "s", GoodFaithStatement = true, PerjuryStatement = true, CreatedAt = ProfileTestHost.Now });
             await db.SaveChangesAsync();
         }
         var tables = (await Query(cs, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")).Select(r => r[0]).ToHashSet();
@@ -110,6 +112,8 @@ public class DeletionCompletenessTests(PostgresFixture pg)
         Assert.Equal(1, await Count(cs, "banned_identities", "user_ref", w.U.Id));
         Assert.Equal(1, await Count(cs, "admin_actions", "target_id", w.U.Id));
         Assert.Equal(1, await Count(cs, "admin_actions", "admin_id", w.U.Id));
+        Assert.Equal(1, await Count(cs, "evidence_holds", "user_id", w.U.Id));
+        Assert.Equal(1, await Count(cs, "dmca_notices", "owner_user_id", w.U.Id));
     }
 
     [Fact]
