@@ -56,7 +56,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B6 Replies sheet (6e6037f, 788e925, 7ac3baa, fix c54f454)
 - [x] B7 Portfolio, followers, contact (d2962ae, 4848bf5, fix 90da9cb)
 - [x] B8 Sign-in and onboarding (8bedeb2, 4293b11, e229f80, 6c77de7, fix 955e3bb)
-- [ ] B9 Create story
+- [x] B9 Create story (8d037db, 2971950, fix 44d7a4b)
 - [ ] B10 Edit profile and settings
 - [ ] B11 Search
 - [ ] B12 Notifications list
