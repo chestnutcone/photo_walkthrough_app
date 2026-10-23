@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Vela.Api.Auth;
 using Vela.Api.Auth.EmailCodes;
 using Vela.Api.Data;
 using Vela.Api.Images;
@@ -11,7 +12,7 @@ namespace Vela.Api.Account;
 /// The completeness test scans the live schema, so a new user-referencing table or column fails there until it is handled here.
 /// </summary>
 public sealed class DeletionJob(
-    VelaDbContext db, IBlobStore blobs, ICdnPurger cdn, IAppleTokenRevoker apple, IDeletionStepObserver observer, ILogger<DeletionJob> log)
+    VelaDbContext db, IBlobStore blobs, ICdnPurger cdn, IAppleTokenRevoker apple, IDeletionStepObserver observer, ILogger<DeletionJob> log, IUserStateCache? stateCache = null)
 {
     /// <summary>How many times new works may appear mid-deletion before the run gives up (and is retried after the back-off).</summary>
     public const int MaxPasses = 5;
@@ -37,6 +38,7 @@ public sealed class DeletionJob(
             // Phase B deletes rows only when no work appeared meanwhile; otherwise it changes nothing and we go round again.
             var rows = await DeleteRowsAsync(userId, workIds, ct);
             if (!rows.Done) continue;
+            stateCache?.Evict(userId);
             log.LogInformation("Account {UserId} hard-deleted: {Works} works, {BlobPrefixes} blob prefixes, {Rows} rows, {Passes} passes.",
                 userId, workIds.Count, prefixes, rows.Deleted, pass);
             return;

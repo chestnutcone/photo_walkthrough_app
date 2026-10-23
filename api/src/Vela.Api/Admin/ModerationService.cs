@@ -12,7 +12,7 @@ namespace Vela.Api.Admin;
 /// on the same target together, and writes one audit row, all in one transaction.
 /// </summary>
 public sealed partial class ModerationService(
-    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings)
+    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings, IUserStateCache stateCache)
     : IModerationService
 {
     public const int MaxReasonLength = 500;
@@ -149,6 +149,7 @@ public sealed partial class ModerationService(
         Audit(adminId, "ban_user", "user", userId, reason.Trim());
         await db.SaveChangesAsync();
         await tx.CommitAsync();
+        stateCache.Evict(userId);
         return ModerationOutcome.Ok;
     }
 
@@ -175,6 +176,7 @@ public sealed partial class ModerationService(
         Audit(adminId, "reinstate_user", "user", userId, reason.Trim());
         await db.SaveChangesAsync();
         await tx.CommitAsync();
+        stateCache.Evict(userId);
         return ModerationOutcome.Ok;
     }
 

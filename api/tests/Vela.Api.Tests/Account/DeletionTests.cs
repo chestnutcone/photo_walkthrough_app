@@ -64,9 +64,11 @@ public class DeletionTests(PostgresFixture pg) : IDisposable
         await RequestDelete(u);
         h.Clock.Advance(TimeSpan.FromMinutes(5));
 
-        var second = await RequestDelete(u);
+        // The old access token no longer passes (403 account_deleted), so repeat the request at the service level.
+        Assert.Equal("account_deleted", (await RequestDelete(u)).ErrorCode);
+        using (var scope = h.Scope())
+            await scope.ServiceProvider.GetRequiredService<Vela.Api.Account.IAccountDeletionService>().RequestAsync(u.Id);
 
-        Assert.Equal(HttpStatusCode.OK, second.Status);
         await using var db = h.Db();
         Assert.Equal(ProfileTestHost.Now, (await db.Users.SingleAsync(x => x.Id == u.Id)).DeletedAt);
     }

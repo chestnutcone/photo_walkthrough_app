@@ -34,6 +34,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddSingleton<IUserStateCache, UserStateCache>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
     .Configure<TimeProvider>((o, clock) =>
@@ -42,10 +43,23 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
         // Unauthenticated calls to secured operations get the standard envelope, not an empty 401.
         o.Events = new JwtBearerEvents
         {
+            // A valid signature is not enough: the user must still be active (cached for a few seconds).
+            OnTokenValidated = async ctx =>
+            {
+                if (!Guid.TryParse(ctx.Principal?.FindFirst("sub")?.Value, out var userId)) { ctx.Fail("no subject"); return; }
+                var sp = ctx.HttpContext.RequestServices;
+                var state = await sp.GetRequiredService<IUserStateCache>().GetAsync(userId, sp.GetRequiredService<VelaDbContext>());
+                if (state != UserState.Active) ctx.Fail(new UserStateAuthException(state));
+            },
             OnChallenge = ctx =>
             {
                 ctx.HandleResponse();
-                return Results.Fail(StatusCodes.Status401Unauthorized, "unauthorized", "Sign in to continue.").ExecuteAsync(ctx.HttpContext);
+                var result = ctx.AuthenticateFailure is UserStateAuthException { State: UserState.Suspended }
+                    ? Results.Fail(StatusCodes.Status403Forbidden, "account_suspended", "This account is suspended.")
+                    : ctx.AuthenticateFailure is UserStateAuthException { State: UserState.Deleted }
+                        ? Results.Fail(StatusCodes.Status403Forbidden, "account_deleted", "This account has been deleted.")
+                        : Results.Fail(StatusCodes.Status401Unauthorized, "unauthorized", "Sign in to continue.");
+                return result.ExecuteAsync(ctx.HttpContext);
             },
         };
         o.TokenValidationParameters = new TokenValidationParameters
