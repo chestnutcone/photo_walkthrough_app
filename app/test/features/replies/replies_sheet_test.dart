@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:vela_app/features/replies/bidi.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'dart:async';
 
 import 'support/fake_replies_api.dart';
 import 'support/sheet_harness.dart';
@@ -340,5 +344,136 @@ void main() {
     expect(find.bySemanticsLabel('Report reply'), findsOneWidget);
     expect(find.bySemanticsLabel('Close replies'), findsOneWidget);
     h.dispose();
+  });
+
+  testWidgets('enter_submits_via_keyboard_and_send_action', (t) async {
+    final h = await pumpSheet(t, replies: []);
+    await _type(t, 'via enter');
+    await t.tap(composerInput);
+    await t.sendKeyEvent(LogicalKeyboardKey.enter);
+    await t.pump();
+    expect(h.api.addCalls.single.body, 'via enter');
+    h.api.addCalls.single.succeed(reply('r2', body: 'via enter'));
+    await t.pumpAndSettle();
+    await _type(t, 'via action');
+    await t.testTextInput.receiveAction(TextInputAction.send);
+    await t.pump();
+    expect(h.api.addCalls, hasLength(2));
+    h.api.addCalls[1].succeed(reply('r3', body: 'via action'));
+    await t.pumpAndSettle();
+  });
+
+  testWidgets('shift_enter_does_not_submit', (t) async {
+    final h = await pumpSheet(t, replies: []);
+    await _type(t, 'line');
+    await t.tap(composerInput);
+    await t.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await t.sendKeyEvent(LogicalKeyboardKey.enter);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await t.pump();
+    expect(h.api.addCalls, isEmpty);
+  });
+
+  testWidgets('actions_have_44pt_hit_area', (t) async {
+    await pumpSheet(
+      t,
+      replies: [
+        reply('mine', authorId: 'me'),
+        reply('theirs'),
+      ],
+    );
+    for (final k in ['delete-mine', 'report-theirs']) {
+      final size = t.getSize(find.byKey(ValueKey(k)));
+      expect(size.width, greaterThanOrEqualTo(44), reason: k);
+      expect(size.height, greaterThanOrEqualTo(44), reason: k);
+    }
+  });
+
+  testWidgets('no_actions_while_viewer_is_loading', (t) async {
+    final api = FakeRepliesApi()..meGate = Completer<void>();
+    await pumpSheet(
+      t,
+      replies: [
+        reply('mine', authorId: 'me'),
+        reply('theirs'),
+      ],
+      fake: api,
+    );
+    expect(find.text('text theirs'), findsOneWidget);
+    expect(find.byKey(const ValueKey('report-theirs')), findsNothing);
+    expect(find.byKey(const ValueKey('delete-mine')), findsNothing);
+    api.meGate!.complete();
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('report-theirs')), findsOneWidget);
+    expect(find.byKey(const ValueKey('delete-mine')), findsOneWidget);
+  });
+
+  testWidgets('me_failure_gives_no_delete_and_sent_reply_is_own', (t) async {
+    final api = FakeRepliesApi()..meFails = true;
+    final h = await pumpSheet(
+      t,
+      replies: [
+        reply('mine', authorId: 'me'),
+        reply('theirs'),
+      ],
+      fake: api,
+    );
+    expect(find.byKey(const ValueKey('delete-mine')), findsNothing);
+    expect(find.byKey(const ValueKey('report-theirs')), findsOneWidget);
+    await _type(t, 'new one');
+    await t.tap(composerSend);
+    await t.pump();
+    h.api.addCalls.single.succeed(
+      reply('sent', authorId: 'zz', body: 'new one'),
+    );
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('delete-sent')), findsOneWidget);
+    expect(find.byKey(const ValueKey('report-sent')), findsNothing);
+  });
+
+  testWidgets('short_first_page_auto_loads_the_next', (t) async {
+    final api = FakeRepliesApi();
+    await pumpSheet(t, fake: api, open: false);
+    await t.tap(find.text('open'));
+    await t.pump();
+    await t.pump();
+    api.listCalls[0].reply([reply('r1')], next: 'c1');
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 100));
+    expect(api.listCalls, hasLength(2));
+    expect(api.listCalls[1].cursor, 'c1');
+    api.listCalls[1].reply([reply('r2')]);
+    await t.pumpAndSettle();
+    expect(find.text('text r2'), findsOneWidget);
+  });
+
+  testWidgets('sending_state_is_announced', (t) async {
+    final sem = t.ensureSemantics();
+    final h = await pumpSheet(t, replies: []);
+    await _type(t, 'x');
+    await t.tap(composerSend);
+    await t.pump();
+    expect(find.bySemanticsLabel('Sending reply'), findsOneWidget);
+    h.api.addCalls.single.succeed(reply('r2', body: 'x'));
+    await t.pumpAndSettle();
+    expect(find.bySemanticsLabel('Send reply'), findsOneWidget);
+    sem.dispose();
+  });
+
+  test('digits_and_punctuation_are_not_strong_rtl', () {
+    expect(firstStrongDirection('١٢ apples'), TextDirection.ltr);
+    expect(firstStrongDirection('«١٢» مرحبا'), TextDirection.rtl);
+    expect(firstStrongDirection('١٢٣'), isNull);
+  });
+
+  testWidgets('grabber_is_36_by_4_and_input_is_a_pill', (t) async {
+    await pumpSheet(t, replies: []);
+    expect(
+      t.getSize(find.byKey(const ValueKey('sheet-grabber'))),
+      const Size(36, 4),
+    );
+    final deco = t.widget<TextField>(composerInput).decoration!;
+    final border = deco.border! as OutlineInputBorder;
+    expect(border.borderRadius.topLeft.x, 99);
   });
 }

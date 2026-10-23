@@ -93,6 +93,12 @@ class FakeRepliesApi implements VelaApiClient {
   List<Reply>? autoList;
   String meId = 'me';
 
+  /// When set, /me fails with a server error.
+  bool meFails = false;
+
+  /// When set, /me waits for it.
+  Completer<void>? meGate;
+
   @override
   RepliesApi getRepliesApi() => _FakeReplies(this);
 
@@ -115,21 +121,26 @@ class _FakeMe implements MeApi {
     ValidateStatus? validateStatus,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
-  }) async => Response(
-    requestOptions: RequestOptions(),
-    data: MeEnvelope.fromJson({
-      'success': true,
-      'data': {
-        'id': api.meId,
-        'profile': null,
-        'onboardingComplete': true,
-        'tier': {'name': 'free', 'maxWorks': 20},
-        'usedWorks': 0,
-      },
-      'error': null,
-      'page': null,
-    }),
-  );
+  }) async {
+    final gate = api.meGate;
+    if (gate != null) await gate.future;
+    if (api.meFails) throw apiError('server_error', status: 500);
+    return Response(
+      requestOptions: RequestOptions(),
+      data: MeEnvelope.fromJson({
+        'success': true,
+        'data': {
+          'id': api.meId,
+          'profile': null,
+          'onboardingComplete': true,
+          'tier': {'name': 'free', 'maxWorks': 20},
+          'usedWorks': 0,
+        },
+        'error': null,
+        'page': null,
+      }),
+    );
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -25,7 +25,6 @@ Future<void> showRepliesSheet(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
-  showDragHandle: true,
   backgroundColor: VelaColors.sheet,
   barrierColor: const Color(0x66000000),
   shape: const RoundedRectangleBorder(
@@ -73,6 +72,7 @@ class RepliesSheet extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const _Grabber(),
             _Header(title: chapterTitle),
             Expanded(
               child: _Body(keyArg: _key, readOnly: readOnly),
@@ -88,6 +88,26 @@ class RepliesSheet extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _Grabber extends StatelessWidget {
+  const _Grabber();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 10, bottom: 6),
+    child: Center(
+      child: Container(
+        key: const ValueKey('sheet-grabber'),
+        width: 36,
+        height: 4,
+        decoration: BoxDecoration(
+          color: VelaColors.faint,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    ),
+  );
 }
 
 class _Header extends StatelessWidget {
@@ -140,6 +160,24 @@ class _BodyState extends ConsumerState<_Body> {
   RepliesController get _ctl =>
       ref.read(repliesControllerProvider(widget.keyArg).notifier);
 
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// A first page that does not fill the viewport never scrolls, so ask for
+  /// the next page here.
+  void _fillViewport() {
+    if (!mounted || !_scroll.hasClients) return;
+    final state = ref.read(repliesControllerProvider(widget.keyArg));
+    if (state.canLoadMore && _scroll.position.extentAfter < _loadMoreExtent) {
+      _ctl.loadMore();
+    }
+  }
+
   bool _onScroll(ScrollNotification n) {
     if (n.metrics.extentAfter < _loadMoreExtent) _ctl.loadMore();
     return false;
@@ -178,7 +216,10 @@ class _BodyState extends ConsumerState<_Body> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(repliesControllerProvider(widget.keyArg));
-    final viewer = ref.watch(viewerIdsProvider).value ?? const <String>{};
+    final viewerAsync = ref.watch(viewerIdsProvider);
+    final viewer = viewerAsync.value ?? const <String>{};
+    final viewerKnown = viewerAsync.hasValue || viewerAsync.hasError;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fillViewport());
     if (state.isLoading) {
       return const Center(
         child: SizedBox(
@@ -208,6 +249,7 @@ class _BodyState extends ConsumerState<_Body> {
           child: NotificationListener<ScrollNotification>(
             onNotification: _onScroll,
             child: ListView.builder(
+              controller: _scroll,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               itemCount: state.items.length + 1,
               itemBuilder: (context, i) {
@@ -218,7 +260,10 @@ class _BodyState extends ConsumerState<_Body> {
                 return ReplyTile(
                   key: ValueKey(r.id),
                   reply: r,
-                  isOwn: viewer.contains(r.author.id),
+                  isOwn:
+                      viewer.contains(r.author.id) ||
+                      state.ownIds.contains(r.id),
+                  showActions: viewerKnown || state.ownIds.contains(r.id),
                   readOnly: widget.readOnly,
                   onAction: (a) =>
                       a == ReplyAction.delete ? _confirmDelete(r) : _report(r),

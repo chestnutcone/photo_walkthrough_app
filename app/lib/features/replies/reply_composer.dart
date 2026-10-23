@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -81,6 +82,17 @@ class _ReplyComposerState extends ConsumerState<ReplyComposer> {
     }
   }
 
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    final isEnter =
+        event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter;
+    if (!isEnter || HardwareKeyboard.instance.isShiftPressed) {
+      return KeyEventResult.ignored; // Shift+Enter inserts a newline.
+    }
+    if (event is KeyDownEvent) unawaited(_send());
+    return KeyEventResult.handled;
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(repliesControllerProvider(widget.keyArg));
@@ -106,33 +118,40 @@ class _ReplyComposerState extends ConsumerState<ReplyComposer> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
-              child: TextField(
-                key: const ValueKey('composer-input'),
-                controller: _text,
-                minLines: 1,
-                maxLines: 4,
-                textDirection: firstStrongDirection(_text.text),
-                keyboardType: TextInputType.multiline,
-                textCapitalization: TextCapitalization.sentences,
-                style: VelaText.sans14,
-                cursorColor: VelaColors.accent,
-                inputFormatters: [
-                  FilteringTextInputFormatter.deny(_controlChars),
-                  const CodePointLimiter(),
-                ],
-                decoration: InputDecoration(
-                  hintText: 'Reply to this detail…',
-                  hintStyle: VelaText.sans14.copyWith(color: VelaColors.faint),
-                  filled: true,
-                  fillColor: VelaColors.input,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 11,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(22),
-                    borderSide: BorderSide.none,
+              child: Focus(
+                onKeyEvent: _onKey,
+                child: TextField(
+                  key: const ValueKey('composer-input'),
+                  controller: _text,
+                  minLines: 1,
+                  maxLines: 4,
+                  textDirection: firstStrongDirection(_text.text),
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => unawaited(_send()),
+                  textCapitalization: TextCapitalization.sentences,
+                  style: VelaText.sans14,
+                  cursorColor: VelaColors.accent,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.deny(_controlChars),
+                    const CodePointLimiter(),
+                  ],
+                  decoration: InputDecoration(
+                    hintText: 'Reply to this detail…',
+                    hintStyle: VelaText.sans14.copyWith(
+                      color: VelaColors.faint,
+                    ),
+                    filled: true,
+                    fillColor: VelaColors.input,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 11,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(99),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
@@ -151,7 +170,8 @@ class _ReplyComposerState extends ConsumerState<ReplyComposer> {
                 minimumSize: const Size(64, 44),
               ),
               child: Semantics(
-                label: 'Send reply',
+                label: sending ? 'Sending reply' : 'Send reply',
+                liveRegion: true,
                 excludeSemantics: true,
                 child: Text(sending ? '…' : 'Send', style: VelaText.sans13s),
               ),

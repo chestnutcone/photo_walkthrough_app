@@ -31,6 +31,7 @@ class RepliesState {
     this.moreError,
     this.sendError,
     this.actionError,
+    this.ownIds = const {},
   });
 
   const RepliesState.loading() : this(isLoading: true);
@@ -49,6 +50,9 @@ class RepliesState {
 
   /// A delete failed and was rolled back.
   final ApiException? actionError;
+
+  /// Replies this viewer sent in this session of the sheet.
+  final Set<String> ownIds;
 
   bool get canLoadMore =>
       nextCursor != null && !isLoading && !loadingMore && moreError == null;
@@ -79,6 +83,7 @@ class RepliesState {
     actionError: identical(actionError, _keep)
         ? this.actionError
         : actionError as ApiException?,
+    ownIds: ownIds,
   );
 }
 
@@ -120,6 +125,7 @@ class RepliesController extends Notifier<RepliesState> {
   /// Replies sent since the last (re)build; kept when a first page that was
   /// requested before the send arrives without them.
   final List<Reply> _sent = [];
+  final Set<String> _own = {};
 
   @override
   RepliesState build() {
@@ -127,6 +133,7 @@ class RepliesController extends Notifier<RepliesState> {
     _epoch++;
     _generation++;
     _sent.clear();
+    _own.clear();
     _cancel?.cancel();
     _cancel = null;
     ref.onDispose(() => _cancel?.cancel());
@@ -146,8 +153,10 @@ class RepliesController extends Notifier<RepliesState> {
     final generation = ++_generation;
     _cancel?.cancel();
     final token = _cancel = CancelToken();
+    // The old cursor must not be usable while the first page reloads.
+    final oldCursor = state.nextCursor;
     state = keepItems
-        ? state.copyWith(loadingMore: false, moreError: null)
+        ? state.copyWith(loadingMore: false, moreError: null, nextCursor: null)
         : const RepliesState.loading();
     try {
       final page = await _fetch(null, token);
@@ -155,10 +164,13 @@ class RepliesController extends Notifier<RepliesState> {
       state = RepliesState(
         items: _merge(page.items, _sent),
         nextCursor: page.next,
+        ownIds: Set.of(_own),
       );
     } on ApiException catch (e) {
       if (!_isCurrent(generation)) return;
-      state = keepItems ? state.copyWith(moreError: e) : RepliesState(error: e);
+      state = keepItems
+          ? state.copyWith(moreError: e, nextCursor: oldCursor)
+          : RepliesState(error: e);
     }
   }
 
@@ -217,9 +229,14 @@ class RepliesController extends Notifier<RepliesState> {
       // The session changed mid-flight: the new state belongs to someone else.
       if (!_isEpoch(epoch)) return SendOutcome.sent;
       _sent.add(created);
-      state = state.copyWith(
+      _own.add(created.id);
+      state = RepliesState(
         items: _merge(state.items, [created]),
-        sending: false,
+        nextCursor: state.nextCursor,
+        loadingMore: state.loadingMore,
+        moreError: state.moreError,
+        actionError: state.actionError,
+        ownIds: Set.of(_own),
       );
       return SendOutcome.sent;
     } on ApiException catch (e) {
@@ -239,6 +256,7 @@ class RepliesController extends Notifier<RepliesState> {
       items: [...state.items]..removeAt(index),
       actionError: null,
     );
+    final wasSent = _sent.any((r) => r.id == id);
     _sent.removeWhere((r) => r.id == id);
     try {
       final env = (await apiGuard(
@@ -255,6 +273,7 @@ class RepliesController extends Notifier<RepliesState> {
       if (e.code == 'not_found') return true; // already gone
       if (!_isEpoch(epoch)) return false;
       if (state.items.any((r) => r.id == id)) return false;
+      if (wasSent) _sent.add(removed);
       final at = index.clamp(0, state.items.length);
       state = state.copyWith(
         items: [...state.items]..insert(at, removed),

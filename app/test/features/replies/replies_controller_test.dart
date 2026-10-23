@@ -178,4 +178,76 @@ void main() {
     c.read(_p.notifier).hideLocally('r1');
     expect(_ids(c), ['r2']);
   });
+
+  test('refresh_with_items_blocks_loadMore_with_the_stale_cursor', () async {
+    final (:c, :api) = _setup();
+    await pumpEventQueue();
+    api.listCalls[0].reply([reply('r1')], next: 'old');
+    await pumpEventQueue();
+    final n = c.read(_p.notifier);
+    final refresh = n.refresh();
+    await pumpEventQueue();
+    await n.loadMore();
+    expect(api.listCalls, hasLength(2)); // only the refresh
+    api.listCalls[1].reply([reply('r1'), reply('r2')]);
+    await refresh;
+    expect(_ids(c), ['r1', 'r2']);
+  });
+
+  test('failed_refresh_restores_the_cursor', () async {
+    final (:c, :api) = _setup();
+    await pumpEventQueue();
+    api.listCalls[0].reply([reply('r1')], next: 'c1');
+    await pumpEventQueue();
+    final refresh = c.read(_p.notifier).refresh();
+    await pumpEventQueue();
+    api.listCalls[1].done.completeError(apiError('server_error', status: 500));
+    await refresh;
+    expect(c.read(_p).nextCursor, 'c1');
+  });
+
+  test('rolled_back_delete_of_a_sent_reply_survives_refresh', () async {
+    final (:c, :api) = _setup();
+    await pumpEventQueue();
+    api.listCalls[0].reply([]);
+    await pumpEventQueue();
+    final n = c.read(_p.notifier);
+    final sent = n.send('hi');
+    await pumpEventQueue();
+    api.addCalls[0].succeed(reply('mine', body: 'hi'));
+    await sent;
+    final del = n.delete('mine');
+    await pumpEventQueue();
+    api.deleteCalls[0].fail(apiError('server_error', status: 500));
+    await del;
+    final refresh = n.refresh();
+    await pumpEventQueue();
+    api.listCalls[1].reply([reply('other')]);
+    await refresh;
+    expect(_ids(c), ['other', 'mine']);
+  });
+
+  test('sent_reply_counts_as_own', () async {
+    final (:c, :api) = _setup();
+    await pumpEventQueue();
+    api.listCalls[0].reply([]);
+    await pumpEventQueue();
+    final sent = c.read(_p.notifier).send('hi');
+    await pumpEventQueue();
+    api.addCalls[0].succeed(reply('mine', authorId: 'zzz'));
+    await sent;
+    expect(c.read(_p).ownIds, {'mine'});
+  });
+
+  test('viewer_ids_follow_the_session_flip', () async {
+    final (:c, :api) = _setup();
+    c.listen(viewerIdsProvider, (_, _) {});
+    expect(await c.read(viewerIdsProvider.future), {'me'});
+    api.meId = 'other';
+    await c
+        .read(sessionProvider.notifier)
+        .signIn(accessToken: 'B', refreshToken: 'RB', expiresIn: 3600);
+    await pumpEventQueue();
+    expect(await c.read(viewerIdsProvider.future), {'other'});
+  });
 }

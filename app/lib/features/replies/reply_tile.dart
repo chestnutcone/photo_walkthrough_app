@@ -20,12 +20,16 @@ class ReplyTile extends StatelessWidget {
     required this.isOwn,
     required this.readOnly,
     required this.onAction,
+    this.showActions = true,
     super.key,
   });
 
   final Reply reply;
   final bool isOwn;
   final bool readOnly;
+
+  /// False while the viewer's identity is unknown.
+  final bool showActions;
   final void Function(ReplyAction action) onAction;
 
   @override
@@ -83,7 +87,7 @@ class ReplyTile extends StatelessWidget {
               ],
             ),
           ),
-          if (!readOnly) _action(),
+          if (!readOnly && showActions) _action(),
         ],
       ),
     );
@@ -100,9 +104,15 @@ class ReplyTile extends StatelessWidget {
         key: ValueKey('${delete ? 'delete' : 'report'}-${reply.id}'),
         borderRadius: BorderRadius.circular(8),
         onTap: () => onAction(delete ? ReplyAction.delete : ReplyAction.report),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Text(delete ? 'Delete' : 'Report', style: VelaText.mono10),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          child: Center(
+            widthFactor: 1,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(delete ? 'Delete' : 'Report', style: VelaText.mono10),
+            ),
+          ),
         ),
       ),
     );

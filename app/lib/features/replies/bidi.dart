@@ -15,8 +15,9 @@ bool _isRtl(int r) =>
 /// reply picks its own.
 TextDirection? firstStrongDirection(String text) {
   for (final r in text.runes) {
-    if (_isRtl(r)) return TextDirection.rtl;
-    if (_letter.hasMatch(String.fromCharCode(r))) return TextDirection.ltr;
+    // Only letters are strong; digits and punctuation are neutral.
+    if (!_letter.hasMatch(String.fromCharCode(r))) continue;
+    return _isRtl(r) ? TextDirection.rtl : TextDirection.ltr;
   }
   return null;
 }
