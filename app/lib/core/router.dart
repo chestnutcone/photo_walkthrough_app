@@ -10,6 +10,8 @@ import '../features/onboarding/demo_story.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
 import '../features/story/story_screen.dart';
+import '../features/profile_edit/edit_profile_screen.dart';
+import '../features/settings/settings_screen.dart';
 import 'placeholder_screens.dart';
 
 /// True when the signed-in account has not finished onboarding, from `/v1/me`
@@ -84,7 +86,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile/edit',
-        builder: (_, _) => const PlaceholderScreen('profile/edit'),
+        builder: (_, _) => const EditProfileScreen(),
       ),
       GoRoute(path: '/create', builder: (_, _) => const CreateScreen()),
       GoRoute(
@@ -95,10 +97,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/notifications',
         builder: (_, _) => const PlaceholderScreen('notifications'),
       ),
-      GoRoute(
-        path: '/settings',
-        builder: (_, _) => const PlaceholderScreen('settings'),
-      ),
+      GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(
         path: '/onboarding',
         builder: (_, _) => const OnboardingScreen(),

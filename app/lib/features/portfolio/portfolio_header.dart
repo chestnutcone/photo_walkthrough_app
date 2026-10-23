@@ -97,6 +97,7 @@ class PortfolioHeader extends ConsumerWidget {
     if (isOwn) {
       return _OwnActions(
         onEdit: () => context.push('/profile/edit'),
+        onSettings: () => context.push('/settings'),
         onNewStory: () => _newStory(context, ref),
       );
     }
@@ -586,14 +587,27 @@ class _Actions extends StatelessWidget {
 }
 
 class _OwnActions extends StatelessWidget {
-  const _OwnActions({required this.onEdit, required this.onNewStory});
+  const _OwnActions({
+    required this.onEdit,
+    required this.onNewStory,
+    required this.onSettings,
+  });
 
   final VoidCallback onEdit;
   final VoidCallback onNewStory;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) => Row(
     children: [
+      IconButton(
+        key: const ValueKey('portfolio-settings'),
+        tooltip: 'Settings',
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        onPressed: onSettings,
+        icon: const Icon(Icons.settings_outlined, color: VelaColors.secondary),
+      ),
+      const SizedBox(width: 4),
       Expanded(
         child: _ActionButton(
           key: const ValueKey('portfolio-edit'),

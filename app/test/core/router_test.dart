@@ -1,3 +1,5 @@
+import 'package:vela_app/features/profile_edit/edit_profile_screen.dart';
+import 'package:vela_app/features/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -91,6 +93,10 @@ void main() {
       await tester.pumpAndSettle();
       if (path == '/create') {
         expect(find.byType(CreateScreen), findsOneWidget);
+      } else if (path == '/settings') {
+        expect(find.byType(SettingsScreen), findsOneWidget);
+      } else if (path == '/profile/edit') {
+        expect(find.byType(EditProfileScreen), findsOneWidget);
       } else {
         expect(find.text('route:${path.substring(1)}'), findsOneWidget);
       }
