@@ -37,6 +37,10 @@ dependencies:
 
   vela_api_client:
     path: packages/vela_api_client
+  flutter_riverpod: 3.4.3
+  go_router: 18.1.1
+  flutter_secure_storage: 11.2.0
+  dio: 5.11.1
 
 dev_dependencies:
   flutter_test:
