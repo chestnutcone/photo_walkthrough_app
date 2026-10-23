@@ -53,13 +53,4 @@ public static class TelemetryExtensions
 
     public static IApplicationBuilder UseVelaExceptionHandling(this IApplicationBuilder app) =>
         app.UseMiddleware<ExceptionHandlingMiddleware>();
-
-    private sealed class ScrubbingLogProcessor : BaseProcessor<LogRecord>
-    {
-        public override void OnEnd(LogRecord record)
-        {
-            record.FormattedMessage = PiiScrubber.Scrub(record.FormattedMessage);
-            record.Body = PiiScrubber.Scrub(record.Body);
-        }
-    }
 }

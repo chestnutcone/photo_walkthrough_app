@@ -24,17 +24,45 @@ public static class SentryScrubber
         o.TracesSampleRate = t.SamplingRatio;
         o.AttachStacktrace = true;
         o.SetBeforeSend((evt, _) => Apply(evt));
+        o.SetBeforeSendTransaction((t, _) => ApplyTransaction(t));
         o.SetBeforeBreadcrumb((crumb, _) => ScrubBreadcrumb(crumb));
     }
 
     public static SentryEvent? Apply(SentryEvent evt)
     {
-        evt.User.Email = null;
-        evt.User.IpAddress = null;
-        evt.User.Username = null;
+        ScrubCommon(evt);
         evt.ServerName = null;
 
-        var req = evt.Request;
+        if (evt.Message is { } m)
+        {
+            m.Message = PiiScrubber.Scrub(m.Message);
+            m.Formatted = PiiScrubber.Scrub(m.Formatted);
+        }
+        foreach (var x in evt.SentryExceptions ?? []) x.Value = PiiScrubber.Scrub(x.Value);
+        // Extra and contexts are free-form; drop them rather than guess which values are personal.
+        foreach (var key in evt.Extra.Keys.ToList()) evt.SetExtra(key, SensitiveMask);
+        ScrubBreadcrumbs(evt);
+        return evt;
+    }
+
+    public static SentryTransaction? ApplyTransaction(SentryTransaction t)
+    {
+        ScrubCommon(t);
+        t.Description = PiiScrubber.Scrub(t.Description);
+        foreach (var span in t.Spans) span.Description = PiiScrubber.Scrub(span.Description);
+        foreach (var key in t.Extra.Keys.ToList()) t.SetExtra(key, SensitiveMask);
+        return t;
+    }
+
+    /// <summary>User, request and tags: the parts events and transactions share.</summary>
+    private static void ScrubCommon(IEventLike e)
+    {
+        e.User.Email = null;
+        e.User.IpAddress = null;
+        e.User.Username = null;
+        foreach (var key in e.Tags.Keys.ToList()) e.SetTag(key, PiiScrubber.Scrub(e.Tags[key])!);
+
+        var req = e.Request;
         req.Data = null;
         req.Cookies = null;
         req.QueryString = PiiScrubber.Scrub(req.QueryString);
@@ -47,25 +75,15 @@ public static class SentryScrubber
         foreach (var key in req.Env.Keys.ToList())
             if (key.Contains("ADDR", StringComparison.OrdinalIgnoreCase) || key.Contains("HOST", StringComparison.OrdinalIgnoreCase)) req.Env.Remove(key);
             else req.Env[key] = PiiScrubber.Scrub(req.Env[key])!;
-
-        if (evt.Message is { } m)
-        {
-            m.Message = PiiScrubber.Scrub(m.Message);
-            m.Formatted = PiiScrubber.Scrub(m.Formatted);
-        }
-        foreach (var x in evt.SentryExceptions ?? []) x.Value = PiiScrubber.Scrub(x.Value);
-        foreach (var key in evt.Tags.Keys.ToList()) evt.SetTag(key, PiiScrubber.Scrub(evt.Tags[key])!);
-        // Extra and contexts are free-form; drop them rather than guess which values are personal.
-        foreach (var key in evt.Extra.Keys.ToList()) evt.SetExtra(key, SensitiveMask);
-        ScrubBreadcrumbs(evt);
-        return evt;
     }
 
     private static void ScrubBreadcrumbs(SentryEvent evt)
     {
         var scrubbed = evt.Breadcrumbs.Select(b => ScrubBreadcrumb(b)!).ToList();
-        // The SDK keeps breadcrumbs in a mutable list; if that ever changes, drop them rather than leak.
-        if (evt.Breadcrumbs is not ICollection<Breadcrumb> { IsReadOnly: false } list) return;
+        // The SDK keeps breadcrumbs in a mutable list. If that ever changes we cannot replace them, so fail closed:
+        // BeforeBreadcrumb already scrubbed each one on insert, and an unexpected collection type is an error to surface.
+        if (evt.Breadcrumbs is not ICollection<Breadcrumb> { IsReadOnly: false } list)
+            throw new InvalidOperationException("Sentry breadcrumbs are no longer a mutable collection; update SentryScrubber.");
         list.Clear();
         foreach (var b in scrubbed) list.Add(b);
     }

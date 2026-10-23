@@ -332,3 +332,73 @@ public class VelaMetricsTests
     }
 }
 
+
+public sealed class CapturingLogExporter : OpenTelemetry.BaseExporter<OpenTelemetry.Logs.LogRecord>
+{
+    public List<(string? Message, string? Body, Exception? Exception)> Seen { get; } = [];
+    public override OpenTelemetry.ExportResult Export(in OpenTelemetry.Batch<OpenTelemetry.Logs.LogRecord> batch)
+    {
+        foreach (var r in batch) Seen.Add((r.FormattedMessage, r.Body, r.Exception));
+        return OpenTelemetry.ExportResult.Success;
+    }
+}
+
+public class ScrubbingPipelineTests
+{
+    [Fact]
+    public void Exception_text_never_reaches_the_exporter()
+    {
+        var exporter = new CapturingLogExporter();
+        using var factory = LoggerFactory.Create(b => b.AddOpenTelemetry(o =>
+        {
+            o.IncludeFormattedMessage = true;
+            o.AddProcessor(new ScrubbingLogProcessor());
+            o.AddProcessor(new OpenTelemetry.SimpleLogRecordExportProcessor(exporter));
+        }));
+        var ex = new InvalidOperationException("23505: duplicate key. Key (email)=(jane@example.com) already exists. at /src/X.cs");
+
+        factory.CreateLogger("t").LogError(ex, "Save failed for jane@example.com");
+
+        var seen = Assert.Single(exporter.Seen);
+        Assert.Null(seen.Exception);
+        var text = seen.Message + "|" + seen.Body;
+        Assert.DoesNotContain("jane", text);
+        Assert.DoesNotContain("Key (email)", text);
+        Assert.Contains("InvalidOperationException", text);
+    }
+}
+
+public class SentryTransactionScrubTests
+{
+    [Fact]
+    public void Transactions_carry_no_query_text_email_ip_or_auth()
+    {
+        var t = new SentryTransaction("GET /v1/search", "http.server")
+        {
+            Request = new SentryRequest
+            {
+                Url = "https://api.example.test/v1/search?q=a@b.com", QueryString = "q=a@b.com", Data = "body", Cookies = "c=1",
+                Headers = { ["Authorization"] = "Bearer tok123", ["Accept"] = "application/json" },
+            },
+            User = new SentryUser { Id = "u1", Email = "a@b.com", IpAddress = "203.0.113.9" },
+        };
+        t.SetTag("who", "a@b.com");
+
+        var r = SentryScrubber.ApplyTransaction(t)!;
+
+        var dump = string.Join("|", r.Request.Url, r.Request.QueryString, r.Request.Data, r.Request.Cookies,
+            string.Join(",", r.Request.Headers.Select(h => h.Key + h.Value)), r.User.Email, r.User.IpAddress, string.Join(",", r.Tags.Values));
+        Assert.DoesNotContain("a@b.com", dump);
+        Assert.DoesNotContain("203.0.113.9", dump);
+        Assert.DoesNotContain("tok123", dump);
+        Assert.False(r.Request.Headers.ContainsKey("Authorization"));
+    }
+
+    [Fact]
+    public void Scrubber_fails_closed_when_a_regex_times_out()
+    {
+        var result = PiiScrubber.ScrubGuarded("secret jane@example.com", _ => throw new System.Text.RegularExpressions.RegexMatchTimeoutException());
+
+        Assert.Equal(PiiScrubber.TimeoutMask, result);
+    }
+}
