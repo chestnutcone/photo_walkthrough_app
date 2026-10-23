@@ -56,6 +56,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/auth/email/request:
     post:
       operationId: emailRequest
@@ -89,6 +91,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/auth/email/verify:
     post:
       operationId: emailVerify
@@ -120,6 +124,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/auth/refresh:
     post:
       operationId: refresh
@@ -151,6 +157,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/auth/logout:
     post:
       operationId: logout
@@ -178,6 +186,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/me:
     get:
       operationId: getMe
@@ -198,6 +208,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       operationId: deleteAccount
       tags: [Me]
@@ -217,6 +229,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/me/onboarding:
     post:
       operationId: completeOnboarding
@@ -249,6 +263,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/me/profile:
     patch:
       operationId: updateProfile
@@ -282,6 +298,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/me/avatar-upload:
     post:
       operationId: avatarUpload
@@ -302,6 +320,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/me/export:
     post:
       operationId: requestExport
@@ -324,6 +344,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/me/export/{id}:
     get:
       operationId: getExport
@@ -350,6 +372,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/artists/suggested:
     get:
       operationId: suggestedArtists
@@ -370,6 +394,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/artists/{handle}:
     get:
       operationId: getArtist
@@ -391,6 +417,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/artists/{handle}/works:
     get:
       operationId: listArtistWorks
@@ -414,6 +442,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/artists/{id}/follow:
     put:
       operationId: follow
@@ -440,6 +470,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       operationId: unfollow
       tags: [Artists]
@@ -463,6 +495,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/artists/{id}/followers:
     get:
       operationId: listFollowers
@@ -489,6 +523,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/artists/{id}/inquiries:
     post:
       operationId: sendInquiry
@@ -525,6 +561,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/feed:
     get:
       operationId: getFeed
@@ -549,6 +587,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/works:
     post:
       operationId: createDraft
@@ -587,6 +627,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/works/{id}:
     get:
       operationId: getWork
@@ -608,6 +650,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
     put:
       operationId: updateWork
       tags: [Works]
@@ -645,6 +689,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       operationId: deleteWork
       tags: [Works]
@@ -670,6 +716,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/works/{id}/publish:
     post:
       operationId: publishWork
@@ -700,6 +748,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/works/{id}/chapters/{index}/replies:
     get:
       operationId: listReplies
@@ -724,6 +774,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
     post:
       operationId: addReply
       tags: [Replies]
@@ -761,6 +813,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/replies/{id}:
     delete:
       operationId: deleteReply
@@ -787,6 +841,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/notifications:
     get:
       operationId: listNotifications
@@ -810,6 +866,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/notifications/unread-count:
     get:
       operationId: unreadCount
@@ -830,6 +888,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/notifications/read:
     post:
       operationId: markRead
@@ -860,6 +920,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/search:
     get:
       operationId: search
@@ -885,6 +947,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/reports:
     post:
       operationId: report
@@ -917,6 +981,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/blocks/{userId}:
     put:
       operationId: block
@@ -941,6 +1007,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       operationId: unblock
       tags: [Safety]
@@ -962,6 +1030,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/legal/dmca-notices:
     post:
       operationId: submitDmcaNotice
@@ -994,6 +1064,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/works/{id}/counter-notice:
     post:
       operationId: submitCounterNotice
@@ -1037,6 +1109,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     bearerAuth:
@@ -1169,6 +1243,17 @@ components:
           schema:
             type: integer
             minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    InternalError:
+      description: "Error 500 (code internal_error). The message is generic; the body never carries exception text or a stack trace. X-Trace-Id carries a correlation id for support."
+      headers:
+        X-Trace-Id:
+          description: "Correlation id of the failed request"
+          schema:
+            type: string
       content:
         application/json:
           schema:
