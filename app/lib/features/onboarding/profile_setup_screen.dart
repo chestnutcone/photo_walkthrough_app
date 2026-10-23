@@ -12,7 +12,7 @@ import 'onboarding_draft.dart';
 import 'onboarding_widgets.dart';
 
 /// Lower-cases, and drops spaces and "@", as the user types or pastes.
-class _HandleFormatter extends TextInputFormatter {
+class HandleInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,
@@ -131,7 +131,7 @@ class _ProfileSetupState extends ConsumerState<ProfileSetupScreen> {
           textInputAction: TextInputAction.done,
           keyboardType: TextInputType.visiblePassword,
           inputFormatters: [
-            _HandleFormatter(),
+            HandleInputFormatter(),
             LengthLimitingTextInputFormatter(HandleRules.maxLength + 1),
           ],
           style: VelaText.sans15,

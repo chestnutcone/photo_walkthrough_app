@@ -5,7 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config.dart';
 
-enum LegalDoc { terms, privacy }
+/// Slugs served by the API at `/legal/{slug}`.
+enum LegalDoc { terms, privacy, content, dmca }
 
 /// The public legal pages are served by the API at `/legal/{slug}`.
 Uri legalUri(LegalDoc doc) =>

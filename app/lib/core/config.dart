@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'branding.dart';
+
 /// Build-time configuration. Release builds must pass
 /// `--dart-define=API_BASE_URL=https://api.example.com`.
 abstract final class AppConfig {
@@ -57,4 +59,18 @@ abstract final class AppConfig {
     if (isWeb) return 'web';
     return platform == TargetPlatform.iOS ? 'ios' : 'android';
   }
+
+  /// Where "Contact support" writes to. Placeholder domain until the final
+  /// name exists; override with `--dart-define=SUPPORT_EMAIL=...`.
+  static const String supportEmail = String.fromEnvironment(
+    'SUPPORT_EMAIL',
+    defaultValue: 'support@${Branding.domain}',
+  );
+
+  /// Shown in Settings. Keep in step with pubspec.yaml (`--dart-define`
+  /// `APP_VERSION` overrides it in CI builds).
+  static const String appVersion = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: '1.0.0',
+  );
 }
