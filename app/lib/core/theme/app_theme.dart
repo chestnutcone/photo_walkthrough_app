@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-/// The single dark theme for the app.
+/// The single dark theme for the app. Screens should use [VelaText] styles
+/// directly; the TextTheme mapping only covers stock Material widgets.
 ThemeData buildTheme() {
   const scheme = ColorScheme.dark(
     primary: VelaColors.accent,
@@ -41,8 +42,21 @@ ThemeData buildTheme() {
     canvasColor: VelaColors.background,
     fontFamily: VelaText.sansFamily,
     textTheme: text,
+    dividerTheme: const DividerThemeData(
+      color: VelaColors.hairline,
+      thickness: 1,
+      space: 1,
+    ),
+    inputDecorationTheme: const InputDecorationThemeData(
+      filled: true,
+      fillColor: VelaColors.input,
+      hintStyle: TextStyle(color: VelaColors.faint),
+    ),
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: VelaColors.sheet,
+      showDragHandle: true,
+      dragHandleSize: Size(36, 4),
+      dragHandleColor: VelaColors.faint,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
