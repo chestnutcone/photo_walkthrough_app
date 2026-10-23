@@ -5,6 +5,7 @@ import 'package:vela_api_client/vela_api_client.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/theme/tokens.dart';
+import '../create/create_messages.dart';
 import 'camera_tween.dart';
 import 'follow_action.dart';
 import 'inquiry_sheet_hook.dart';
@@ -38,7 +39,11 @@ class StoryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final work = ref.watch(workProvider(workId));
     return work.when(
-      data: (w) => _StoryView(key: ValueKey(w.id), work: w, readOnly: readOnly),
+      data: (w) {
+        final notice = ownerStatusNotice(w);
+        if (notice != null) return _StatusScaffold(child: _Message(notice));
+        return _StoryView(key: ValueKey(w.id), work: w, readOnly: readOnly);
+      },
       loading: () => const _StatusScaffold(
         child: CircularProgressIndicator(color: VelaColors.accent),
       ),

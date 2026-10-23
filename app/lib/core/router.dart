@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/onboarding_flag.dart';
 import 'auth/auth_controller.dart';
+import '../features/create/create_screen.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/onboarding/demo_story.dart';
 import '../features/onboarding/onboarding_screen.dart';
@@ -85,10 +86,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile/edit',
         builder: (_, _) => const PlaceholderScreen('profile/edit'),
       ),
-      GoRoute(
-        path: '/create',
-        builder: (_, _) => const PlaceholderScreen('create'),
-      ),
+      GoRoute(path: '/create', builder: (_, _) => const CreateScreen()),
       GoRoute(
         path: '/search',
         builder: (_, _) => const PlaceholderScreen('search'),

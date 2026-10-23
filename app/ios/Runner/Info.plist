@@ -80,5 +80,9 @@
 		app/README.md). Sign in with Apple also needs the capability enabled on
 		the Runner target in Xcode (adds Runner.entitlements).
 	-->
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photograph to turn into an annotated story.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photograph to turn into an annotated story.</string>
 </dict>
 </plist>

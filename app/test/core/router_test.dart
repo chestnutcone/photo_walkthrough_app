@@ -6,6 +6,7 @@ import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/core/auth/session_store.dart';
 import 'package:vela_app/core/require_sign_in.dart';
 import 'package:vela_app/core/router.dart';
+import 'package:vela_app/features/create/create_screen.dart';
 import 'package:vela_app/features/feed/feed_screen.dart';
 import 'package:vela_app/features/onboarding/onboarding_screen.dart';
 
@@ -88,7 +89,11 @@ void main() {
       final router = await _pump(tester, _container(signedIn: true));
       router.go(path);
       await tester.pumpAndSettle();
-      expect(find.text('route:${path.substring(1)}'), findsOneWidget);
+      if (path == '/create') {
+        expect(find.byType(CreateScreen), findsOneWidget);
+      } else {
+        expect(find.text('route:${path.substring(1)}'), findsOneWidget);
+      }
     });
   }
 
