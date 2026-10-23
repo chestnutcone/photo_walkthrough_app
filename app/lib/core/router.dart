@@ -12,7 +12,12 @@ import 'placeholder_screens.dart';
 /// onboarding.
 final needsOnboardingProvider = Provider<bool>((_) => false);
 
-const _signInRequired = ['/create', '/notifications', '/settings'];
+const _signInRequired = [
+  '/create',
+  '/notifications',
+  '/settings',
+  '/profile/edit',
+];
 
 String _normalize(String path) => path.length > 1 && path.endsWith('/')
     ? path.substring(0, path.length - 1)

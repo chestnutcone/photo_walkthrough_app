@@ -7,12 +7,11 @@ import '../../core/theme/tokens.dart';
 import '../feed/feed_format.dart';
 import '../story/photo_layout.dart';
 import '../story/story_settings.dart';
+import 'dashed_box.dart';
 import 'paged.dart';
 import 'portfolio_data.dart';
 
 const double _gridGap = 8;
-
-String? _imageOf(Work w) => w.feedUrl ?? w.thumbUrl ?? w.imageUrl;
 
 /// The works tab as slivers: featured story, then the grid of the rest.
 class WorksSlivers extends ConsumerWidget {
@@ -175,7 +174,7 @@ class _PinnedPhoto extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final url = _imageOf(work);
+    final url = workImageUrl(work);
     final factory = ref.watch(storyImageProviderFactoryProvider);
     final w = work.imageWidth, h = work.imageHeight;
     final aspect = (w != null && h != null && w > 0 && h > 0) ? w / h : null;
@@ -250,7 +249,7 @@ class _WorkTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final url = _imageOf(work) ?? work.thumbUrl;
+    final url = workImageUrl(work) ?? work.thumbUrl;
     final n = work.chapters.length;
     final chapters = '$n ${n == 1 ? 'CHAPTER' : 'CHAPTERS'}';
     void open() => context.push('/story/${work.id}');
@@ -355,13 +354,10 @@ class _EmptyWorks extends ConsumerWidget {
     final me = isOwn ? ref.watch(meProvider).value : null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-      child: Container(
+      child: DashedBox(
         key: const ValueKey('works-empty'),
+        color: VelaColors.outline,
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: VelaColors.outline),
-        ),
         child: Column(
           children: [
             Text(

@@ -27,11 +27,11 @@ String inquiryLabel(SendInquiryRequestTypeEnum type) =>
     inquiryTypes.firstWhere((t) => t.$2 == type).$1;
 
 /// A sender address the server can plausibly accept: something, one "@",
-/// something, no spaces. The server has the final say.
+/// a dotted domain, no spaces. The server has the final say.
 bool isPlausibleEmail(String raw) {
   final email = raw.trim();
   return email.length <= kInquiryMaxEmail &&
-      RegExp(r'^[^\s@]+@[^\s@]+$').hasMatch(email);
+      RegExp(r'^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$').hasMatch(email);
 }
 
 /// Trimmed, control characters other than new lines removed (the contract
@@ -39,7 +39,7 @@ bool isPlausibleEmail(String raw) {
 String cleanInquiryMessage(String raw) {
   final cleaned = raw
       .replaceAll('\r\n', '\n')
-      .replaceAll(RegExp(r'[\u0000-\u0009\u000B-\u001F\u007F]'), '')
+      .replaceAll(RegExp(r'[\u0000-\u0009\u000B-\u001F\u007F-\u009F]'), '')
       .trim();
   return cleaned.length <= kInquiryMaxMessage
       ? cleaned
@@ -73,26 +73,25 @@ String inquirySummaryNoun(SendInquiryRequestTypeEnum type) => switch (type) {
 
 /// User-facing text for a failed send. Never includes what the user typed.
 String inquiryErrorText(ApiException e) {
+  if (e.code == 'rate_limited' || e.statusCode == 429) {
+    final wait = e.retryAfter;
+    return wait == null
+        ? 'You have sent a lot of inquiries. Try again in a little while.'
+        : 'You have sent a lot of inquiries. Try again in ${waitLabel(wait)}.';
+  }
   switch (e.code) {
     case 'network_error':
       return "You're offline. Your message is still here. Try again when "
           "you're back online.";
-    case 'rate_limited':
-      final wait = e.retryAfter;
-      return wait == null
-          ? 'You have sent a lot of inquiries. Try again in a little while.'
-          : 'You have sent a lot of inquiries. Try again in ${waitLabel(wait)}.';
     case 'unauthorized':
       return 'Sign in again to send your inquiry. Your message is still here.';
     case 'validation_failed':
     case 'bad_request':
       return 'Check the email address and message, then try again.';
-  }
-  if (e.statusCode == 429) {
-    final wait = e.retryAfter;
-    return wait == null
-        ? 'You have sent a lot of inquiries. Try again in a little while.'
-        : 'You have sent a lot of inquiries. Try again in ${waitLabel(wait)}.';
+    case 'artist_not_found':
+      return 'This artist is not available for inquiries.';
+    case 'cannot_inquire_self':
+      return "You can't message yourself.";
   }
   return "Couldn't send your inquiry. Your message is still here. Try again.";
 }

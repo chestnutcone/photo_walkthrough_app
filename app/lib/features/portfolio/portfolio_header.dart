@@ -36,56 +36,28 @@ class PortfolioHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final overrides = ref.watch(followOverridesProvider);
-    final override = overrides[profile.id];
-    final following = effectiveFollowing(
-      overrides,
-      profile.id,
-      profile.isFollowing,
-    );
     final followers = adjustedFollowerCount(
       profile.followerCount,
       profile.isFollowing,
-      override,
+      overrides[profile.id],
     );
+    final viewer = ref.watch(viewerStatusProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Cover(handle: handle, profile: profile, isOwn: isOwn),
+        _Cover(
+          handle: handle,
+          profile: profile,
+          showMenu: !isOwn && viewer == ViewerStatus.ready,
+        ),
         Transform.translate(
           offset: const Offset(0, -46),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Avatar(
-                  name: profile.displayName,
-                  url: profile.avatarUrl,
-                  size: 88,
-                  borderWidth: 4,
-                ),
-                const SizedBox(height: 14),
-                if (profile.availability?.trim().isNotEmpty ?? false) ...[
-                  _AvailabilityBadge(text: profile.availability!.trim()),
-                  const SizedBox(height: 14),
-                ],
-                Semantics(
-                  header: true,
-                  child: Text(profile.displayName, style: VelaText.serif46),
-                ),
-                if (identityLine(profile).isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Text(identityLine(profile), style: VelaText.mono11),
-                ],
-                if (profile.bio.trim().isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    profile.bio.trim(),
-                    style: VelaText.sans15.copyWith(
-                      color: VelaColors.secondary,
-                    ),
-                  ),
-                ],
+                _Identity(profile: profile),
                 const SizedBox(height: 22),
                 _Stats(
                   profile: profile,
@@ -98,28 +70,62 @@ class PortfolioHeader extends ConsumerWidget {
                   onTap: () => _openFollowers(context, ref, followers),
                 ),
                 const SizedBox(height: 16),
-                if (isOwn)
-                  _OwnActions(
-                    onEdit: () => context.push('/profile/edit'),
-                    onNewStory: () => _newStory(context, ref),
-                  )
-                else
-                  _Actions(
-                    following: following,
-                    onFollow: () => toggleFollowFromProfile(
-                      context,
-                      ref,
-                      id: profile.id,
-                      currentlyFollowing: following,
-                    ),
-                    onContact: () => openProfileContact(context, ref, profile),
+                _actionRow(
+                  context,
+                  ref,
+                  viewer,
+                  effectiveFollowing(
+                    overrides,
+                    profile.id,
+                    profile.isFollowing,
                   ),
+                ),
               ],
             ),
           ),
         ),
       ],
     );
+  }
+
+  Widget _actionRow(
+    BuildContext context,
+    WidgetRef ref,
+    ViewerStatus viewer,
+    bool following,
+  ) {
+    if (isOwn) {
+      return _OwnActions(
+        onEdit: () => context.push('/profile/edit'),
+        onNewStory: () => _newStory(context, ref),
+      );
+    }
+    switch (viewer) {
+      case ViewerStatus.loading:
+        // Own profile or not is not known yet; offer nothing meanwhile.
+        return const SizedBox(
+          key: ValueKey('portfolio-actions-loading'),
+          height: 48,
+        );
+      case ViewerStatus.failed:
+        return TextButton(
+          key: const ValueKey('portfolio-me-retry'),
+          onPressed: () => ref.invalidate(meProvider),
+          style: TextButton.styleFrom(minimumSize: const Size(44, 48)),
+          child: const Text("Couldn't load your account. Retry"),
+        );
+      case ViewerStatus.ready:
+        return _Actions(
+          following: following,
+          onFollow: () => toggleFollowFromProfile(
+            context,
+            ref,
+            id: profile.id,
+            currentlyFollowing: following,
+          ),
+          onContact: () => openProfileContact(context, ref, profile),
+        );
+    }
   }
 
   Future<void> _openFollowers(
@@ -157,16 +163,54 @@ Future<void> openProfileContact(
   );
 }
 
+class _Identity extends StatelessWidget {
+  const _Identity({required this.profile});
+  final Profile profile;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Avatar(
+        name: profile.displayName,
+        url: profile.avatarUrl,
+        size: 88,
+        borderWidth: 4,
+      ),
+      const SizedBox(height: 14),
+      if (profile.availability?.trim().isNotEmpty ?? false) ...[
+        _AvailabilityBadge(text: profile.availability!.trim()),
+        const SizedBox(height: 14),
+      ],
+      Semantics(
+        header: true,
+        child: Text(profile.displayName, style: VelaText.serif46),
+      ),
+      if (identityLine(profile).isNotEmpty) ...[
+        const SizedBox(height: 14),
+        Text(identityLine(profile), style: VelaText.mono11),
+      ],
+      if (profile.bio.trim().isNotEmpty) ...[
+        const SizedBox(height: 14),
+        Text(
+          profile.bio.trim(),
+          style: VelaText.sans15.copyWith(color: VelaColors.secondary),
+        ),
+      ],
+    ],
+  );
+}
+
 class _Cover extends ConsumerWidget {
   const _Cover({
     required this.handle,
     required this.profile,
-    required this.isOwn,
+    required this.showMenu,
   });
 
   final String handle;
   final Profile profile;
-  final bool isOwn;
+  final bool showMenu;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -174,7 +218,7 @@ class _Cover extends ConsumerWidget {
       worksControllerProvider(handle)
           .select((s) => s.items.isEmpty ? null : s.items.first),
     );
-    final url = first?.feedUrl ?? first?.thumbUrl ?? first?.imageUrl;
+    final url = first == null ? null : workImageUrl(first);
     return SizedBox(
       height: _coverHeight,
       child: Stack(
@@ -217,7 +261,7 @@ class _Cover extends ConsumerWidget {
                         context.canPop() ? context.pop() : context.go('/'),
                   ),
                   const Spacer(),
-                  if (!isOwn) _Menu(profile: profile),
+                  if (showMenu) _Menu(profile: profile),
                 ],
               ),
             ),

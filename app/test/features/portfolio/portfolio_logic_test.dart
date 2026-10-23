@@ -1,9 +1,43 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vela_app/core/api/api_exception.dart';
 import 'package:vela_app/features/portfolio/contact_rules.dart';
 import 'package:vela_app/features/portfolio/follow_toggle.dart';
 import 'package:vela_app/features/portfolio/portfolio_format.dart';
 
 void main() {
+  test('message_cleaning_strips_c1_controls', () {
+    expect(cleanInquiryMessage('a\u0085b\u009Fc\u0080d'), 'abcd');
+  });
+
+  test('error_text_429_is_one_branch_with_wait', () {
+    const byCode = ApiException(
+      code: 'rate_limited',
+      message: '',
+      retryAfter: Duration(seconds: 90),
+    );
+    const byStatus = ApiException(
+      code: 'other',
+      message: '',
+      statusCode: 429,
+      retryAfter: Duration(seconds: 90),
+    );
+    expect(inquiryErrorText(byCode), contains('2 minutes'));
+    expect(inquiryErrorText(byStatus), inquiryErrorText(byCode));
+  });
+
+  test('terminal_errors_do_not_say_try_again', () {
+    final gone = inquiryErrorText(
+      const ApiException(code: 'artist_not_found', message: ''),
+    );
+    final self = inquiryErrorText(
+      const ApiException(code: 'cannot_inquire_self', message: ''),
+    );
+    expect(gone, contains('not available'));
+    expect(self, contains("can't message yourself"));
+    expect(gone, isNot(contains('Try again')));
+    expect(self, isNot(contains('Try again')));
+  });
+
   test('compactCount_abbreviates_thousands', () {
     expect(compactCount(999), '999');
     expect(compactCount(1000), '1k');
@@ -33,7 +67,10 @@ void main() {
   });
 
   test('email_check_needs_one_at_and_no_spaces', () {
-    expect(isPlausibleEmail('a@b'), isTrue);
+    expect(isPlausibleEmail('a@b.co'), isTrue);
+    expect(isPlausibleEmail('a@b'), isFalse);
+    expect(isPlausibleEmail('a@b.'), isFalse);
+    expect(isPlausibleEmail('a@.co'), isFalse);
     expect(isPlausibleEmail(' a@b.co '), isTrue);
     expect(isPlausibleEmail('@'), isFalse);
     expect(isPlausibleEmail('a@'), isFalse);

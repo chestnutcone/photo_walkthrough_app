@@ -27,19 +27,31 @@ final artistProvider = FutureProvider.autoDispose.family<Profile, String>((
 
 /// The signed-in viewer (null for guests). Carries the quota
 /// (`usedWorks` of `tier.maxWorks`) and the viewer's own handle and ids.
+/// A failed lookup is an error state, never "not me"; see [viewerStatusProvider].
 final meProvider = FutureProvider.autoDispose<Me?>((ref) async {
   ref.watch(sessionEpochProvider);
   final signedIn = ref.watch(sessionProvider.select((s) => s.value != null));
   if (!signedIn) return null;
-  try {
-    final env = (await apiGuard(() => ref.read(apiProvider).getMeApi().getMe()))
-        .data;
-    return env?.data;
-  } on ApiException {
-    // Unknown viewer: nothing is treated as "mine".
-    return null;
-  }
+  final env = (await apiGuard(() => ref.read(apiProvider).getMeApi().getMe()))
+      .data;
+  return env?.data;
+}, retry: (_, _) => null);
+
+/// Whether the viewer is known well enough to offer Follow, Contact and
+/// Report. Until a signed-in viewer's `/me` resolves we cannot tell whether
+/// this is their own profile.
+enum ViewerStatus { loading, failed, ready }
+
+final viewerStatusProvider = Provider.autoDispose<ViewerStatus>((ref) {
+  final signedIn = ref.watch(sessionProvider.select((s) => s.value != null));
+  if (!signedIn) return ViewerStatus.ready;
+  final me = ref.watch(meProvider);
+  if (me.isLoading) return ViewerStatus.loading;
+  return me.hasError ? ViewerStatus.failed : ViewerStatus.ready;
 });
+
+/// The image shown for a work in lists and covers.
+String? workImageUrl(Work w) => w.feedUrl ?? w.thumbUrl ?? w.imageUrl;
 
 /// Whether [profile] is the signed-in viewer.
 bool isOwnProfile(Me? me, Profile profile) =>

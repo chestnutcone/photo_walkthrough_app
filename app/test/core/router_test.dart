@@ -70,7 +70,12 @@ void main() {
     expect(find.text('route:search'), findsOneWidget);
   });
 
-  for (final path in ['/create', '/notifications', '/settings']) {
+  for (final path in [
+    '/create',
+    '/notifications',
+    '/settings',
+    '/profile/edit',
+  ]) {
     testWidgets('guest is sent to feed from $path', (tester) async {
       final router = await _pump(tester, _container());
       router.go(path);

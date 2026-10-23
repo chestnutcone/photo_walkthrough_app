@@ -131,13 +131,17 @@ class _ContactSheetState extends ConsumerState<ContactSheet> {
   @override
   Widget build(BuildContext context) {
     final inset = MediaQuery.viewInsetsOf(context).bottom;
-    return Padding(
-      padding: EdgeInsets.only(bottom: inset),
-      child: SingleChildScrollView(
-        child: Container(
-          key: const ValueKey('contact-sheet'),
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-          child: _sent != null ? _success(_sent!) : _form(),
+    // A send in flight must not be dismissed: the result would be lost.
+    return PopScope(
+      canPop: !_sending,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: inset),
+        child: SingleChildScrollView(
+          child: Container(
+            key: const ValueKey('contact-sheet'),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+            child: _sent != null ? _success(_sent!) : _form(),
+          ),
         ),
       ),
     );
@@ -209,7 +213,6 @@ class _ContactSheetState extends ConsumerState<ContactSheet> {
 
   Widget _form() {
     final t = widget.target;
-    final first = firstName(t.artistName);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -236,73 +239,93 @@ class _ContactSheetState extends ConsumerState<ContactSheet> {
           _WorkChip(title: t.workTitle!, thumbUrl: t.workThumbUrl),
         ],
         const SizedBox(height: 16),
-        TextField(
-          key: const ValueKey('contact-email'),
-          controller: _email,
-          enabled: !_sending,
-          keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.next,
-          autocorrect: false,
-          enableSuggestions: false,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(kInquiryMaxEmail),
-            FilteringTextInputFormatter.deny(RegExp(r'\s')),
-          ],
-          style: VelaText.sans14,
-          decoration: _field('Your email (replies go here)'),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          key: const ValueKey('contact-message'),
-          controller: _message,
-          enabled: !_sending,
-          minLines: 4,
-          maxLines: 8,
-          keyboardType: TextInputType.multiline,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(kInquiryMaxMessage),
-          ],
-          style: VelaText.sans14,
-          decoration: _field(messageHint(_type)),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          (t.replyTime?.trim().isNotEmpty ?? false)
-              ? '$first usually replies within ${t.replyTime!.trim()}.'
-              : 'Your email is shared with $first so they can reply.',
-          style: VelaText.sans12.copyWith(color: VelaColors.muted),
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 10),
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              inquiryErrorText(_error!),
-              key: const ValueKey('contact-error'),
-              style: VelaText.sans13.copyWith(color: const Color(0xFFE5806B)),
-            ),
-          ),
-        ],
-        const SizedBox(height: 16),
-        FilledButton(
-          key: const ValueKey('contact-send'),
-          onPressed: _canSend ? _send : null,
-          style: _filled(),
-          child: Text(_sending ? 'Sending…' : 'Send inquiry'),
-        ),
+        ..._fields(),
+        ..._footer(),
       ],
     );
   }
 
-  InputDecoration _field(String hint) => InputDecoration(
-    hintText: hint,
-    hintStyle: VelaText.sans14.copyWith(color: VelaColors.faint),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide.none,
+  List<Widget> _fields() => [
+    TextField(
+      key: const ValueKey('contact-email'),
+      controller: _email,
+      enabled: !_sending,
+      keyboardType: TextInputType.emailAddress,
+      textInputAction: TextInputAction.next,
+      autocorrect: false,
+      enableSuggestions: false,
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(kInquiryMaxEmail),
+        FilteringTextInputFormatter.deny(RegExp(r'\s')),
+      ],
+      style: VelaText.sans14,
+      decoration: _field(
+        label: 'Your email (replies go here)',
+        hint: 'name@example.com',
+      ),
     ),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-  );
+    const SizedBox(height: 10),
+    TextField(
+      key: const ValueKey('contact-message'),
+      controller: _message,
+      enabled: !_sending,
+      minLines: 4,
+      maxLines: 8,
+      keyboardType: TextInputType.multiline,
+      inputFormatters: [LengthLimitingTextInputFormatter(kInquiryMaxMessage)],
+      style: VelaText.sans14,
+      decoration: _field(label: 'Message', hint: messageHint(_type)),
+    ),
+  ];
+
+  List<Widget> _footer() {
+    final t = widget.target;
+    final first = firstName(t.artistName);
+    return [
+      const SizedBox(height: 10),
+      Text(
+        (t.replyTime?.trim().isNotEmpty ?? false)
+            ? '$first usually replies within ${t.replyTime!.trim()}.'
+            : 'Your email is shared with $first so they can reply.',
+        style: VelaText.sans12.copyWith(color: VelaColors.muted),
+      ),
+      if (_error != null) ...[
+        const SizedBox(height: 10),
+        Semantics(
+          liveRegion: true,
+          child: Text(
+            inquiryErrorText(_error!),
+            key: const ValueKey('contact-error'),
+            style: VelaText.sans13.copyWith(color: VelaColors.danger),
+          ),
+        ),
+      ],
+      const SizedBox(height: 16),
+      FilledButton(
+        key: const ValueKey('contact-send'),
+        onPressed: _canSend ? _send : null,
+        style: _filled(),
+        child: Text(_sending ? 'Sending…' : 'Send inquiry'),
+      ),
+    ];
+  }
+
+  InputDecoration _field({required String label, required String hint}) =>
+      InputDecoration(
+        labelText: label,
+        labelStyle: VelaText.sans13.copyWith(color: VelaColors.muted),
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        hintText: hint,
+        hintStyle: VelaText.sans14.copyWith(color: VelaColors.faint),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+      );
 }
 
 class _TypeChip extends StatelessWidget {

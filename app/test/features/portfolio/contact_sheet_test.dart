@@ -224,5 +224,55 @@ void main() {
       expect(body['type'], 'Buy a print');
       expect(body['workId'], 'w1');
     });
+
+    testWidgets('sheet_cannot_be_dismissed_while_sending', (t) async {
+      final done = Completer<ResponseBody>();
+      await openContact(t, inquiry: (_) => done.future);
+      await fill(t);
+      await t.tap(key('contact-send'));
+      await t.pump();
+      await t.tapAt(const Offset(10, 10));
+      await t.pump(const Duration(milliseconds: 400));
+      expect(key('contact-sheet'), findsOneWidget);
+      done.complete(jsonResponse(500, errEnvelope('server_error')));
+      await t.pumpAndSettle();
+      await t.tapAt(const Offset(10, 10));
+      await t.pumpAndSettle();
+      expect(key('contact-sheet'), findsNothing);
+    });
+
+    testWidgets('fields_have_accessible_labels', (t) async {
+      final handle = t.ensureSemantics();
+      await openContact(t);
+      expect(find.bySemanticsLabel(RegExp('Your email')), findsWidgets);
+      expect(find.bySemanticsLabel(RegExp('Message')), findsWidgets);
+      handle.dispose();
+    });
+
+    testWidgets('work_lookup_failure_falls_back_to_the_artist', (t) async {
+      final h = await pumpPortfolio(
+        t,
+        me: meJson(),
+        work: (_) => jsonResponse(500, errEnvelope('server_error')),
+      );
+      final ctx = t.element(find.byKey(const ValueKey('portfolio-contact')));
+      final container = ProviderScope.containerOf(ctx);
+      unawaited(
+        container.read(openInquirySheetProvider)(
+          ctx,
+          artistId: 'a1',
+          workId: 'w1',
+          type: 'Buy a print',
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(key('contact-sheet'), findsOneWidget);
+      expect(find.text('About the work'), findsNothing);
+      await fill(t);
+      await t.tap(key('contact-send'));
+      await t.pumpAndSettle();
+      expect(find.text('Sent to the artist.'), findsOneWidget);
+      expect(h.requestsTo('/inquiries'), hasLength(1));
+    });
   });
 }

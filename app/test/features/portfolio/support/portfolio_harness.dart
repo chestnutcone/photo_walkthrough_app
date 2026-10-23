@@ -97,7 +97,10 @@ Future<PortfolioHarness> pumpPortfolio(
   Responder? inquiry,
   Responder? follow,
   Map<String, Object?>? me,
+  Responder? meResponse,
+  Responder? work,
   bool signInSucceeds = false,
+  bool settle = true,
   List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = const Size(390, 2400);
@@ -125,6 +128,7 @@ Future<PortfolioHarness> pumpPortfolio(
   final adapter = FakeAdapter((o) {
     final p = o.path;
     if (p == '/v1/me') {
+      if (meResponse != null) return meResponse(o);
       return me == null
           ? jsonResponse(401, errEnvelope('unauthorized'))
           : jsonResponse(200, okEnvelope(me));
@@ -156,6 +160,7 @@ Future<PortfolioHarness> pumpPortfolio(
           jsonResponse(200, okEnvelope(profileJson(handle: handle)));
     }
     if (p.startsWith('/v1/works/')) {
+      if (work != null) return work(o);
       return jsonResponse(
         200,
         okEnvelope(workJson(p.substring('/v1/works/'.length))),
@@ -209,7 +214,13 @@ Future<PortfolioHarness> pumpPortfolio(
       child: MaterialApp.router(theme: buildTheme(), routerConfig: router),
     ),
   );
-  await tester.pumpAndSettle();
+  // A request held open keeps a spinner animating, so it cannot settle.
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+  }
   return PortfolioHarness(adapter, router, launches, clips);
 }
 

@@ -11,6 +11,9 @@ abstract final class VelaColors {
   static const sheet = Color(0xFF161513);
   static const input = Color(0xFF201E1B);
 
+  /// Inline error text (portfolio contact sheet).
+  static const danger = Color(0xFFE5806B);
+
   /// rgba(242,238,230,.18): outline of pills such as Follow (README).
   static const outline = Color(0x2EF2EEE6);
 

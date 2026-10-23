@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vela_app/features/portfolio/dashed_box.dart';
 import 'package:vela_app/features/report/report_sheet_hook.dart';
 
 import '../../core/support/fakes.dart';
@@ -103,6 +104,11 @@ void main() {
       expect(find.byKey(const ValueKey('works-empty')), findsOneWidget);
       expect(find.textContaining('No stories yet'), findsOneWidget);
       expect(find.text('0 of 7 stories'), findsOneWidget);
+    });
+
+    testWidgets('empty_works_box_has_a_dashed_border', (t) async {
+      await pumpPortfolio(t, me: meJson());
+      expect(find.byType(DashedBox), findsOneWidget);
     });
 
     testWidgets('foreign_empty_works_state_has_no_quota', (t) async {
