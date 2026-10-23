@@ -252,8 +252,8 @@ void main() {
   testWidgets('failed_save_keeps_pins_and_allows_retry', (t) async {
     final h = await pumpCreate(
       t,
-      updateStatus: 409,
-      updateCode: 'not_editable',
+      updateStatus: 400,
+      updateCode: 'validation_failed',
     );
     await pickAndAnnotate(t);
     await addChapter(t, title: 'One');

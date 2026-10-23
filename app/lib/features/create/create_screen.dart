@@ -12,6 +12,7 @@ import 'create_state.dart';
 import 'photo_picker.dart';
 import 'pin_draft.dart';
 import 'pin_editor.dart';
+import 'utf16_limit.dart';
 
 /// Create a story: pick a photograph, place and write chapters, publish.
 /// The route requires sign-in (`requireSignIn` runs at the call sites).
@@ -50,7 +51,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen> {
     if (s.phase == CreatePhase.publishing) {
       _ctl.stop();
     } else {
-      await _ctl.discardDraft();
+      _ctl.discardDraft();
     }
     _exit();
   }
@@ -358,6 +359,19 @@ class _AnnotateView extends ConsumerWidget {
               child: const Text('Retry upload'),
             ),
           ),
+        if (state.pins.isEmpty && !state.busy)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: TextButton(
+                key: const ValueKey('change-photo'),
+                style: velaTextButtonStyle(),
+                onPressed: ctl.changePhoto,
+                child: const Text('Choose a different photo'),
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: _StoryFields(state: state),
@@ -440,15 +454,9 @@ class _StoryFieldsState extends ConsumerState<_StoryFields> {
         TextField(
           key: const ValueKey('story-title'),
           controller: _title,
-          maxLength: maxStoryTitle,
+          inputFormatters: [Utf16LengthFormatter(maxStoryTitle)],
           style: VelaText.serif28,
           textCapitalization: TextCapitalization.sentences,
-          buildCounter: (
-            _, {
-            required currentLength,
-            required isFocused,
-            maxLength,
-          }) => null,
           onChanged: ctl.setTitle,
           decoration: const InputDecoration(
             hintText: defaultStoryTitle,
@@ -464,14 +472,8 @@ class _StoryFieldsState extends ConsumerState<_StoryFields> {
         TextField(
           key: const ValueKey('story-alt'),
           controller: _alt,
-          maxLength: maxStoryAlt,
+          inputFormatters: [Utf16LengthFormatter(maxStoryAlt)],
           style: VelaText.sans14,
-          buildCounter: (
-            _, {
-            required currentLength,
-            required isFocused,
-            maxLength,
-          }) => null,
           onChanged: ctl.setAltText,
           decoration: velaInputDecoration(
             hint: 'Describe the photograph for screen readers (optional)',

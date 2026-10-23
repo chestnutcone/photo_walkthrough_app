@@ -12,6 +12,10 @@ const removedMessage = 'Removed by moderators';
 const stillProcessingMessage =
     "This story is still processing. Check back later; it will appear in your portfolio when it's ready.";
 const unsupportedTypeMessage = 'Choose a JPEG, PNG or WebP photo.';
+const tooManyPixelsMessage =
+    'That photo is too large to use (over 60 megapixels). Choose a smaller one.';
+const photoAccessDeniedMessage =
+    'Allow access to your photos or camera in Settings, then try again.';
 const tooLargeMessage = 'That photo is too large. Choose one under 20 MB.';
 
 String quotaMessage({required int used, required int max}) =>
@@ -33,8 +37,7 @@ String createErrorMessage(ApiException e) => switch (e.code) {
   'invalid_image' => "That photo couldn't be used. Choose another.",
   'image_missing' => "The photo didn't finish uploading. Try again.",
   'no_chapters' => 'Add at least one chapter before publishing.',
-  'validation_failed' =>
-    'Some text is too long or missing. Check your title and chapters.',
+  'validation_failed' => validationMessage(e.message),
   'not_editable' => "This story can't be changed any more.",
   'onboarding_required' => 'Finish setting up your profile first.',
   'attestation_required' ||
@@ -52,4 +55,28 @@ String? ownerStatusNotice(Work w) {
     WorkStatusEnum.blocked => blockedMessage,
     _ => null,
   };
+}
+
+/// Turns the server's field-level validation text ("chapters[2].title must
+/// be 1-120 characters.") into words. The server names the field only, never
+/// the user's text.
+String validationMessage(String serverMessage) {
+  final m = RegExp(r'^(?:chapters\[(\d+)\]\.)?(\w+) ')
+      .firstMatch(serverMessage);
+  const generic = 'Some text is too long or missing. Check your story.';
+  if (m == null) return generic;
+  final index = m.group(1);
+  final field = switch (m.group(2)) {
+    'title' => index == null ? 'story title' : 'title',
+    'body' => 'text',
+    'meta' => 'note',
+    'altText' => 'alt text',
+    'intro' => 'intro',
+    'x' || 'y' || 'zoom' => 'pin position',
+    'chapters' => 'chapters',
+    _ => null,
+  };
+  if (field == null) return generic;
+  final where = index == null ? '' : 'Chapter ${int.parse(index) + 1}: ';
+  return '${where}Check the $field.';
 }

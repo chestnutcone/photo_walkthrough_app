@@ -65,6 +65,10 @@ class PinEditor extends StatelessWidget {
                   child: ExcludeSemantics(
                     child: Image.memory(
                       photo.bytes,
+                      cacheWidth:
+                          (frame.rect.width *
+                                  MediaQuery.devicePixelRatioOf(context))
+                              .ceil(),
                       fit: BoxFit.fill,
                       gaplessPlayback: true,
                       filterQuality: FilterQuality.medium,

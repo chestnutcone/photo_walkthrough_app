@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -10,6 +11,18 @@ class PickedPhoto {
   const PickedPhoto(this.bytes);
   final Uint8List bytes;
 }
+
+/// The author refused access to photos or the camera.
+class PhotoAccessDenied implements Exception {
+  const PhotoAccessDenied();
+}
+
+/// image_picker reports a refused permission as a PlatformException with a
+/// `*_access_denied` code.
+Object mapPickerError(Object e) =>
+    e is PlatformException && e.code.endsWith('access_denied')
+    ? const PhotoAccessDenied()
+    : e;
 
 /// Seam over the platform picker so tests can supply photos.
 abstract interface class PhotoPicker {
@@ -31,17 +44,21 @@ class ImagePickerPhotoPicker implements PhotoPicker {
 
   @override
   Future<PickedPhoto?> pick(PhotoSource source) async {
-    final file = await _picker.pickImage(
-      source: source == PhotoSource.camera
-          ? ImageSource.camera
-          : ImageSource.gallery,
-      maxWidth: pickerMaxSide.toDouble(),
-      maxHeight: pickerMaxSide.toDouble(),
-      imageQuality: pickerQuality,
-      requestFullMetadata: false,
-    );
-    if (file == null) return null;
-    return PickedPhoto(await file.readAsBytes());
+    try {
+      final file = await _picker.pickImage(
+        source: source == PhotoSource.camera
+            ? ImageSource.camera
+            : ImageSource.gallery,
+        maxWidth: pickerMaxSide.toDouble(),
+        maxHeight: pickerMaxSide.toDouble(),
+        imageQuality: pickerQuality,
+        requestFullMetadata: false,
+      );
+      if (file == null) return null;
+      return PickedPhoto(await file.readAsBytes());
+    } on PlatformException catch (e) {
+      throw mapPickerError(e);
+    }
   }
 }
 

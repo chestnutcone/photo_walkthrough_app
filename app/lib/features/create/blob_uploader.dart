@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_providers.dart' show httpClientAdapterProvider;
@@ -37,6 +38,10 @@ class DioBlobUploader implements BlobUploader {
           ((attempt) => Future<void>.delayed(Duration(seconds: attempt)));
 
   final Dio _dio;
+
+  /// The client used for uploads (tests check it has no interceptors).
+  @visibleForTesting
+  Dio get dio => _dio;
   final Future<void> Function(int attempt) _retryDelay;
 
   @override

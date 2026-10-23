@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vela_app/core/api/auth_interceptor.dart';
 import 'package:vela_app/features/create/blob_uploader.dart';
 
 import '../../core/support/fakes.dart';
@@ -70,4 +72,12 @@ void main() {
       expect(adapter.requests, hasLength(3));
     },
   );
+
+  test('provider_builds_a_dio_without_the_bearer_interceptor', () {
+    final c = ProviderContainer();
+    addTearDown(c.dispose);
+    final up = c.read(blobUploaderProvider) as DioBlobUploader;
+    expect(up.dio.interceptors.whereType<AuthInterceptor>(), isEmpty);
+    expect(up.dio.options.headers.containsKey('Authorization'), isFalse);
+  });
 }

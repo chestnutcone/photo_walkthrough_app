@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/theme/form_styles.dart';
 import '../../core/theme/tokens.dart';
+import 'utf16_limit.dart';
 import 'pin_draft.dart';
 
 typedef ChapterSubmit = void Function({
@@ -169,16 +169,9 @@ class _Field extends StatelessWidget {
     autofocus: autofocus,
     minLines: lines,
     maxLines: lines == 1 ? 1 : lines + 2,
-    maxLength: maxLength,
-    maxLengthEnforcement: MaxLengthEnforcement.enforced,
+    inputFormatters: [Utf16LengthFormatter(maxLength)],
     textCapitalization: TextCapitalization.sentences,
     style: VelaText.sans15,
-    buildCounter: (
-      _, {
-      required currentLength,
-      required isFocused,
-      maxLength,
-    }) => null,
     decoration: velaInputDecoration(hint: hint),
   );
 }

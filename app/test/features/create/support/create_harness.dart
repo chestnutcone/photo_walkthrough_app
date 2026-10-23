@@ -37,6 +37,7 @@ Uint8List jpegWithOrientation({
   int orientation = 6,
   int bx = 4,
   int by = 2,
+  bool gps = false,
 }) {
   final image = img.Image(width: w, height: h);
   img.fill(image, color: img.ColorRgb8(20, 20, 20));
@@ -49,6 +50,7 @@ Uint8List jpegWithOrientation({
     color: img.ColorRgb8(255, 0, 0),
   );
   image.exif.imageIfd.orientation = orientation;
+  if (gps) image.exif.gpsIfd.gpsLatitude = 12.5;
   return Uint8List.fromList(img.encodeJpg(image, quality: 100));
 }
 
@@ -56,10 +58,12 @@ class FakePhotoPicker implements PhotoPicker {
   FakePhotoPicker(this.result);
   PickedPhoto? result;
   int calls = 0;
+  Object? error;
 
   @override
   Future<PickedPhoto?> pick(PhotoSource source) async {
     calls++;
+    if (error != null) throw error!;
     return result;
   }
 }
@@ -122,6 +126,7 @@ Future<CreateHarness> pumpCreate(
   String publishCode = 'draft_expired',
   bool signedIn = true,
   Future<void> Function(Duration)? pollDelay,
+  FutureOr<ResponseBody>? Function(RequestOptions)? intercept,
   List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = phone;
@@ -130,6 +135,8 @@ Future<CreateHarness> pumpCreate(
 
   var getCount = 0;
   final adapter = FakeAdapter((o) {
+    final early = intercept?.call(o);
+    if (early != null) return early;
     final key = '${o.method} ${o.path}';
     switch (key) {
       case 'POST /v1/works':
@@ -204,6 +211,7 @@ Future<CreateHarness> pumpCreate(
         photoNormalizerProvider.overrideWithValue(
           (b) async => bakePhotoOrientation(b),
         ),
+        backgroundRetryDelayProvider.overrideWithValue((_) async {}),
         pollDelayProvider.overrideWithValue((d) {
           delays.add(d);
           return pollDelay?.call(d) ?? Future<void>.value();

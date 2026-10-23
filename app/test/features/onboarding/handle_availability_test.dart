@@ -10,9 +10,9 @@ import 'package:vela_app/features/onboarding/handle_rules.dart';
 import '../../core/support/fakes.dart';
 import 'support/onboarding_harness.dart';
 
-/// Real-time wait: the lookups run on real timers and the Dio stack.
-Future<void> _settle() =>
-    Future<void>.delayed(const Duration(milliseconds: 80));
+/// Lets in-flight lookups finish by draining event-loop turns, not by
+/// sleeping: a fixed wait was flaky under a loaded full-suite run.
+Future<void> _settle() => pumpEventQueue(times: 500);
 
 void main() {
   group('HandleRules', () {

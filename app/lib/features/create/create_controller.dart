@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show Offset;
 
@@ -22,6 +23,12 @@ const int maxUploadBytes = 20 * 1024 * 1024;
 const Duration pollTimeout = Duration(minutes: 2);
 const int _maxPollStepSeconds = 5;
 
+/// Waiting before the one background retry of a draft delete.
+final backgroundRetryDelayProvider = Provider<Future<void> Function(Duration)>(
+  (_) =>
+      (d) => Future<void>.delayed(d),
+);
+
 /// Test seam for waiting between polls.
 final pollDelayProvider = Provider<Future<void> Function(Duration)>(
   (_) =>
@@ -39,6 +46,10 @@ class CreateController extends Notifier<CreateState> {
   late int _epoch;
   Uri? _uploadUrl;
   bool _uploaded = false;
+
+  /// Set once publishWork has been sent: the story may no longer be a draft,
+  /// so it must never be deleted without checking its status first.
+  bool _publishRequested = false;
 
   WorksApi get _api => ref.read(apiProvider).getWorksApi();
 
@@ -82,6 +93,9 @@ class CreateController extends Notifier<CreateState> {
       if (photo == null) return;
       state = state.copyWith(photo: photo);
       await _ensureUploaded(gen, enterAnnotate: true);
+    } on PhotoAccessDenied {
+      if (_stale(gen)) return;
+      state = state.copyWith(busy: false, error: photoAccessDeniedMessage);
     } on Object {
       if (_stale(gen)) return;
       state = state.copyWith(
@@ -102,11 +116,14 @@ class CreateController extends Notifier<CreateState> {
       state = state.copyWith(busy: false, error: unsupportedTypeMessage);
       return null;
     }
-    if (meta.orientation != 1) {
-      bytes = await ref.read(photoNormalizerProvider)(bytes);
-      if (_stale(gen)) return null;
-      meta = readPhotoMeta(bytes) ?? meta;
+    if (meta.width * meta.height > maxPhotoPixels) {
+      state = state.copyWith(busy: false, error: tooManyPixelsMessage);
+      return null;
     }
+    // Always: bakes in orientation and strips EXIF (GPS included).
+    bytes = await ref.read(photoNormalizerProvider)(bytes);
+    if (_stale(gen)) return null;
+    meta = readPhotoMeta(bytes) ?? meta;
     if (bytes.length > maxUploadBytes) {
       state = state.copyWith(busy: false, error: tooLargeMessage);
       return null;
@@ -123,6 +140,8 @@ class CreateController extends Notifier<CreateState> {
   /// whether the photo is safely on the server.
   Future<bool> _ensureUploaded(int gen, {bool enterAnnotate = false}) async {
     final photo = state.photo!;
+    final api = _api;
+    final delay = ref.read(backgroundRetryDelayProvider);
     state = state.copyWith(busy: true, error: null);
     try {
       if (state.workId == null) {
@@ -133,12 +152,16 @@ class CreateController extends Notifier<CreateState> {
             ),
           ),
         );
-        if (_stale(gen)) return false;
         final made = unwrapEnvelope(
           success: res.data?.success ?? false,
           data: res.data?.data,
           error: res.data?.error,
         );
+        if (_stale(gen)) {
+          // The author left while the draft was being made: free its slot.
+          unawaited(_deleteDraft(api, delay, made.workId, verify: false));
+          return false;
+        }
         _uploadUrl = Uri.parse(made.uploadUrl);
         _uploaded = false;
         state = state.copyWith(
@@ -156,7 +179,7 @@ class CreateController extends Notifier<CreateState> {
       return false;
     } on BlobUploadException catch (e) {
       if (_stale(gen)) return false;
-      if (e.expired) await _dropDraft();
+      if (e.expired) _dropDraft();
       state = state.copyWith(
         busy: false,
         uploadFailed: true,
@@ -179,11 +202,20 @@ class CreateController extends Notifier<CreateState> {
   }
 
   /// The signed URL stopped working: the draft is useless, free its slot.
-  Future<void> _dropDraft() async {
+  void _dropDraft() {
     final id = state.workId;
     state = state.copyWith(workId: null);
     _uploaded = false;
-    if (id != null) await _deleteQuietly(id);
+    if (id != null) {
+      unawaited(
+        _deleteDraft(
+          _api,
+          ref.read(backgroundRetryDelayProvider),
+          id,
+          verify: false,
+        ),
+      );
+    }
   }
 
   Future<void> _onCreateFailed(ApiException e, int gen) async {
@@ -330,13 +362,16 @@ class CreateController extends Notifier<CreateState> {
   }
 
   /// updateWork then publishWork. Null when it failed (state says why).
+  /// A 409 `not_editable` from either call means an earlier publish got
+  /// through (its response was lost): carry on with the story as it is.
   Future<Work?> _save(int gen) async {
     final id = state.workId!;
-    await apiGuard(
-      () => _api.updateWork(id: id, updateWorkRequest: buildUpdateRequest()),
-    );
-    if (_stale(gen)) return null;
     try {
+      await apiGuard(
+        () => _api.updateWork(id: id, updateWorkRequest: buildUpdateRequest()),
+      );
+      if (_stale(gen)) return null;
+      _publishRequested = true;
       final res = await apiGuard(() => _api.publishWork(id: id));
       if (_stale(gen)) return null;
       final work = unwrapEnvelope(
@@ -346,11 +381,11 @@ class CreateController extends Notifier<CreateState> {
       );
       return work;
     } on ApiException catch (e) {
-      // A lost response to a publish that succeeded: carry on to polling.
       if (e.code != 'not_editable') rethrow;
       final work = await _fetch(id);
       if (_stale(gen)) return null;
       if (work.status == WorkStatusEnum.draft) rethrow;
+      _publishRequested = true;
       return work;
     }
   }
@@ -391,7 +426,13 @@ class CreateController extends Notifier<CreateState> {
         if (_stale(gen)) return;
         final transient =
             e.statusCode == null || e.statusCode! >= 500 || e.statusCode == 429;
-        if (!transient) rethrow;
+        if (!transient) {
+          state = state.copyWith(
+            busy: false,
+            outcome: PublishOutcome.stillProcessing,
+          );
+          return;
+        }
       }
       if (_stale(gen)) return;
       final outcome = switch (status) {
@@ -420,25 +461,62 @@ class CreateController extends Notifier<CreateState> {
 
   // ---- leaving ----
 
-  /// Stops anything in flight and frees the unpublished draft's slot.
-  Future<void> discardDraft() async {
+  /// Stops anything in flight and frees the unpublished draft's slot. Does
+  /// not wait for the server: the delete runs in the background.
+  void discardDraft() {
     _gen++;
     final id = state.workId;
-    final inReview = state.phase == CreatePhase.publishing;
-    if (id == null || inReview) return;
+    if (id == null || state.phase == CreatePhase.publishing) return;
     state = state.copyWith(workId: null);
-    await _deleteQuietly(id);
+    unawaited(
+      _deleteDraft(
+        _api,
+        ref.read(backgroundRetryDelayProvider),
+        id,
+        verify: _publishRequested,
+      ),
+    );
+  }
+
+  /// Back to the pick step with a clean slate (only offered with no chapters).
+  void changePhoto() {
+    if (state.busy || state.pins.isNotEmpty) return;
+    discardDraft();
+    _uploaded = false;
+    _publishRequested = false;
+    _uploadUrl = null;
+    state = const CreateState();
   }
 
   /// Stops polling without touching the (already submitted) story.
   void stop() => _gen++;
+}
 
-  Future<void> _deleteQuietly(String id) async {
-    try {
-      await apiGuard(() => _api.deleteWork(id: id));
-    } on ApiException {
-      // The draft expires on its own after 24 hours.
+/// Deletes an unpublished draft, retrying once. With [verify] the story is
+/// fetched first and left alone unless it is still a draft, because a publish
+/// may have gone through. Errors are swallowed; the draft expires on its own
+/// after 24 hours. Nothing here is logged.
+Future<void> _deleteDraft(
+  WorksApi api,
+  Future<void> Function(Duration) delay,
+  String id, {
+  required bool verify,
+}) async {
+  try {
+    if (verify) {
+      final res = await apiGuard(() => api.getWork(id: id));
+      if (res.data?.data?.status != WorkStatusEnum.draft) return;
     }
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        await apiGuard(() => api.deleteWork(id: id));
+        return;
+      } on ApiException {
+        if (attempt == 0) await delay(const Duration(seconds: 3));
+      }
+    }
+  } on ApiException {
+    // Leave it be.
   }
 }
 

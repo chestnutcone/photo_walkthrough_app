@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show compute;
@@ -159,17 +160,109 @@ int _exifOrientation(Uint8List b, int start, int end) {
   return 1;
 }
 
-/// Returns pixels in the orientation the author saw, with the EXIF tag
-/// consumed, so the displayed image, the pin fractions and the stored image
-/// all agree. Photos that are already upright are returned unchanged.
+/// The server refuses originals over this many pixels (`MaxPixels`).
+const int maxPhotoPixels = 60000000;
+
+/// Prepares the bytes that are uploaded: pixels in the orientation the author
+/// saw, and no metadata at all (EXIF, GPS, XMP, comments), so the displayed
+/// image, the pin fractions and the stored original agree and nothing about
+/// where the photo was taken leaves the phone.
+///
+/// A rotated JPEG is re-encoded (unavoidable). Everything else keeps its
+/// pixels byte for byte and only has its metadata segments cut out, so quality
+/// is not lost. A photo with no metadata is returned unchanged.
 Uint8List bakePhotoOrientation(Uint8List bytes) {
   final meta = readPhotoMeta(bytes);
-  if (meta == null || meta.contentType != 'image/jpeg') return bytes;
-  if (meta.orientation == 1) return bytes;
-  final decoded = img.decodeJpg(bytes);
-  if (decoded == null) return bytes;
-  final upright = img.bakeOrientation(decoded);
-  return Uint8List.fromList(img.encodeJpg(upright, quality: 92));
+  if (meta == null) return bytes;
+  if (meta.contentType == 'image/jpeg' && meta.orientation != 1) {
+    final decoded = img.decodeJpg(bytes);
+    if (decoded != null) {
+      final upright = img.bakeOrientation(decoded)..exif = img.ExifData();
+      return Uint8List.fromList(img.encodeJpg(upright, quality: 92));
+    }
+  }
+  return stripPhotoMetadata(bytes);
+}
+
+/// Removes metadata without touching pixel data. Same instance when there was
+/// nothing to remove. ICC colour profiles are kept (they change how colours
+/// look, not who took the photo).
+Uint8List stripPhotoMetadata(Uint8List b) {
+  if (b.length < 12) return b;
+  if (b[0] == 0xFF && b[1] == 0xD8) return _stripJpeg(b);
+  if (b[0] == 0x89 && b[1] == 0x50) return _stripPng(b);
+  if (_ascii(b, 0, 'RIFF') && _ascii(b, 8, 'WEBP')) return _stripWebp(b);
+  return b;
+}
+
+Uint8List _stripJpeg(Uint8List b) {
+  final out = BytesBuilder(copy: false)..add(b.sublist(0, 2));
+  var i = 2;
+  var removed = false;
+  while (i + 4 <= b.length && b[i] == 0xFF) {
+    final marker = b[i + 1];
+    if (marker == 0xFF) {
+      i++;
+      continue;
+    }
+    if (marker == 0xDA) break; // start of scan: the rest is pixel data
+    final len = _u16(b, i + 2);
+    if (len < 2 || i + 2 + len > b.length) return b;
+    final drop =
+        marker == 0xE1 || (marker >= 0xE3 && marker <= 0xEF) || marker == 0xFE;
+    if (drop) {
+      removed = true;
+    } else {
+      out.add(b.sublist(i, i + 2 + len));
+    }
+    i += 2 + len;
+  }
+  if (!removed) return b;
+  out.add(b.sublist(i));
+  return out.toBytes();
+}
+
+Uint8List _stripPng(Uint8List b) {
+  final out = BytesBuilder(copy: false)..add(b.sublist(0, 8));
+  final bd = ByteData.sublistView(b);
+  var i = 8;
+  var removed = false;
+  while (i + 12 <= b.length) {
+    final len = bd.getUint32(i);
+    final end = i + 12 + len;
+    if (end > b.length) return b;
+    if (_ascii(b, i + 4, 'eXIf')) {
+      removed = true;
+    } else {
+      out.add(b.sublist(i, end));
+    }
+    i = end;
+  }
+  return removed ? out.toBytes() : b;
+}
+
+Uint8List _stripWebp(Uint8List b) {
+  if (!_ascii(b, 12, 'VP8X') || b.length < 30) return b;
+  final bd = ByteData.sublistView(b);
+  final out = BytesBuilder(copy: false)..add(b.sublist(0, 12));
+  var i = 12;
+  var removed = false;
+  while (i + 8 <= b.length) {
+    final len = bd.getUint32(i + 4, Endian.little);
+    final end = math.min(b.length, i + 8 + len + (len.isOdd ? 1 : 0));
+    final isMeta = _ascii(b, i, 'EXIF') || _ascii(b, i, 'XMP ');
+    if (isMeta) {
+      removed = true;
+    } else {
+      out.add(b.sublist(i, end));
+    }
+    i = end;
+  }
+  if (!removed) return b;
+  final result = out.toBytes();
+  result[20] &= ~0x0C & 0xFF; // XMP (0x04) and EXIF (0x08) flags
+  ByteData.sublistView(result).setUint32(4, result.length - 8, Endian.little);
+  return result;
 }
 
 /// Runs [bakePhotoOrientation], off the UI isolate by default. Tests
