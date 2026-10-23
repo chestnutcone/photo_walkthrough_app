@@ -1,0 +1,44 @@
+{
+  "id": "demo",
+  "author": {
+    "id": "demo",
+    "handle": "vela",
+    "displayName": "Vela guide"
+  },
+  "title": "Last light, one sail",
+  "intro": "A sample story. Tap through to see how a photograph can carry its own notes.",
+  "altText": "An illustrated dusk seascape: a low sun on the horizon, a dark triangular sail to its right, and a column of light on the water.",
+  "isOwner": false,
+  "imageUrl": "demo_photo",
+  "imageWidth": 720,
+  "imageHeight": 960,
+  "chapters": [
+    {
+      "x": 0.40,
+      "y": 0.58,
+      "zoom": 2.4,
+      "title": "Where the light goes",
+      "body": "Every chapter points at one place in the picture and says what is there. Here, the sun sits right on the horizon and the sky warms around it.",
+      "meta": "Sample note"
+    },
+    {
+      "x": 0.55,
+      "y": 0.31,
+      "zoom": 2.4,
+      "title": "The sail",
+      "body": "The camera moves between chapters, so the viewer looks where you want them to look, in the order you choose.",
+      "meta": "Sample note"
+    },
+    {
+      "x": 0.40,
+      "y": 0.80,
+      "zoom": 2.0,
+      "title": "What the water kept",
+      "body": "Add your own notes to your photographs, and let people reply to a single detail. You can also explore the picture freely.",
+      "meta": "Sample note"
+    }
+  ],
+  "createdAt": "2026-01-01T00:00:00Z",
+  "publishedAt": "2026-01-01T00:00:00Z",
+  "shareUrl": ""
+}
