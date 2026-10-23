@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'auth/auth_controller.dart';
 import '../features/feed/feed_screen.dart';
+import '../features/portfolio/portfolio_screen.dart';
 import '../features/story/story_screen.dart';
 import 'placeholder_screens.dart';
 
@@ -66,8 +67,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/artist/:handle',
-        builder: (_, s) =>
-            PlaceholderScreen('artist/${s.pathParameters['handle']}'),
+        builder: (_, s) => PortfolioScreen(handle: s.pathParameters['handle']!),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        builder: (_, _) => const PlaceholderScreen('profile/edit'),
       ),
       GoRoute(
         path: '/create',

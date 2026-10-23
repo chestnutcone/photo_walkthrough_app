@@ -63,7 +63,7 @@ void main() {
 
     router.go('/artist/ana');
     await tester.pumpAndSettle();
-    expect(find.text('route:artist/ana'), findsOneWidget);
+    expect(find.text('Artist not found'), findsOneWidget);
 
     router.go('/search');
     await tester.pumpAndSettle();
