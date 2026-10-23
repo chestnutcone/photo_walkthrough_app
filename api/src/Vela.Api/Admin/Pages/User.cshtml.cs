@@ -2,14 +2,16 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Vela.Api.Admin.Pages;
 
-public sealed class UserModel(IModerationService moderation) : AdminPageModel
+public sealed class UserModel(IModerationService moderation, IDmcaAdminService dmca) : AdminPageModel
 {
     public UserDetail Detail { get; private set; } = null!;
+    public int DmcaTakedowns { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         if (await moderation.GetUserAsync(id) is not { } detail) return NotFound();
         Detail = detail;
+        DmcaTakedowns = await dmca.TakedownCountAsync(id);
         return Page();
     }
 

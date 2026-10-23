@@ -900,6 +900,47 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+  /v1/works/{id}/counter-notice:
+    post:
+      operationId: submitCounterNotice
+      tags: [Legal]
+      summary: "Send a counter-notice for a story removed after a copyright notice"
+      description: "Owner only, for a story that is currently removed after a takedown notice. Any other story (not yours, not removed, no takedown notice, unknown id) answers the same 404 work_not_found. One counter-notice per story (409 counter_notice_exists). Free text is stored verbatim; control characters other than new lines are rejected. The body may be at most 20 KB."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitCounterNoticeRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DmcaNoticeAckEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          description: "Error 413 (code payload_too_large)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
 components:
   securitySchemes:
     bearerAuth:
@@ -1306,6 +1347,16 @@ components:
         goodFaithStatement: {type: boolean, enum: [true], description: "Must be true"}
         perjuryStatement: {type: boolean, enum: [true], description: "Must be true"}
         signatureName: {type: string, minLength: 1, maxLength: 120}
+    SubmitCounterNoticeRequest:
+      type: object
+      required: [name, address, statement, consentToJurisdiction, goodFaithBelief]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        address: {type: string, minLength: 1, maxLength: 300}
+        phone: {type: string, maxLength: 40, nullable: true}
+        statement: {type: string, minLength: 1, maxLength: 2000}
+        consentToJurisdiction: {type: boolean, enum: [true], description: "Must be true"}
+        goodFaithBelief: {type: boolean, enum: [true], description: "Must be true"}
     DmcaNoticeAck:
       type: object
       required: [noticeId]

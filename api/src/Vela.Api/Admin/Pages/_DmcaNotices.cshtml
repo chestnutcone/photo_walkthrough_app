@@ -1,0 +1,62 @@
+@model ReportModel
+<h2>DMCA notices for this story</h2>
+@if (Model.Notices.Count == 0)
+{
+    <p class="muted">No notice is stored for this story.</p>
+}
+@foreach (var n in Model.Notices)
+{
+    <fieldset>
+        <legend>Notice @n.Id <span class="tag @n.Status">@n.Status</span></legend>
+        <dl class="facts">
+            <dt>Received</dt><dd>@AdminFormat.When(n.CreatedAt)</dd>
+            <dt>Claimant</dt><dd>@n.ClaimantName, @n.ClaimantEmail@(n.ClaimantPhone is { } ph ? ", " + ph : "")</dd>
+            <dt>Address</dt><dd class="text">@n.ClaimantAddress</dd>
+            <dt>Reference</dt><dd>@n.WorkReference</dd>
+            <dt>Original work</dt><dd class="text">@n.OriginalWorkDescription</dd>
+            <dt>Signed</dt><dd>@n.SignatureName (good faith and perjury statements made)</dd>
+            @if (n.TakedownAt is { } taken) { <dt>Taken down</dt><dd>@AdminFormat.When(taken)</dd> }
+        </dl>
+        @if (n.CounterAt is { } counterAt)
+        {
+            <h3>Counter-notice (@AdminFormat.When(counterAt))</h3>
+            <dl class="facts">
+                <dt>Name</dt><dd>@n.CounterName</dd>
+                <dt>Address</dt><dd class="text">@n.CounterAddress</dd>
+                <dt>Phone</dt><dd>@(n.CounterPhone ?? "not given")</dd>
+                <dt>Statement</dt><dd class="text">@n.CounterStatement</dd>
+                @if (n.ForwardedAt is { } fwd) { <dt>Forwarded</dt><dd>@AdminFormat.When(fwd)</dd> }
+                @if (n.EarliestRestore is { } earliest) { <dt>Earliest restore</dt><dd>@AdminFormat.When(earliest)</dd> }
+            </dl>
+        }
+        @if (n.Status == "pending")
+        {
+            <form method="post" asp-page-handler="DmcaTakedown" asp-route-id="@Model.Detail.Item.Id" class="inline">
+                <input type="hidden" name="noticeId" value="@n.Id">
+                <button type="submit" class="danger">Take down (DMCA)</button>
+            </form>
+            <form method="post" asp-page-handler="DmcaReject" asp-route-id="@Model.Detail.Item.Id" class="inline">
+                <input type="hidden" name="noticeId" value="@n.Id">
+                <input type="text" name="reason" maxlength="500" placeholder="Reason (optional)" aria-label="Reason to reject the notice">
+                <button type="submit">Reject notice</button>
+            </form>
+        }
+        @if (n.Status == "counter_notice")
+        {
+            <form method="post" asp-page-handler="DmcaForward" asp-route-id="@Model.Detail.Item.Id" class="inline">
+                <input type="hidden" name="noticeId" value="@n.Id">
+                <button type="submit">Forward to claimant</button>
+            </form>
+        }
+        @if (n.Status == "forwarded")
+        {
+            <form method="post" asp-page-handler="DmcaRestore" asp-route-id="@Model.Detail.Item.Id" class="stack">
+                <input type="hidden" name="noticeId" value="@n.Id">
+                <p class="muted">Allowed from @(n.EarliestRestore is { } e ? AdminFormat.When(e) : "the end of the waiting period"), or earlier if the claimant withdrew the notice.</p>
+                <label><input type="checkbox" name="withdrew" value="on"> The claimant withdrew the notice</label>
+                <input type="text" name="reason" maxlength="500" placeholder="Reason (required if withdrawn)" aria-label="Reason the claimant withdrew">
+                <button type="submit">Restore work</button>
+            </form>
+        }
+    </fieldset>
+}

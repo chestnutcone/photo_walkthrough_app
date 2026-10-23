@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Vela.Api.Auth;
 using Vela.Api.Common;
 using Vela.Api.Social;
 
@@ -8,7 +9,7 @@ public sealed record DmcaAck(Guid NoticeId);
 
 public static class DmcaEndpoints
 {
-    public static IServiceCollection AddDmca(this IServiceCollection services) => services.AddScoped<IDmcaService, DmcaService>();
+    public static IServiceCollection AddDmca(this IServiceCollection services) => services.AddScoped<IDmcaService, DmcaService>().AddScoped<ICounterNoticeService, CounterNoticeService>();
 
     public static IEndpointRouteBuilder MapDmcaEndpoints(this IEndpointRouteBuilder app)
     {
@@ -29,6 +30,21 @@ public static class DmcaEndpoints
             }
         }).AllowAnonymous().WithName("submitDmcaNotice");
 
+        app.MapPost("/v1/works/{id}/counter-notice", async (string id, HttpContext ctx, ICurrentUser me, ICounterNoticeService svc) =>
+        {
+            try
+            {
+                var body = await ReadBodyAsync(ctx);
+                if (body is null) return Common.Results.Fail(StatusCodes.Status413PayloadTooLarge, "payload_too_large", "The counter-notice is too large.");
+                var request = CounterNoticeService.Parse(Parse(body));
+                var workId = Guid.TryParse(id, out var g) ? g : throw CounterNoticeService.NotFound();
+                return Common.Results.Ok(new DmcaAck(await svc.SubmitAsync(me.UserId!.Value, workId, request)));
+            }
+            catch (SafetyException e)
+            {
+                return Common.Results.Fail(e.Status, e.Code, e.Message);
+            }
+        }).RequireAuthorization().WithName("submitCounterNotice");
         return app;
     }
 

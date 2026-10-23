@@ -3,10 +3,11 @@ using Vela.Api.Images;
 
 namespace Vela.Api.Admin.Pages;
 
-public sealed class ReportModel(IModerationService moderation, IBlobStore blobs, TimeProvider clock) : AdminPageModel
+public sealed class ReportModel(IModerationService moderation, IDmcaAdminService dmca, IBlobStore blobs, TimeProvider clock) : AdminPageModel
 {
     public ReportDetail Detail { get; private set; } = null!;
     public string? ImageUrl { get; private set; }
+    public IReadOnlyList<DmcaNoticeView> Notices { get; private set; } = [];
     public DateTimeOffset Now => clock.GetUtcNow();
 
     public async Task<IActionResult> OnGetAsync(Guid id)
@@ -16,7 +17,28 @@ public sealed class ReportModel(IModerationService moderation, IBlobStore blobs,
         // The private original, one link per page view, valid five minutes, never logged.
         if (detail.Item.TargetType == "work")
             ImageUrl = blobs.CreateReadUrl(BlobNames.WorkOriginal(detail.Item.TargetId), IndexModel.ImageLifetime).ToString();
+        if (detail.Item.Source == "dmca" && detail.Item.TargetType == "work") Notices = await dmca.NoticesForWorkAsync(detail.Item.TargetId);
         return Page();
+    }
+
+    public Task<IActionResult> OnPostDmcaTakedownAsync(Guid id, Guid noticeId) =>
+        DmcaAsync(id, noticeId, () => dmca.TakeDownAsync(AdminId, noticeId));
+
+    public Task<IActionResult> OnPostDmcaRejectAsync(Guid id, Guid noticeId, string? reason) =>
+        DmcaAsync(id, noticeId, () => dmca.RejectAsync(AdminId, noticeId, reason));
+
+    public Task<IActionResult> OnPostDmcaForwardAsync(Guid id, Guid noticeId) =>
+        DmcaAsync(id, noticeId, () => dmca.ForwardAsync(AdminId, noticeId));
+
+    public Task<IActionResult> OnPostDmcaRestoreAsync(Guid id, Guid noticeId, string? withdrew, string? reason) =>
+        DmcaAsync(id, noticeId, () => dmca.RestoreAsync(AdminId, noticeId, withdrew is not null, reason));
+
+    /// <summary>The notice must be about the work this report is about, whatever the form says.</summary>
+    private async Task<IActionResult> DmcaAsync(Guid reportId, Guid noticeId, Func<Task<ModerationOutcome>> act)
+    {
+        if (await moderation.GetReportAsync(reportId) is not { } d || d.Item.TargetType != "work" || await dmca.WorkOfAsync(noticeId) != d.Item.TargetId)
+            return Done(reportId, ModerationOutcome.NotApplicable);
+        return Done(reportId, await act());
     }
 
     public async Task<IActionResult> OnPostRestoreAsync(Guid id, string? reason) =>

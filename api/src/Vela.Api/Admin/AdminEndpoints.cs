@@ -10,7 +10,7 @@ public static class AdminEndpoints
         services.AddSingleton<AdminReconciler>().AddSingleton<Moderation.TakedownReconciler>();
         if (!env.IsEnvironment("Test")) services.AddHostedService<AdminReconcileWorker>();
         services.AddSingleton<EvidenceRetentionJob>().AddSingleton<INcmecReporter>(NcmecReporterFor(env))
-            .AddScoped<IEvidenceService, EvidenceService>().AddScoped<EvidenceSnapshotBuilder>();
+            .AddScoped<IDmcaAdminService, DmcaAdminService>().AddScoped<IEvidenceService, EvidenceService>().AddScoped<EvidenceSnapshotBuilder>();
         if (!env.IsEnvironment("Test")) services.AddHostedService(sp => sp.GetRequiredService<EvidenceRetentionJob>());
         services.AddSingleton(AdminSettings.Load(config, env));
         services.AddSingleton<IAdminAllowList>(new ConfigAdminAllowList(config));

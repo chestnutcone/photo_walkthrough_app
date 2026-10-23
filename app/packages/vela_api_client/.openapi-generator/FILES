@@ -50,6 +50,7 @@ doc/SendInquiryRequest.md
 doc/ServiceItem.md
 doc/ShowItem.md
 doc/SsoSignInRequest.md
+doc/SubmitCounterNoticeRequest.md
 doc/SubmitDmcaNoticeRequest.md
 doc/TokenPair.md
 doc/TokenPairEnvelope.md
@@ -118,6 +119,7 @@ lib/src/model/send_inquiry_request.dart
 lib/src/model/service_item.dart
 lib/src/model/show_item.dart
 lib/src/model/sso_sign_in_request.dart
+lib/src/model/submit_counter_notice_request.dart
 lib/src/model/submit_dmca_notice_request.dart
 lib/src/model/token_pair.dart
 lib/src/model/token_pair_envelope.dart
@@ -179,6 +181,7 @@ test/send_inquiry_request_test.dart
 test/service_item_test.dart
 test/show_item_test.dart
 test/sso_sign_in_request_test.dart
+test/submit_counter_notice_request_test.dart
 test/submit_dmca_notice_request_test.dart
 test/token_pair_envelope_test.dart
 test/token_pair_test.dart

@@ -6,7 +6,7 @@ public enum ModerationOutcome
 {
     Ok, ReasonRequired, ReasonTooLong, NotFound, NotApplicable, Forbidden, CannotBanSelf, CannotBanAdmin,
     TargetStillBlocked, VariantsUnavailable, AlreadyResolved,
-    EvidenceCopyFailed, AlreadySubmitted, NotConfigured, SubmissionFailed,
+    EvidenceCopyFailed, AlreadySubmitted, NotConfigured, SubmissionFailed, RestoreTooEarly, DeliveryFailed, DmcaProcessRequired,
 }
 
 public sealed record ReportItem(Guid Id, string Source, string Reason, string Status, string TargetType, Guid TargetId, DateTimeOffset CreatedAt);

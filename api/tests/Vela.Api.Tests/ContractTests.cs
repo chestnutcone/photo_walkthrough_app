@@ -60,7 +60,7 @@ public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
 
         Assert.NotNull(doc);
         Assert.Empty(errors);
-        Assert.Equal(36, Operations(doc).Count());
+        Assert.Equal(37, Operations(doc).Count());
         Assert.All(Operations(doc), o => Assert.False(string.IsNullOrWhiteSpace(o.Op.OperationId)));
         Assert.All(Operations(doc), o => Assert.StartsWith("/v1/", o.Path));
         Assert.Equal(Operations(doc).Count(), Operations(doc).Select(o => o.Op.OperationId).Distinct().Count());

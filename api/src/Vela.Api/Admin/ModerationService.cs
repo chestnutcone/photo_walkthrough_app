@@ -42,6 +42,9 @@ public sealed partial class ModerationService(
         if (await GateAsync(adminId, reason) is { } refused) return refused;
         var report = await db.Reports.AsNoTracking().SingleOrDefaultAsync(r => r.Id == reportId);
         if (report is null) return ModerationOutcome.NotFound;
+        // A work removed through the DMCA process comes back only through that process (counter-notice, waiting period).
+        if (report.TargetType == "work" && reason.Trim() != DmcaAdminService.RestoreReason && await IsUnderDmcaProcessAsync(report.TargetId))
+            return ModerationOutcome.DmcaProcessRequired;
         return report.TargetType switch
         {
             "work" => await RestoreWorkAsync(adminId, report.TargetId, reason.Trim()),
@@ -49,6 +52,10 @@ public sealed partial class ModerationService(
             _ => ModerationOutcome.NotApplicable,
         };
     }
+
+    private Task<bool> IsUnderDmcaProcessAsync(Guid workId) =>
+        db.DmcaNotices.AsNoTracking().AnyAsync(n => n.WorkId == workId
+            && (n.Status == DmcaStatus.Takedown || n.Status == DmcaStatus.CounterNotice || n.Status == DmcaStatus.Forwarded));
 
     private async Task<ModerationOutcome> RestoreWorkAsync(Guid adminId, Guid workId, string reason)
     {

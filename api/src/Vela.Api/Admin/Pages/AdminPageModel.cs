@@ -23,6 +23,9 @@ public abstract class AdminPageModel : PageModel
         ["already_submitted"] = ("A report for this hold has already been submitted.", true),
         ["ncmec_not_configured"] = ("NCMEC reporting is not configured: contact your legal advisor.", true),
         ["ncmec_failed"] = ("The report could not be submitted. Nothing was recorded; you can try again.", true),
+        ["restore_too_early"] = ("The 10 day waiting period after forwarding has not ended. Restore earlier only if the claimant withdrew the notice.", true),
+        ["dmca_process"] = ("This story was removed after a DMCA notice. Restore it from the notice once the counter-notice process allows it.", true),
+        ["delivery_failed"] = ("The email could not be sent, so nothing was recorded. Try again.", true),
         ["ban_refused"] = ("Evidence held and content removed, but this owner is an admin and was not banned.", true),
     };
 
@@ -52,6 +55,9 @@ public abstract class AdminPageModel : PageModel
         ModerationOutcome.AlreadySubmitted => "already_submitted",
         ModerationOutcome.NotConfigured => "ncmec_not_configured",
         ModerationOutcome.SubmissionFailed => "ncmec_failed",
+        ModerationOutcome.RestoreTooEarly => "restore_too_early",
+        ModerationOutcome.DeliveryFailed => "delivery_failed",
+        ModerationOutcome.DmcaProcessRequired => "dmca_process",
         _ => "forbidden",
     };
 }

@@ -79,6 +79,7 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**logout**](doc/AuthApi.md#logout) | **POST** /v1/auth/logout | Revoke a refresh token
 [*AuthApi*](doc/AuthApi.md) | [**refresh**](doc/AuthApi.md#refresh) | **POST** /v1/auth/refresh | Rotate a refresh token
 [*AuthApi*](doc/AuthApi.md) | [**ssoSignIn**](doc/AuthApi.md#ssosignin) | **POST** /v1/auth/sso | Sign in with Apple or Google
+[*LegalApi*](doc/LegalApi.md) | [**submitCounterNotice**](doc/LegalApi.md#submitcounternotice) | **POST** /v1/works/{id}/counter-notice | Send a counter-notice for a story removed after a copyright notice
 [*LegalApi*](doc/LegalApi.md) | [**submitDmcaNotice**](doc/LegalApi.md#submitdmcanotice) | **POST** /v1/legal/dmca-notices | Submit a copyright (DMCA) notice
 [*MeApi*](doc/MeApi.md) | [**avatarUpload**](doc/MeApi.md#avatarupload) | **POST** /v1/me/avatar-upload | Get a signed avatar upload URL
 [*MeApi*](doc/MeApi.md) | [**completeOnboarding**](doc/MeApi.md#completeonboarding) | **POST** /v1/me/onboarding | Finish onboarding
@@ -146,6 +147,7 @@ Class | Method | HTTP request | Description
  - [ServiceItem](doc/ServiceItem.md)
  - [ShowItem](doc/ShowItem.md)
  - [SsoSignInRequest](doc/SsoSignInRequest.md)
+ - [SubmitCounterNoticeRequest](doc/SubmitCounterNoticeRequest.md)
  - [SubmitDmcaNoticeRequest](doc/SubmitDmcaNoticeRequest.md)
  - [TokenPair](doc/TokenPair.md)
  - [TokenPairEnvelope](doc/TokenPairEnvelope.md)

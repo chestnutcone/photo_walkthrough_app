@@ -37,6 +37,7 @@ import 'package:vela_api_client/src/model/send_inquiry_request.dart';
 import 'package:vela_api_client/src/model/service_item.dart';
 import 'package:vela_api_client/src/model/show_item.dart';
 import 'package:vela_api_client/src/model/sso_sign_in_request.dart';
+import 'package:vela_api_client/src/model/submit_counter_notice_request.dart';
 import 'package:vela_api_client/src/model/submit_dmca_notice_request.dart';
 import 'package:vela_api_client/src/model/token_pair.dart';
 import 'package:vela_api_client/src/model/token_pair_envelope.dart';
@@ -146,6 +147,8 @@ final _regMap = RegExp(r'^Map<String,(.*)>$');
           return ShowItem.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'SsoSignInRequest':
           return SsoSignInRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'SubmitCounterNoticeRequest':
+          return SubmitCounterNoticeRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'SubmitDmcaNoticeRequest':
           return SubmitDmcaNoticeRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'TokenPair':

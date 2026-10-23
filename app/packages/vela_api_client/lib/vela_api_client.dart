@@ -58,6 +58,7 @@ export 'package:vela_api_client/src/model/send_inquiry_request.dart';
 export 'package:vela_api_client/src/model/service_item.dart';
 export 'package:vela_api_client/src/model/show_item.dart';
 export 'package:vela_api_client/src/model/sso_sign_in_request.dart';
+export 'package:vela_api_client/src/model/submit_counter_notice_request.dart';
 export 'package:vela_api_client/src/model/submit_dmca_notice_request.dart';
 export 'package:vela_api_client/src/model/token_pair.dart';
 export 'package:vela_api_client/src/model/token_pair_envelope.dart';
