@@ -10,13 +10,27 @@ import 'package:vela_app/core/auth/session_store.dart';
 class FakeSessionStorage implements SessionStorage {
   FakeSessionStorage([this.value]);
   String? value;
+  bool failRead = false;
+  bool failWrite = false;
+  bool failDelete = false;
 
   @override
-  Future<String?> read() async => value;
+  Future<String?> read() async {
+    if (failRead) throw StateError('keystore read failed');
+    return value;
+  }
+
   @override
-  Future<void> write(String json) async => value = json;
+  Future<void> write(String json) async {
+    if (failWrite) throw StateError('keystore write failed');
+    value = json;
+  }
+
   @override
-  Future<void> delete() async => value = null;
+  Future<void> delete() async {
+    if (failDelete) throw StateError('keystore delete failed');
+    value = null;
+  }
 }
 
 typedef FakeHandler = FutureOr<ResponseBody> Function(RequestOptions options);

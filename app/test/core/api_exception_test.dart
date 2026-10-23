@@ -1,3 +1,5 @@
+import 'dart:io' show HttpDate;
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vela_api_client/vela_api_client.dart';
@@ -76,5 +78,26 @@ void main() {
       ),
       throwsA(isA<ApiException>()),
     );
+  });
+
+  test('Retry-After accepts an HTTP date and clamps negatives', () {
+    final opts = RequestOptions(path: '/x');
+    DioException make(String v) => DioException.badResponse(
+      statusCode: 429,
+      requestOptions: opts,
+      response: Response<dynamic>(
+        requestOptions: opts,
+        statusCode: 429,
+        headers: Headers.fromMap({
+          'retry-after': [v],
+        }),
+        data: null,
+      ),
+    );
+    final future = DateTime.now().toUtc().add(const Duration(minutes: 5));
+    final date = HttpDate.format(future);
+    final d = ApiException.fromDio(make(date)).retryAfter!;
+    expect(d.inSeconds, inInclusiveRange(290, 300));
+    expect(ApiException.fromDio(make('-5')).retryAfter, Duration.zero);
   });
 }

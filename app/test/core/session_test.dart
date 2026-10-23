@@ -67,4 +67,38 @@ void main() {
     expect(jsonDecode(s.encode()), containsPair('refreshToken', 'r'));
     expect(Session.decode(s.encode()), s);
   });
+
+  test('read failure yields signed out, not AsyncError', () async {
+    final storage = FakeSessionStorage('x')..failRead = true;
+    final c = _container(storage);
+
+    expect(await c.read(sessionProvider.future), isNull);
+    expect(c.read(sessionProvider).hasError, isFalse);
+  });
+
+  test('clear updates state even when delete throws', () async {
+    final storage = FakeSessionStorage();
+    final c = _container(storage);
+    await c.read(sessionProvider.future);
+    await c
+        .read(sessionProvider.notifier)
+        .signIn(accessToken: 'A', refreshToken: 'R', expiresIn: 900);
+    storage.failDelete = true;
+
+    await c.read(sessionProvider.notifier).clear();
+
+    expect(c.read(sessionProvider).value, isNull);
+  });
+
+  test('signIn keeps the in-memory session when write throws', () async {
+    final storage = FakeSessionStorage()..failWrite = true;
+    final c = _container(storage);
+    await c.read(sessionProvider.future);
+
+    await c
+        .read(sessionProvider.notifier)
+        .signIn(accessToken: 'A', refreshToken: 'R', expiresIn: 900);
+
+    expect(c.read(sessionProvider).value?.accessToken, 'A');
+  });
 }

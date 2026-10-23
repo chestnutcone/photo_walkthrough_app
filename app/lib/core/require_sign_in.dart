@@ -12,6 +12,9 @@ final signInSheetLauncherProvider = Provider<SignInSheetLauncher>(
       (_) async => false,
 );
 
+/// Call sites MUST run this before navigating to a gated route (`/create`,
+/// `/notifications`, `/settings`); the router only bounces guests to `/`.
+///
 /// True when signed in; otherwise shows the sign-in sheet and returns its
 /// outcome.
 Future<bool> requireSignIn(BuildContext context, WidgetRef ref) async {

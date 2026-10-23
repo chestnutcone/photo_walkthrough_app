@@ -22,6 +22,20 @@ final accountBlockProvider =
       AccountBlockNotifier.new,
     );
 
+/// Reads the 403 envelope code of [e], if it ends the account.
+AccountBlock? accountBlockFor(DioException e) {
+  if (e.response?.statusCode != 403) return null;
+  final body = e.response?.data;
+  final code = body is Map && body['error'] is Map
+      ? (body['error'] as Map)['code']
+      : null;
+  return switch (code) {
+    'account_suspended' => AccountBlock.suspended,
+    'account_deleted' => AccountBlock.deleted,
+    _ => null,
+  };
+}
+
 /// The refresh token is no longer usable; the session has been cleared.
 class SessionExpiredException implements Exception {
   const SessionExpiredException();
@@ -42,13 +56,29 @@ class SessionNotifier extends AsyncNotifier<Session?> {
 
   @override
   Future<Session?> build() async {
-    final raw = await _storage.read();
-    if (raw == null) return null;
     try {
-      return Session.decode(raw);
+      final raw = await _storage.read();
+      if (raw == null) return null;
+      try {
+        return Session.decode(raw);
+      } on Object {
+        await _bestEffort(_storage.delete);
+        return null;
+      }
     } on Object {
-      await _storage.delete();
+      // Unreadable keystore (corruption, backup restore): treat as signed out.
+      await _bestEffort(_storage.delete);
       return null;
+    }
+  }
+
+  /// Storage failures must never break auth state; the in-memory session
+  /// stays authoritative for the running app.
+  static Future<void> _bestEffort(Future<void> Function() op) async {
+    try {
+      await op();
+    } on Object {
+      // ignored on purpose
     }
   }
 
@@ -60,14 +90,14 @@ class SessionNotifier extends AsyncNotifier<Session?> {
     required int expiresIn,
   }) async {
     final session = _fromPair(accessToken, refreshToken, expiresIn);
-    await _storage.write(session.encode());
     ref.read(accountBlockProvider.notifier).set(null);
     state = AsyncData(session);
+    await _bestEffort(() => _storage.write(session.encode()));
   }
 
   Future<void> clear() async {
-    await _storage.delete();
     state = const AsyncData(null);
+    await _bestEffort(_storage.delete);
   }
 
   /// Clears the session and records why, for the suspended-account screen.
@@ -102,25 +132,35 @@ class SessionNotifier extends AsyncNotifier<Session?> {
         pair.refreshToken,
         pair.expiresIn,
       );
+      // A sign-in or sign-out during the refresh wins.
+      if (state.value?.refreshToken != stale.refreshToken) {
+        throw const SessionExpiredException();
+      }
       // Persist before anyone retries: the old refresh token is now dead.
-      await _storage.write(fresh.encode());
+      // If the write fails the in-memory session still works this run.
       state = AsyncData(fresh);
+      await _bestEffort(() => _storage.write(fresh.encode()));
       return fresh;
     } on DioException catch (e) {
       if (_isDefinitiveRejection(e)) {
-        await clear();
+        final block = accountBlockFor(e);
+        if (block != null) {
+          await blockAccount(block);
+        } else {
+          await clear();
+        }
         throw const SessionExpiredException();
       }
       rethrow;
     } on SessionExpiredException {
-      await clear();
+      if (state.value?.refreshToken == stale.refreshToken) await clear();
       rethrow;
     }
   }
 
   static bool _isDefinitiveRejection(DioException e) {
     final status = e.response?.statusCode;
-    return status == 400 || status == 401 || status == 403;
+    return status == 401 || status == 403;
   }
 
   Session _fromPair(String access, String refresh, int expiresIn) => Session(

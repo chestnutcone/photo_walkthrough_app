@@ -284,4 +284,98 @@ void main() {
     expect(c.read(accountBlockProvider), isNull);
     expect(c.read(sessionProvider).value?.accessToken, 'A9');
   });
+
+  test('refresh 400 keeps the session', () async {
+    final adapter = FakeAdapter(
+      (o) => o.path == '/v1/auth/refresh'
+          ? jsonResponse(400, errEnvelope('bad_request'))
+          : jsonResponse(401, errEnvelope('unauthorized')),
+    );
+    final c = _container(adapter, _stored('A1', 'R1'));
+
+    await expectLater(
+      c.read(dioProvider).get<dynamic>('/v1/me'),
+      throwsA(isA<DioException>()),
+    );
+
+    expect(c.read(sessionProvider).value?.refreshToken, 'R1');
+  });
+
+  for (final code in ['account_suspended', 'account_deleted']) {
+    test('refresh 403 $code sets the account flag and clears', () async {
+      final storage = _stored('A1', 'R1');
+      final adapter = FakeAdapter(
+        (o) => o.path == '/v1/auth/refresh'
+            ? jsonResponse(403, errEnvelope(code))
+            : jsonResponse(401, errEnvelope('unauthorized')),
+      );
+      final c = _container(adapter, storage);
+
+      await expectLater(
+        c.read(dioProvider).get<dynamic>('/v1/me'),
+        throwsA(isA<DioException>()),
+      );
+
+      expect(c.read(sessionProvider).value, isNull);
+      expect(
+        c.read(accountBlockProvider),
+        code == 'account_suspended'
+            ? AccountBlock.suspended
+            : AccountBlock.deleted,
+      );
+    });
+  }
+
+  test(
+    'refresh write failure keeps the rotated session in memory and retries',
+    () async {
+      final storage = _stored('A1', 'R1')..failWrite = true;
+      final adapter = FakeAdapter((o) {
+        if (o.path == '/v1/auth/refresh') {
+          return jsonResponse(200, tokenPair('A2', 'R2'));
+        }
+        return o.headers['Authorization'] == 'Bearer A2'
+            ? jsonResponse(200, okEnvelope({}))
+            : jsonResponse(401, errEnvelope('unauthorized'));
+      });
+      final c = _container(adapter, storage);
+
+      final res = await c.read(dioProvider).get<dynamic>('/v1/me');
+
+      expect(res.statusCode, 200);
+      expect(c.read(sessionProvider).value?.refreshToken, 'R2');
+    },
+  );
+
+  test('read failure means signed out and requests still go out', () async {
+    final storage = _stored('A1', 'R1')..failRead = true;
+    final adapter = FakeAdapter((_) => jsonResponse(200, okEnvelope({})));
+    final c = _container(adapter, storage);
+
+    final res = await c.read(dioProvider).get<dynamic>('/v1/works');
+
+    expect(res.statusCode, 200);
+    expect(c.read(sessionProvider).hasError, isFalse);
+    expect(c.read(sessionProvider).value, isNull);
+  });
+
+  test('a sign-out during a refresh is not overwritten', () async {
+    final gate = Completer<void>();
+    final adapter = FakeAdapter((o) async {
+      if (o.path == '/v1/auth/refresh') {
+        await gate.future;
+        return jsonResponse(200, tokenPair('A2', 'R2'));
+      }
+      return jsonResponse(401, errEnvelope('unauthorized'));
+    });
+    final c = _container(adapter, _stored('A1', 'R1'));
+    final call = c.read(dioProvider).get<dynamic>('/v1/me');
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    await c.read(sessionProvider.notifier).clear();
+    gate.complete();
+    await expectLater(call, throwsA(isA<DioException>()));
+
+    expect(c.read(sessionProvider).value, isNull);
+  });
 }

@@ -1,3 +1,5 @@
+import 'dart:io' show HttpDate;
+
 import 'package:dio/dio.dart';
 import 'package:vela_api_client/vela_api_client.dart';
 
@@ -20,25 +22,40 @@ class ApiException implements Exception {
     final response = e.response;
     final body = response?.data;
     final error = body is Map ? body['error'] : null;
-    final retry = int.tryParse(response?.headers.value('retry-after') ?? '');
+    final retry = _parseRetryAfter(response?.headers.value('retry-after'));
     if (error is Map && error['code'] is String) {
       return ApiException(
         code: error['code'] as String,
         message: (error['message'] as String?) ?? '',
         statusCode: response?.statusCode,
-        retryAfter: retry == null ? null : Duration(seconds: retry),
+        retryAfter: retry,
       );
     }
     return ApiException(
       code: response == null ? 'network_error' : 'unknown_error',
       message: e.message ?? '',
       statusCode: response?.statusCode,
-      retryAfter: retry == null ? null : Duration(seconds: retry),
+      retryAfter: retry,
     );
   }
 
   @override
   String toString() => 'ApiException($code, status: $statusCode)';
+}
+
+/// Retry-After is integer seconds or an HTTP date; never negative.
+Duration? _parseRetryAfter(String? raw) {
+  if (raw == null) return null;
+  final seconds = int.tryParse(raw.trim());
+  if (seconds != null) {
+    return Duration(seconds: seconds < 0 ? 0 : seconds);
+  }
+  try {
+    final diff = HttpDate.parse(raw.trim()).difference(DateTime.now().toUtc());
+    return diff.isNegative ? Duration.zero : diff;
+  } on Object {
+    return null;
+  }
 }
 
 /// Returns the payload of an envelope or throws [ApiException].

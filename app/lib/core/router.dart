@@ -9,7 +9,14 @@ import 'placeholder_screens.dart';
 /// onboarding.
 final needsOnboardingProvider = Provider<bool>((_) => false);
 
-const _signInRequired = {'/create', '/notifications', '/settings'};
+const _signInRequired = ['/create', '/notifications', '/settings'];
+
+String _normalize(String path) => path.length > 1 && path.endsWith('/')
+    ? path.substring(0, path.length - 1)
+    : path;
+
+bool _isGated(String path) =>
+    _signInRequired.any((base) => path == base || path.startsWith('$base/'));
 
 /// Pure redirect rule, exposed for testing.
 String? resolveRedirect({
@@ -18,16 +25,18 @@ String? resolveRedirect({
   required bool sessionLoading,
   required bool needsOnboarding,
 }) {
+  location = _normalize(location);
   if (sessionLoading) return null;
   if (!isSignedIn) {
-    return _signInRequired.contains(location) || location == '/onboarding'
-        ? '/'
-        : null;
+    return _isGated(location) || location == '/onboarding' ? '/' : null;
   }
   if (needsOnboarding) return location == '/onboarding' ? null : '/onboarding';
   return location == '/onboarding' ? '/' : null;
 }
 
+/// Guests who deep-link to a gated route are sent to `/`, because a redirect
+/// cannot open the sign-in sheet. Call sites MUST run `requireSignIn` before
+/// navigating to `/create`, `/notifications`, `/settings` (or sub-routes).
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
   void bump(Object? _, Object? _) => refresh.value++;
@@ -46,6 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         needsOnboarding: ref.read(needsOnboardingProvider),
       );
     },
+    errorBuilder: (context, state) => const NotFoundScreen(),
     routes: [
       GoRoute(path: '/', builder: (_, _) => const PlaceholderScreen('feed')),
       GoRoute(

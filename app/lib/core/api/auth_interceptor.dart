@@ -36,7 +36,7 @@ class AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    final blocked = _blockReason(err);
+    final blocked = accountBlockFor(err);
     if (blocked != null) {
       await notifier().blockAccount(blocked);
       return handler.next(err);
@@ -72,18 +72,5 @@ class AuthInterceptor extends Interceptor {
     } on DioException catch (e) {
       handler.next(e);
     }
-  }
-
-  static AccountBlock? _blockReason(DioException err) {
-    if (err.response?.statusCode != 403) return null;
-    final body = err.response?.data;
-    final code = body is Map && body['error'] is Map
-        ? (body['error'] as Map)['code']
-        : null;
-    return switch (code) {
-      'account_suspended' => AccountBlock.suspended,
-      'account_deleted' => AccountBlock.deleted,
-      _ => null,
-    };
   }
 }

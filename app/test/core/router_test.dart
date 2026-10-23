@@ -103,6 +103,35 @@ void main() {
     expect(find.text('route:onboarding'), findsOneWidget);
   });
 
+  test('gating matches sub-paths and trailing slashes', () {
+    String? r(String l) => resolveRedirect(
+      location: l,
+      isSignedIn: false,
+      sessionLoading: false,
+      needsOnboarding: false,
+    );
+    for (final l in [
+      '/settings/blocked',
+      '/create/',
+      '/notifications/',
+      '/settings',
+    ]) {
+      expect(r(l), '/', reason: l);
+    }
+    expect(r('/settingsx'), isNull);
+    expect(r('/story/1'), isNull);
+  });
+
+  testWidgets('unknown route shows not-found with a link home', (tester) async {
+    final router = await _pump(tester, _container());
+    router.go('/nope');
+    await tester.pumpAndSettle();
+    expect(find.text('route:not-found'), findsOneWidget);
+    await tester.tap(find.text('Go home'));
+    await tester.pumpAndSettle();
+    expect(find.text('route:feed'), findsOneWidget);
+  });
+
   testWidgets('guest cannot stay on onboarding', (tester) async {
     final router = await _pump(tester, _container());
     router.go('/onboarding');
