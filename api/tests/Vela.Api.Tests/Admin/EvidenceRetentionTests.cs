@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Vela.Api.Admin;
@@ -81,6 +82,25 @@ public class EvidenceRetentionTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(1, await Run(until));
         Assert.Empty(await _s.Holds());
         Assert.Equal("", _s.EvidenceBlobs(id));
+    }
+
+    [Fact]
+    public async Task A_hold_extended_by_an_ncmec_submission_while_the_job_runs_keeps_its_blobs()
+    {
+        var id = await Hold();
+        var until = (await _s.Hold(id)).HoldUntil;
+        await using var db = _s.Host.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM evidence_holds WHERE id = {id} FOR UPDATE");
+        await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE evidence_holds SET hold_until = {until.AddDays(365)} WHERE id = {id}");
+
+        var run = Task.Run(() => Run(until));
+        await Task.Delay(1500);
+        await tx.CommitAsync();
+
+        Assert.Equal(0, await run);
+        Assert.Single(await _s.Holds());
+        Assert.NotEqual("", _s.EvidenceBlobs(id));
     }
 
     [Fact]

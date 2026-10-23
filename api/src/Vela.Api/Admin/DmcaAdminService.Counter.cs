@@ -13,18 +13,22 @@ public sealed partial class DmcaAdminService
         if (n is null) return ModerationOutcome.NotFound;
         if (n.Status != DmcaStatus.CounterNotice) return ModerationOutcome.NotApplicable;
 
-        // Send first: the waiting period only starts once the claimant has really been told.
+        // Claim the notice first (committed), so only one caller can ever reach the email below; ForwardedAt, which starts the
+        // waiting period, is set only once the claimant has really been told.
+        var claimed = await db.DmcaNotices.Where(x => x.Id == noticeId && x.Status == DmcaStatus.CounterNotice)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, DmcaStatus.Forwarded));
+        if (claimed == 0) return ModerationOutcome.AlreadyResolved;
         try { await email.SendAsync(n.ClaimantEmail, ClaimantSubject, ClaimantBody(n)); }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            log.LogError("Forwarding a counter-notice failed ({Reason}); nothing was recorded.", e.GetType().Name);
+            log.LogError("Forwarding a counter-notice failed ({Reason}); the claim was rolled back.", e.GetType().Name);
+            await db.DmcaNotices.Where(x => x.Id == noticeId && x.Status == DmcaStatus.Forwarded && x.ForwardedAt == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, DmcaStatus.CounterNotice));
             return ModerationOutcome.DeliveryFailed;
         }
         var now = clock.GetUtcNow();
         await using var tx = await db.Database.BeginTransactionAsync();
-        var changed = await db.DmcaNotices.Where(x => x.Id == noticeId && x.Status == DmcaStatus.CounterNotice)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, DmcaStatus.Forwarded).SetProperty(x => x.ForwardedAt, now));
-        if (changed == 0) return ModerationOutcome.AlreadyResolved;
+        await db.DmcaNotices.Where(x => x.Id == noticeId).ExecuteUpdateAsync(s => s.SetProperty(x => x.ForwardedAt, now));
         Audit(adminId, "dmca_forward", noticeId, "counter-notice forwarded to the claimant", now);
         await db.SaveChangesAsync();
         await tx.CommitAsync();
@@ -52,7 +56,7 @@ public sealed partial class DmcaAdminService
         var report = await db.Reports.AsNoTracking().Where(r => r.Source == DmcaService.ReportSource && r.TargetType == "work" && r.TargetId == workId)
             .OrderByDescending(r => r.CreatedAt).Select(r => r.Id).FirstOrDefaultAsync();
         if (report == Guid.Empty) return ModerationOutcome.NotFound;
-        var restored = await moderation.RestoreAsync(adminId, report, RestoreReason);
+        var restored = await moderation.RestoreAfterDmcaAsync(adminId, report, RestoreReason);
         if (restored != ModerationOutcome.Ok) return restored;
 
         await using var tx = await db.Database.BeginTransactionAsync();

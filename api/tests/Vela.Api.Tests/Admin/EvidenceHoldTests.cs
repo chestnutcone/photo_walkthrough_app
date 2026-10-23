@@ -154,7 +154,8 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
         var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
         var otherReport = await _s.Report(await _s.NewUser(), "work", work, "spam");
         var first = await _s.MarkIllegal(_admin, report);
-        var auditBefore = (await _s.Audit()).Count;
+        int Actions() => _s.Audit().Result.Count(a => a.Action is "mark_illegal" or "remove_work" or "ban_user");
+        var auditBefore = Actions();
 
         var again = await _s.MarkIllegal(_admin, report, "second try");
         var viaNewReport = await _s.MarkIllegal(_admin, otherReport, "third");
@@ -165,7 +166,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Single(await _s.Holds());
         Assert.Single(await _s.Audit(), a => a.Action == "mark_illegal");
         Assert.Equal("clear violation", (await _s.Hold(first.HoldId!.Value)).Reason);
-        Assert.Equal(auditBefore, (await _s.Audit()).Count(a => a.Action is "mark_illegal" or "remove_work" or "ban_user"));
+        Assert.Equal(auditBefore, Actions());
     }
 
     [Fact]

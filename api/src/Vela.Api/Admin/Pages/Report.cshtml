@@ -75,14 +75,21 @@ else if (d.Item.TargetType == "reply")
 }
 
 <h2>Actions</h2>
-<form method="post" asp-page-handler="Restore" asp-route-id="@d.Item.Id" class="stack">
-    <fieldset>
-        <legend>Restore</legend>
-        <p class="muted">Makes the content visible again (a blocked or removed story is republished and is never auto-blocked again).</p>
-        <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to restore">
-        <button type="submit">Restore</button>
-    </fieldset>
-</form>
+@if (d.EvidenceHoldId is null || d.Item.TargetType == "user")
+{
+    <form method="post" asp-page-handler="Restore" asp-route-id="@d.Item.Id" class="stack">
+        <fieldset>
+            <legend>Restore</legend>
+            <p class="muted">Makes the content visible again (a blocked or removed story is republished and is never auto-blocked again).</p>
+            <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to restore">
+            <button type="submit">Restore</button>
+        </fieldset>
+    </form>
+}
+else
+{
+    <p class="muted">This content is held as evidence and cannot be restored.</p>
+}
 <form method="post" asp-page-handler="Dismiss" asp-route-id="@d.Item.Id" class="stack">
     <fieldset>
         <legend>Dismiss</legend>

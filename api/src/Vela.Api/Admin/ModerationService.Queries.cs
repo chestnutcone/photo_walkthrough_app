@@ -102,7 +102,7 @@ public sealed partial class ModerationService
         var recent = await db.AdminActions.AsNoTracking().Where(a => a.TargetType == "user" && a.TargetId == userId)
             .OrderByDescending(a => a.At).ThenByDescending(a => a.Id).Take(10)
             .Select(a => new AuditItem(a.Id, a.AdminId, a.Action, a.TargetType, a.TargetId, a.Reason, a.At)).ToListAsync();
-        return new UserDetail(item, bans, about, removals, recent);
+        return new UserDetail(item, bans, about, removals, recent, await db.EvidenceHolds.AsNoTracking().AnyAsync(h => h.UserId == userId));
     }
 
     public async Task<ReportDetail?> GetReportAsync(Guid reportId)

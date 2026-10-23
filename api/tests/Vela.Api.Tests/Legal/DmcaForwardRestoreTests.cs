@@ -76,12 +76,48 @@ public class DmcaForwardRestoreTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(DmcaStatus.CounterNotice, (await site.Notice(x.Notice)).Status);
         toggle.Fail = false;
         Assert.Equal(ModerationOutcome.Ok, await site.Dm(d => d.ForwardAsync(admin, x.Notice)));
+        Assert.NotNull((await site.Notice(x.Notice)).ForwardedAt);
+    }
+
+    [Fact]
+    public async Task Parallel_forwards_email_the_claimant_once()
+    {
+        var (_, _, notice) = await Countered();
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => _s.Dm(d => d.ForwardAsync(_admin, notice))));
+
+        Assert.Equal(1, results.Count(r => r == ModerationOutcome.Ok));
+        Assert.Single(_s.Service<FakeEmailSender>().Sent, m => m.Subject == "Counter-notice received");
+    }
+
+    [Fact]
+    public async Task The_claimant_is_emailed_only_after_the_forward_is_recorded_and_a_failed_send_is_rolled_back()
+    {
+        var seen = new List<string>();
+        var sender = new FlakySender();
+        using var site = await AdminSite.Create(pg, isolated: true, extra: s => s.AddSingleton<IEmailSender>(sender));
+        var admin = await site.NewAdminUser();
+        var x = await site.NoticedStory(site.Host.Anonymous());
+        await site.Dm(d => d.TakeDownAsync(admin, x.Notice));
+        await x.Owner.Post($"/v1/works/{x.Work}/counter-notice", Counter());
+        sender.OnSend = async () => seen.Add((await site.Notice(x.Notice)).Status);
+
+        Assert.Equal(ModerationOutcome.Ok, await site.Dm(d => d.ForwardAsync(admin, x.Notice)));
+
+        Assert.Equal([DmcaStatus.Forwarded], seen);
+        var n = await site.Notice(x.Notice);
+        Assert.Equal(site.Host.Clock.GetUtcNow(), n.ForwardedAt);
     }
 
     private sealed class FlakySender : IEmailSender
     {
         public bool Fail;
-        public Task SendAsync(string to, string subject, string textBody) => Fail ? throw new IOException("down") : Task.CompletedTask;
+        public Func<Task>? OnSend;
+        public async Task SendAsync(string to, string subject, string textBody)
+        {
+            if (OnSend is { } hook) await hook();
+            if (Fail) throw new IOException("down");
+        }
     }
 
     [Fact]

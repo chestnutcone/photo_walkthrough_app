@@ -42,7 +42,11 @@ else if (!u.IsDeleted && !u.IsSuspended)
         </fieldset>
     </form>
 }
-@if (u.IsSuspended || Model.Detail.BannedIdentityCount > 0)
+@if (Model.Detail.EvidenceHeld)
+{
+    <p class="muted">Evidence is held for this account, so it cannot be reinstated.</p>
+}
+else if (u.IsSuspended || Model.Detail.BannedIdentityCount > 0)
 {
     <form method="post" asp-page-handler="Reinstate" asp-route-id="@u.UserId" class="stack">
         <fieldset>

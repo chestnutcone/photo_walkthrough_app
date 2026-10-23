@@ -47,10 +47,14 @@ public sealed class EvidenceRetentionJob(IServiceScopeFactory scopes, TimeProvid
         {
             try
             {
-                await blobs.DeletePrefixAsync(hold.BlobPrefix);
+                // Lock the row and re-check its date first: an NCMEC submission extends HoldUntil under the same lock,
+                // so a hold that was just extended is skipped and keeps its blobs. Blobs go before the row, so a failure retries.
                 await using var tx = await db.Database.BeginTransactionAsync(ct);
-                var gone = await db.EvidenceHolds.Where(h => h.Id == hold.Id && h.HoldUntil <= now).ExecuteDeleteAsync(ct);
-                if (gone == 0) continue; // extended meanwhile (an NCMEC report was recorded)
+                var due1 = await db.Database.SqlQuery<Guid>(
+                    $"SELECT id AS \"Value\" FROM evidence_holds WHERE id = {hold.Id} AND hold_until <= {now} FOR UPDATE").ToListAsync(ct);
+                if (due1.Count == 0) continue;
+                await blobs.DeletePrefixAsync(hold.BlobPrefix);
+                await db.EvidenceHolds.Where(h => h.Id == hold.Id).ExecuteDeleteAsync(ct);
                 db.AdminActions.Add(new AdminAction
                 {
                     Id = Guid.NewGuid(), AdminId = SystemActor, Action = "evidence_expired", TargetType = "evidence", TargetId = hold.Id,

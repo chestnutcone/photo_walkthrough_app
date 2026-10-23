@@ -6,7 +6,7 @@ public enum ModerationOutcome
 {
     Ok, ReasonRequired, ReasonTooLong, NotFound, NotApplicable, Forbidden, CannotBanSelf, CannotBanAdmin,
     TargetStillBlocked, VariantsUnavailable, AlreadyResolved,
-    EvidenceCopyFailed, AlreadySubmitted, NotConfigured, SubmissionFailed, RestoreTooEarly, DeliveryFailed, DmcaProcessRequired,
+    EvidenceCopyFailed, AlreadySubmitted, NotConfigured, SubmissionFailed, RestoreTooEarly, DeliveryFailed, DmcaProcessRequired, EvidenceHeld,
 }
 
 public sealed record ReportItem(Guid Id, string Source, string Reason, string Status, string TargetType, Guid TargetId, DateTimeOffset CreatedAt);
@@ -28,7 +28,7 @@ public sealed record ReportDetail(
     string? ReplyText, string? ReplyAuthorHandle, bool ReplyHidden, string? ReplyHiddenBy, Guid? ReplyWorkId,
     int OwnerReportCount, int OwnerRemovals, Guid? EvidenceHoldId = null);
 
-public sealed record UserDetail(AdminUserItem User, int BannedIdentityCount, int ReportsAbout, int Removals, IReadOnlyList<AuditItem> RecentActions);
+public sealed record UserDetail(AdminUserItem User, int BannedIdentityCount, int ReportsAbout, int Removals, IReadOnlyList<AuditItem> RecentActions, bool EvidenceHeld = false);
 
 public interface IModerationService
 {
@@ -49,6 +49,8 @@ public interface IModerationService
     /// <summary>Shown in the UI as "Ban account".</summary>
     Task<ModerationOutcome> SuspendUserAsync(Guid adminId, Guid userId, string reason);
     Task<ModerationOutcome> ReinstateUserAsync(Guid adminId, Guid userId, string reason);
+    /// <summary>Restore step of the DMCA counter-notice process; no admin form calls it (the DMCA service gates it).</summary>
+    Task<ModerationOutcome> RestoreAfterDmcaAsync(Guid adminId, Guid reportId, string reason);
     /// <summary>
     /// Holds the evidence first (snapshot plus blob copies; a failure takes nothing down), then takes the content down,
     /// bans the owner (never an admin) and resolves the pending reports. Marking the same target again returns the same hold.

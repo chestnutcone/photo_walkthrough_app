@@ -37,14 +37,20 @@ public sealed partial class ModerationService(
         return ModerationOutcome.Ok;
     }
 
-    public async Task<ModerationOutcome> RestoreAsync(Guid adminId, Guid reportId, string reason)
+    public Task<ModerationOutcome> RestoreAsync(Guid adminId, Guid reportId, string reason) => RestoreCoreAsync(adminId, reportId, reason, viaDmcaProcess: false);
+
+    /// <summary>The DMCA service has already enforced the waiting period; this is the only path past the DMCA guard, and no form reaches it.</summary>
+    public Task<ModerationOutcome> RestoreAfterDmcaAsync(Guid adminId, Guid reportId, string reason) => RestoreCoreAsync(adminId, reportId, reason, viaDmcaProcess: true);
+
+    private async Task<ModerationOutcome> RestoreCoreAsync(Guid adminId, Guid reportId, string reason, bool viaDmcaProcess)
     {
         if (await GateAsync(adminId, reason) is { } refused) return refused;
         var report = await db.Reports.AsNoTracking().SingleOrDefaultAsync(r => r.Id == reportId);
         if (report is null) return ModerationOutcome.NotFound;
+        // Content held as evidence is never made public again.
+        if (report.TargetType is "work" or "reply" && await IsHeldAsync(report.TargetType, report.TargetId)) return ModerationOutcome.EvidenceHeld;
         // A work removed through the DMCA process comes back only through that process (counter-notice, waiting period).
-        if (report.TargetType == "work" && reason.Trim() != DmcaAdminService.RestoreReason && await IsUnderDmcaProcessAsync(report.TargetId))
-            return ModerationOutcome.DmcaProcessRequired;
+        if (report.TargetType == "work" && !viaDmcaProcess && await IsUnderDmcaProcessAsync(report.TargetId)) return ModerationOutcome.DmcaProcessRequired;
         return report.TargetType switch
         {
             "work" => await RestoreWorkAsync(adminId, report.TargetId, reason.Trim()),
@@ -56,6 +62,9 @@ public sealed partial class ModerationService(
     private Task<bool> IsUnderDmcaProcessAsync(Guid workId) =>
         db.DmcaNotices.AsNoTracking().AnyAsync(n => n.WorkId == workId
             && (n.Status == DmcaStatus.Takedown || n.Status == DmcaStatus.CounterNotice || n.Status == DmcaStatus.Forwarded));
+
+    private Task<bool> IsHeldAsync(string targetType, Guid id) =>
+        targetType == "work" ? db.EvidenceHolds.AsNoTracking().AnyAsync(h => h.WorkId == id) : db.EvidenceHolds.AsNoTracking().AnyAsync(h => h.ReplyId == id);
 
     private async Task<ModerationOutcome> RestoreWorkAsync(Guid adminId, Guid workId, string reason)
     {
@@ -214,6 +223,7 @@ public sealed partial class ModerationService(
     public async Task<ModerationOutcome> ReinstateUserAsync(Guid adminId, Guid userId, string reason)
     {
         if (await GateAsync(adminId, reason) is { } refused) return refused;
+        if (await db.EvidenceHolds.AsNoTracking().AnyAsync(h => h.UserId == userId)) return ModerationOutcome.EvidenceHeld;
         var exists = await db.Users.AnyAsync(u => u.Id == userId);
         // A deleted account has no user row, but its ban rows can still be lifted by id.
         if (!exists && !await db.BannedIdentities.AnyAsync(b => b.UserRef == userId)) return ModerationOutcome.NotFound;
