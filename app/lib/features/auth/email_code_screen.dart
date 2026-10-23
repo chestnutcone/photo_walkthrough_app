@@ -17,7 +17,10 @@ class EmailEntryStep extends ConsumerStatefulWidget {
     super.key,
     required this.onRequested,
     required this.onBack,
+    required this.onBusy,
   });
+
+  final ValueChanged<bool> onBusy;
 
   final ValueChanged<String> onRequested;
   final VoidCallback onBack;
@@ -44,11 +47,16 @@ class _EmailEntryStepState extends ConsumerState<EmailEntryStep> {
       _busy = true;
       _error = null;
     });
+    widget.onBusy(true);
     String? error;
     try {
       await ref.read(signInServiceProvider).requestEmailCode(email);
     } on ApiException catch (e) {
       error = signInErrorMessage(e);
+    } on Object {
+      error = signInErrorMessage(_unknown);
+    } finally {
+      widget.onBusy(false);
     }
     if (!mounted) return;
     setState(() {
@@ -120,7 +128,10 @@ class EmailCodeScreen extends ConsumerStatefulWidget {
     required this.email,
     required this.onSignedIn,
     required this.onChangeEmail,
+    required this.onBusy,
   });
+
+  final ValueChanged<bool> onBusy;
 
   final String email;
   final VoidCallback onSignedIn;
@@ -132,6 +143,7 @@ class EmailCodeScreen extends ConsumerStatefulWidget {
 
 class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
   final _controller = TextEditingController();
+  final _focus = FocusNode();
   Timer? _timer;
   int _cooldown = defaultResendCooldownSeconds;
   int _attemptsUsed = 0;
@@ -151,6 +163,7 @@ class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
@@ -173,6 +186,7 @@ class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
       _error = null;
       _notice = null;
     });
+    widget.onBusy(true);
     String? error;
     var done = false;
     try {
@@ -180,6 +194,10 @@ class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
       done = true;
     } on ApiException catch (e) {
       error = _verifyError(e);
+    } on Object {
+      error = signInErrorMessage(_unknown);
+    } finally {
+      widget.onBusy(false);
     }
     if (!mounted) return;
     if (done) return widget.onSignedIn();
@@ -188,6 +206,7 @@ class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
       _busy = false;
       _error = error;
     });
+    _focus.requestFocus();
   }
 
   /// A wrong or expired code costs one of the five guesses; a rate limit or
@@ -210,6 +229,7 @@ class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
       _error = null;
       _notice = null;
     });
+    widget.onBusy(true);
     String? error;
     int? wait;
     try {
@@ -217,6 +237,10 @@ class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
     } on ApiException catch (e) {
       error = signInErrorMessage(e);
       wait = e.retryAfter?.inSeconds;
+    } on Object {
+      error = signInErrorMessage(_unknown);
+    } finally {
+      widget.onBusy(false);
     }
     if (!mounted) return;
     _controller.clear();
@@ -247,7 +271,8 @@ class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
       if (!_exhausted)
         CodeBoxes(
           controller: _controller,
-          enabled: !_busy,
+          focusNode: _focus,
+          readOnly: _busy,
           onChanged: (_) => _submit(),
         ),
       if (_error != null)
@@ -308,6 +333,9 @@ class _EmailCodeScreenState extends ConsumerState<EmailCodeScreen> {
     ],
   );
 }
+
+/// Stand-in for any failure that is not an [ApiException].
+const _unknown = ApiException(code: 'unknown_error', message: '');
 
 class _StepHeader extends StatelessWidget {
   const _StepHeader({required this.title, required this.onBack});

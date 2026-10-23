@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vela_app/core/auth/auth_controller.dart';
 import 'package:vela_app/core/router.dart';
 import 'package:vela_app/features/onboarding/avatar_picker.dart';
+import 'package:vela_app/features/onboarding/legal_links.dart';
 
 import 'support/onboarding_harness.dart';
 
@@ -166,38 +167,53 @@ void main() {
       await settle(tester);
     });
 
-    testWidgets('terms_and_privacy_links_copy_the_legal_urls', (tester) async {
-      final copied = <String>[];
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        SystemChannels.platform,
-        (call) async {
-          if (call.method == 'Clipboard.setData') {
-            copied.add((call.arguments as Map)['text'] as String);
-          }
-          return null;
-        },
+    testWidgets('terms_and_privacy_links_open_the_legal_urls', (tester) async {
+      final opened = <Uri>[];
+      await pumpOnboarding(
+        tester,
+        overrides: [
+          legalLinkOpenerProvider.overrideWithValue((context, uri) async {
+            opened.add(uri);
+          }),
+        ],
       );
-      addTearDown(
-        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          SystemChannels.platform,
-          null,
-        ),
+      await tester.tap(key('welcome-continue'));
+      await settle(tester);
+      await tester.ensureVisible(key('terms-link'));
+      await tester.tap(key('terms-link'));
+      await tester.ensureVisible(key('privacy-link'));
+      await tester.tap(key('privacy-link'));
+      expect(opened.map((u) => u.path), ['/legal/terms', '/legal/privacy']);
+      expect(opened.first.scheme, startsWith('http'));
+    });
+
+    testWidgets('default_opener_launches_externally_and_reports_failure', (
+      tester,
+    ) async {
+      final launched = <Uri>[];
+      var ok = true;
+      await pumpOnboarding(
+        tester,
+        overrides: [
+          legalUrlLauncherProvider.overrideWithValue((uri) async {
+            launched.add(uri);
+            return ok;
+          }),
+        ],
       );
-      await pumpOnboarding(tester);
       await tester.tap(key('welcome-continue'));
       await settle(tester);
       await tester.ensureVisible(key('terms-link'));
       await tester.tap(key('terms-link'));
       await tester.pump();
-      expect(find.textContaining('Link copied'), findsOneWidget);
+      expect(launched.single.path, '/legal/terms');
+      expect(find.textContaining("Couldn't open"), findsNothing);
       await tester.pumpAndSettle(const Duration(seconds: 5));
-      await tester.ensureVisible(key('privacy-link'));
+
+      ok = false;
       await tester.tap(key('privacy-link'));
       await tester.pump();
-      expect(copied, hasLength(2));
-      expect(copied[0], endsWith('/legal/terms'));
-      expect(copied[1], endsWith('/legal/privacy'));
-      expect(copied[0], startsWith('http'));
+      expect(find.textContaining("Couldn't open"), findsOneWidget);
     });
 
     testWidgets('avatar_is_optional_and_previewed_when_picked', (tester) async {
@@ -213,6 +229,88 @@ void main() {
       await settle(tester);
       expect(picker.picks, 1);
       expect(find.byType(Image), findsWidgets);
+    });
+  });
+
+  group('sign out', () {
+    testWidgets('every_onboarding_step_can_sign_out_to_the_feed', (
+      tester,
+    ) async {
+      for (final step in ['welcome', 'profile', 'follow']) {
+        final h = await pumpOnboarding(tester);
+        if (step != 'welcome') {
+          await fillProfile(tester);
+          if (step == 'follow') await _tapContinue(tester);
+        }
+        await tester.ensureVisible(key('onboarding-signout'));
+        expect(find.textContaining('Not 18 or wrong account?'), findsOneWidget);
+        await tester.tap(key('onboarding-signout'));
+        await settle(tester);
+        expect(_location(h), '/', reason: step);
+        expect(h.storage.value, isNull, reason: step);
+        expect(key('welcome-continue'), findsNothing, reason: step);
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+
+    testWidgets('sign_out_survives_a_failing_logout_call', (tester) async {
+      final h = await pumpOnboarding(
+        tester,
+        api: OnboardingApi(logoutFails: true),
+      );
+      await tester.tap(key('onboarding-signout'));
+      await settle(tester);
+      expect(h.storage.value, isNull);
+      expect(_location(h), '/');
+    });
+  });
+
+  group('after completion', () {
+    testWidgets('failed_me_refresh_does_not_send_a_finished_user_back', (
+      tester,
+    ) async {
+      final h = await pumpOnboarding(
+        tester,
+        api: OnboardingApi(suggestedCount: 0, meFailsAfterSubmit: true),
+      );
+      await fillProfile(tester);
+      await _tapContinue(tester);
+      await tester.tap(key('follow-finish'));
+      await settle(tester);
+      expect(_location(h), '/');
+      expect(h.container.read(needsOnboardingProvider), isFalse);
+    });
+
+    testWidgets('stale_me_refresh_does_not_send_a_finished_user_back', (
+      tester,
+    ) async {
+      final h = await pumpOnboarding(
+        tester,
+        api: OnboardingApi(suggestedCount: 0, meStaleAfterSubmit: true),
+      );
+      await fillProfile(tester);
+      await _tapContinue(tester);
+      await tester.tap(key('follow-finish'));
+      await settle(tester);
+      expect(_location(h), '/');
+      expect(h.container.read(needsOnboardingProvider), isFalse);
+    });
+
+    testWidgets('a_new_session_is_gated_again_after_sign_out', (tester) async {
+      final h = await pumpOnboarding(
+        tester,
+        api: OnboardingApi(suggestedCount: 0, meStaleAfterSubmit: true),
+      );
+      await fillProfile(tester);
+      await _tapContinue(tester);
+      await tester.tap(key('follow-finish'));
+      await settle(tester);
+      await h.container.read(sessionProvider.notifier).clear();
+      await h.container
+          .read(sessionProvider.notifier)
+          .signIn(accessToken: 'A2', refreshToken: 'R2', expiresIn: 900);
+      await settle(tester);
+      expect(h.container.read(needsOnboardingProvider), isTrue);
     });
   });
 
@@ -335,6 +433,28 @@ void main() {
       await settle(tester);
       expect(key('name-field'), findsOneWidget);
       expect(find.textContaining('already taken'), findsOneWidget);
+      FilledButton cont() => tester.widget(key('profile-continue'));
+      expect(cont().onPressed, isNull);
+    });
+
+    testWidgets('server_invalid_handle_is_a_format_error_not_taken', (
+      tester,
+    ) async {
+      await pumpOnboarding(
+        tester,
+        api: OnboardingApi(
+          onboardingStatus: 400,
+          onboardingCode: 'invalid_handle',
+          suggestedCount: 0,
+        ),
+      );
+      await fillProfile(tester);
+      await _tapContinue(tester);
+      await tester.tap(key('follow-finish'));
+      await settle(tester);
+      expect(key('name-field'), findsOneWidget);
+      expect(find.textContaining('already taken'), findsNothing);
+      expect(find.textContaining('lowercase letters'), findsOneWidget);
       FilledButton cont() => tester.widget(key('profile-continue'));
       expect(cont().onPressed, isNull);
     });

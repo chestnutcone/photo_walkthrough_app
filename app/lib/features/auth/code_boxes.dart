@@ -13,12 +13,17 @@ class CodeBoxes extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onChanged,
-    this.enabled = true,
+    this.focusNode,
+    this.readOnly = false,
   });
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
-  final bool enabled;
+  final FocusNode? focusNode;
+
+  /// Read-only, not disabled, while a request runs: a disabled field would
+  /// drop focus and close the keyboard.
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -45,7 +50,8 @@ class CodeBoxes extends StatelessWidget {
             child: TextField(
               key: const ValueKey('code-field'),
               controller: controller,
-              enabled: enabled,
+              focusNode: focusNode,
+              readOnly: readOnly,
               autofocus: true,
               keyboardType: TextInputType.number,
               autofillHints: const [AutofillHints.oneTimeCode],

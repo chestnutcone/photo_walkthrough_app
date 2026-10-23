@@ -145,7 +145,11 @@ class _ProfileSetupState extends ConsumerState<ProfileSetupScreen> {
           },
         ),
         const SizedBox(height: 8),
-        _HandleStatus(check: check, rejected: draft.handleRejected),
+        _HandleStatus(
+          check: check,
+          rejected: draft.handleRejected,
+          rejectedAsInvalid: draft.rejectedAsInvalid,
+        ),
         const SizedBox(height: 4),
         Text(
           'You can change your handle once every 30 days.',
@@ -193,15 +197,25 @@ class _ProfileSetupState extends ConsumerState<ProfileSetupScreen> {
 }
 
 class _HandleStatus extends StatelessWidget {
-  const _HandleStatus({required this.check, required this.rejected});
+  const _HandleStatus({
+    required this.check,
+    required this.rejected,
+    required this.rejectedAsInvalid,
+  });
 
   final HandleCheck check;
   final bool rejected;
+  final bool rejectedAsInvalid;
 
   @override
   Widget build(BuildContext context) {
     final (String text, Color color) = rejected
-        ? ('That handle is already taken. Try another.', VelaColors.danger)
+        ? (
+            rejectedAsInvalid
+                ? 'Use 3 to 20 lowercase letters, numbers or underscores.'
+                : 'That handle is already taken. Try another.',
+            VelaColors.danger,
+          )
         : switch (check.status) {
             HandleStatus.empty => (
               '3 to 20 characters: lowercase letters, numbers, underscores.',

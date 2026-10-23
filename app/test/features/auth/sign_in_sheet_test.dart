@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vela_app/core/auth/auth_controller.dart';
 import 'package:vela_app/core/router.dart';
+import 'package:vela_app/features/auth/sign_in_service.dart';
 import 'package:vela_app/features/auth/sso_client.dart';
 
 import 'support/auth_harness.dart';
@@ -136,6 +138,91 @@ void main() {
     });
   });
 
+  group('unexpected failures never trap the user', () {
+    for (final (name, error) in [
+      ('platform_exception', PlatformException(code: 'sign_in_failed')),
+      ('generic_exception', Exception('boom')),
+      ('state_error', StateError('init failed')),
+    ]) {
+      testWidgets('sso_${name}_shows_error_and_sheet_can_close', (
+        tester,
+      ) async {
+        final h = await pumpSignIn(tester, sso: FakeSso()..failWith = error);
+        await tester.tap(key('sso-google'));
+        await tester.pumpAndSettle();
+        expect(key('sign-in-error'), findsOneWidget);
+        expect(h.stored, isFalse);
+        await tester.tap(key('sheet-close'));
+        await tester.pumpAndSettle();
+        expect(h.result, isFalse);
+      });
+    }
+
+    testWidgets('email_verify_throwing_shows_error_and_sheet_can_close', (
+      tester,
+    ) async {
+      final h = await pumpSignIn(
+        tester,
+        overrides: [signInServiceProvider.overrideWith(_ThrowingService.new)],
+      );
+      await tester.tap(key('sso-email'));
+      await tester.pumpAndSettle();
+      await tester.enterText(key('email-field'), 'a@b.co');
+      await tester.pump();
+      await tester.tap(key('email-send'));
+      await tester.pumpAndSettle();
+      await tester.enterText(key('code-field'), '123456');
+      await tester.pumpAndSettle();
+      expect(key('code-error'), findsOneWidget);
+      expect(key('code-field'), findsOneWidget);
+      await tester.tapAt(const Offset(195, 20));
+      await tester.pumpAndSettle();
+      expect(h.result, isFalse);
+    });
+
+    testWidgets('email_request_throwing_shows_error', (tester) async {
+      await pumpSignIn(
+        tester,
+        overrides: [signInServiceProvider.overrideWith(_ThrowingService.new)],
+      );
+      await tester.tap(key('sso-email'));
+      await tester.pumpAndSettle();
+      await tester.enterText(key('email-field'), 'throw@b.co');
+      await tester.pump();
+      await tester.tap(key('email-send'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Something went wrong'), findsOneWidget);
+      FilledButton send() => tester.widget(key('email-send'));
+      expect(send().onPressed, isNotNull);
+    });
+
+    testWidgets('sheet_is_not_dismissible_while_email_verify_runs', (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      final h = await pumpSignIn(
+        tester,
+        overrides: [
+          signInServiceProvider.overrideWith((ref) => _GatedService(ref, gate)),
+        ],
+      );
+      await tester.tap(key('sso-email'));
+      await tester.pumpAndSettle();
+      await tester.enterText(key('email-field'), 'a@b.co');
+      await tester.pump();
+      await tester.tap(key('email-send'));
+      await tester.pumpAndSettle();
+      await tester.enterText(key('code-field'), '123456');
+      await tester.pump();
+      await tester.tapAt(const Offset(195, 20));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(key('code-field'), findsOneWidget);
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(h.result, isTrue);
+    });
+  });
+
   group('onboarding hand-off', () {
     testWidgets('new_user_sign_in_flags_needs_onboarding', (tester) async {
       final h = await pumpSignIn(
@@ -183,4 +270,31 @@ void main() {
       expect(c.read(needsOnboardingProvider), isFalse);
     });
   });
+}
+
+/// request works, verify throws something that is not an ApiException.
+class _ThrowingService extends SignInService {
+  _ThrowingService(super.ref);
+
+  @override
+  Future<void> requestEmailCode(String email) async {
+    if (email.startsWith('throw')) throw StateError('request failed');
+  }
+
+  @override
+  Future<void> verifyEmailCode(String email, String code) async =>
+      throw StateError('verify failed');
+}
+
+class _GatedService extends SignInService {
+  _GatedService(super.ref, this.gate);
+  final Completer<void> gate;
+
+  @override
+  Future<void> requestEmailCode(String email) async {}
+
+  @override
+  Future<void> verifyEmailCode(String email, String code) async {
+    await gate.future;
+  }
 }

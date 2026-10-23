@@ -76,9 +76,13 @@ class RealSsoClient implements SsoClient {
     }
   }
 
-  /// google_sign_in 7 takes the nonce at initialize(); the Android and iOS
-  /// platform implementations only store it, so re-initialising per attempt
-  /// is how each attempt gets its own nonce. Calls are serialised by the
+  /// google_sign_in 7 takes the nonce at initialize() and has no per-call
+  /// nonce. Its docs say initialize() must run exactly once (more is
+  /// "undefined behavior"), but the 7.2.0 Android and iOS implementations
+  /// only store the nonce (and, on iOS, reconfigure), so we re-initialise per
+  /// attempt to give each attempt a fresh single-use nonce. DEVICE CHECK
+  /// REQUIRED: sign in twice in a row on Android and iOS. Keep the package
+  /// version pinned; re-verify on any upgrade. Calls are serialised by the
   /// sign-in sheet's single in-flight attempt.
   Future<String> _google(String nonce) async {
     try {

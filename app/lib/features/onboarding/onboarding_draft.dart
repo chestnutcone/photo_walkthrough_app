@@ -22,6 +22,7 @@ class OnboardingDraft {
     this.ageConfirmed = false,
     this.termsAccepted = false,
     this.rejectedHandle,
+    this.rejectedAsInvalid = false,
     this.follows = const {},
   });
 
@@ -34,6 +35,9 @@ class OnboardingDraft {
 
   /// A handle the server refused at submit time (taken or invalid).
   final String? rejectedHandle;
+
+  /// The refusal was a format problem (400 invalid_handle), not a clash.
+  final bool rejectedAsInvalid;
   final Set<String> follows;
 
   bool get handleRejected => handle.isNotEmpty && handle == rejectedHandle;
@@ -59,6 +63,7 @@ class OnboardingDraft {
     bool? ageConfirmed,
     bool? termsAccepted,
     Object? rejectedHandle = _keep,
+    bool? rejectedAsInvalid,
     Set<String>? follows,
   }) => OnboardingDraft(
     step: step ?? this.step,
@@ -70,6 +75,7 @@ class OnboardingDraft {
     rejectedHandle: identical(rejectedHandle, _keep)
         ? this.rejectedHandle
         : rejectedHandle as String?,
+    rejectedAsInvalid: rejectedAsInvalid ?? this.rejectedAsInvalid,
     follows: follows ?? this.follows,
   );
 }
@@ -96,10 +102,12 @@ class OnboardingDraftNotifier extends Notifier<OnboardingDraft> {
   void setAge(bool v) => state = state.copyWith(ageConfirmed: v);
   void setTerms(bool v) => state = state.copyWith(termsAccepted: v);
 
-  void rejectHandle(String handle) => state = state.copyWith(
-    rejectedHandle: handle,
-    step: OnboardingStep.profile,
-  );
+  void rejectHandle(String handle, {bool invalid = false}) =>
+      state = state.copyWith(
+        rejectedHandle: handle,
+        rejectedAsInvalid: invalid,
+        step: OnboardingStep.profile,
+      );
 
   void toggleFollow(String id) {
     final next = {...state.follows};

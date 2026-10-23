@@ -72,7 +72,9 @@ class OnboardingSubmitter {
 
   SubmitOutcome _failure(OnboardingDraft draft, ApiException e) {
     if (e.code == 'handle_taken' || e.code == 'invalid_handle') {
-      _ref.read(onboardingDraftProvider.notifier).rejectHandle(draft.handle);
+      _ref
+          .read(onboardingDraftProvider.notifier)
+          .rejectHandle(draft.handle, invalid: e.code == 'invalid_handle');
       return SubmitOutcome(SubmitResult.handleRejected, error: e);
     }
     return SubmitOutcome(SubmitResult.failed, error: e);
@@ -135,9 +137,11 @@ class OnboardingSubmitter {
     }
   }
 
-  /// Re-reads `/v1/me` so the router sees onboarding as complete. If that
-  /// lookup fails, clearing the sign-in hint still lets the user through.
+  /// Re-reads `/v1/me` for the rest of the app (best effort).
   Future<void> _refreshMe() async {
+    // The server accepted onboarding: from here on this session is done,
+    // whatever the refresh below returns.
+    _ref.read(onboardedLocallyProvider.notifier).set(true);
     _ref.read(newUserHintProvider.notifier).set(false);
     _ref.invalidate(meProvider);
     try {

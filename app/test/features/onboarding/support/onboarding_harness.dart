@@ -47,6 +47,9 @@ class OnboardingApi {
     this.onboardingStatus = 200,
     this.onboardingCode = 'handle_taken',
     this.uploadStatus = 201,
+    this.logoutFails = false,
+    this.meFailsAfterSubmit = false,
+    this.meStaleAfterSubmit = false,
   }) : suggested = suggestions(suggestedCount);
 
   Set<String> taken;
@@ -55,6 +58,10 @@ class OnboardingApi {
   int onboardingStatus;
   String onboardingCode;
   int uploadStatus;
+  bool logoutFails;
+  bool meFailsAfterSubmit;
+  bool meStaleAfterSubmit;
+  bool _submitted = false;
 
   /// Handle lookups wait on these when present.
   final Map<String, Completer<void>> gates = {};
@@ -82,17 +89,25 @@ class OnboardingApi {
           : jsonResponse(404, errEnvelope('artist_not_found'));
     }
     switch (path) {
+      case '/v1/auth/logout':
+        return logoutFails
+            ? jsonResponse(500, errEnvelope('server_error'))
+            : jsonResponse(200, okEnvelope(null));
       case '/v1/artists/suggested':
         return suggestedStatus == 200
             ? jsonResponse(200, okEnvelope(suggested))
             : jsonResponse(suggestedStatus, errEnvelope('server_error'));
       case '/v1/me':
+        if (_submitted && meFailsAfterSubmit) {
+          return jsonResponse(500, errEnvelope('server_error'));
+        }
         return jsonResponse(
           200,
           okEnvelope({
             'id': 'u1',
             'profile': null,
-            'onboardingComplete': onboarded,
+            'onboardingComplete':
+                onboarded && !(_submitted && meStaleAfterSubmit),
             'tier': {'name': 'free', 'maxWorks': 20},
             'usedWorks': 0,
           }),
@@ -103,6 +118,7 @@ class OnboardingApi {
           return jsonResponse(onboardingStatus, errEnvelope(onboardingCode));
         }
         onboarded = true;
+        _submitted = true;
         return jsonResponse(
           200,
           okEnvelope({

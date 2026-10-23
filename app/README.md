@@ -19,7 +19,8 @@ the Apple bundle id must be the API's `Auth:Apple:ClientId`.
 - Each attempt creates a fresh random nonce and sends the raw value to the API.
   Google receives it unchanged; Apple receives its lowercase hex SHA-256, which is
   what the API checks.
+- Google: `google_sign_in` 7.2.0 only accepts a nonce in `initialize()`, which its docs say to call once. The app calls it per attempt so each attempt has a fresh nonce; the Android and iOS plugin code just stores it. Device-test two consecutive Google sign-ins on both platforms and re-check on any version bump (the version is pinned).
 - Sign in with Apple needs the capability in Xcode; Google on iOS needs the reversed
   client id URL scheme (see the commented block in `ios/Runner/Info.plist`).
-- Terms and privacy links are copied to the clipboard, not opened, until
-  `url_launcher` is added (swap `legalLinkOpenerProvider`).
+- Terms and privacy links open the API-hosted legal pages in the external browser
+  (`url_launcher`; https only, or http to localhost in debug).

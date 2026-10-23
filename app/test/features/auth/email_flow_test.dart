@@ -24,6 +24,28 @@ Future<void> _enter(WidgetTester tester, String code) async {
 }
 
 void main() {
+  testWidgets('code_field_keeps_focus_after_a_wrong_code', (tester) async {
+    await _toCodeStep(tester, api: AuthApi(verifyResults: [400]));
+    await _enter(tester, '111111');
+    final field = tester.widget<TextField>(key('code-field'));
+    expect(field.focusNode!.hasFocus, isTrue);
+    expect(field.enabled, isNot(false));
+  });
+
+  testWidgets('code_field_is_read_only_not_disabled_while_checking', (
+    tester,
+  ) async {
+    final h = await _toCodeStep(tester);
+    // Hold the verify call open by not answering: use a long-lived future.
+    await tester.enterText(key('code-field'), '123456');
+    await tester.pump();
+    final field = tester.widget<TextField>(key('code-field'));
+    expect(field.enabled, isNot(false));
+    expect(field.readOnly, isTrue);
+    await tester.pumpAndSettle();
+    expect(h.api.verifyCount, 1);
+  });
+
   testWidgets('email_flow_request_then_six_digit_entry_then_session', (
     tester,
   ) async {

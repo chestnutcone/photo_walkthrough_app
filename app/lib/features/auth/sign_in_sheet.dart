@@ -58,15 +58,22 @@ class _SignInSheetState extends ConsumerState<SignInSheet> {
       // The user backed out: no message.
     } on ApiException catch (e) {
       error = signInErrorMessage(e);
-    } on SsoFailureException {
+    } on Object {
+      // SsoFailureException, PlatformException, other Apple exceptions, a
+      // failed Google initialize: never leave the user stuck in the sheet.
       error = "We couldn't complete that sign-in. Try again.";
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
     if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _error = error;
-    });
+    setState(() => _error = error);
     if (done) Navigator.of(context).pop(true);
+  }
+
+  /// The email steps report their requests here so the sheet cannot be
+  /// dismissed while any sign-in call is in flight.
+  void _setBusy(bool busy) {
+    if (mounted && busy != _busy) setState(() => _busy = busy);
   }
 
   void _signedIn() => Navigator.of(context).pop(true);
@@ -84,6 +91,7 @@ class _SignInSheetState extends ConsumerState<SignInSheet> {
           child: switch (_step) {
             _Step.choose => _choose(),
             _Step.email => EmailEntryStep(
+              onBusy: _setBusy,
               onBack: () => setState(() => _step = _Step.choose),
               onRequested: (email) => setState(() {
                 _email = email;
@@ -91,6 +99,7 @@ class _SignInSheetState extends ConsumerState<SignInSheet> {
               }),
             ),
             _Step.code => EmailCodeScreen(
+              onBusy: _setBusy,
               email: _email,
               onSignedIn: _signedIn,
               onChangeEmail: () => setState(() => _step = _Step.email),

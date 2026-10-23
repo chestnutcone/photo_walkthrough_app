@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vela_api_client/vela_api_client.dart';
 
+import '../../core/api/api_providers.dart';
+import '../../core/theme/form_styles.dart';
 import '../../core/theme/tokens.dart';
 
 /// Layout shared by the onboarding steps: scrolling content that stays clear
@@ -56,9 +60,10 @@ class StepLayout extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
           child: footer,
         ),
+        const SignOutLink(),
       ],
     ),
   );
@@ -118,3 +123,43 @@ class LabeledCheck extends StatelessWidget {
 const accountNote =
     'Each sign-in method is its own account. Signing in with Apple, Google '
     'and email gives you three separate accounts; they are never merged.';
+
+/// The way out for someone who is under 18 or signed in with the wrong
+/// method: onboarding otherwise confines a signed-in account to itself.
+class SignOutLink extends ConsumerWidget {
+  const SignOutLink({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: TextButton(
+      key: const ValueKey('onboarding-signout'),
+      style: velaTextButtonStyle(),
+      onPressed: () => _signOut(ref),
+      child: Text(
+        'Not 18 or wrong account? Sign out',
+        style: VelaText.sans12m.copyWith(color: VelaColors.muted),
+      ),
+    ),
+  );
+
+  /// Revokes the refresh token on a best-effort basis, then always clears
+  /// the session; the router sends a guest back to the feed.
+  static Future<void> _signOut(WidgetRef ref) async {
+    final notifier = ref.read(sessionProvider.notifier);
+    final api = ref.read(apiProvider).getAuthApi();
+    try {
+      final session = await notifier.current();
+      if (session != null) {
+        await api
+            .logout(
+              logoutRequest: LogoutRequest(refreshToken: session.refreshToken),
+            )
+            .timeout(const Duration(seconds: 5));
+      }
+    } on Object {
+      // Offline or already revoked: signing out locally still works.
+    }
+    await notifier.clear();
+  }
+}
