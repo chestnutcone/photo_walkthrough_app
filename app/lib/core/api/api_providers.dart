@@ -6,7 +6,8 @@ import '../auth/auth_controller.dart';
 import '../config.dart';
 import 'auth_interceptor.dart';
 
-export '../auth/auth_controller.dart' show clockProvider, sessionProvider;
+export '../auth/auth_controller.dart'
+    show clockProvider, sessionEpochProvider, sessionProvider;
 
 /// Test seam for the HTTP transport. Null uses Dio's default.
 final httpClientAdapterProvider = Provider<HttpClientAdapter?>((_) => null);

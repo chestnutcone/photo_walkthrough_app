@@ -5,9 +5,12 @@ import '../../core/api/api_providers.dart';
 
 /// Number of unread notifications for the signed-in viewer; 0 for guests.
 /// Failures also read as 0: a badge must never break the screen it sits on.
-/// B12 extends this (refresh after marking read).
+/// B12 extends this; callers refresh it with `ref.invalidate`.
 final unreadCountProvider = FutureProvider<int>((ref) async {
-  final session = await ref.watch(sessionProvider.future);
+  // Keyed on sign-in/out, not on the session object: a token refresh must
+  // not refetch the count.
+  ref.watch(sessionEpochProvider);
+  final session = await ref.read(sessionProvider.future);
   if (session == null) return 0;
   try {
     final env = (await apiGuard(

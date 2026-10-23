@@ -10,10 +10,11 @@ import '../../core/api/api_providers.dart';
 
 enum FeedTab { following, discover }
 
-/// True while a user is signed in. Feeds and follow state reset when this
-/// flips, because every item's `isFollowing` depends on the viewer.
-final feedViewerSignedInProvider = Provider<bool>(
-  (ref) => ref.watch(sessionProvider.select((s) => s.value != null)),
+/// Changes on every sign-in and sign-out (including a direct account switch),
+/// never on a token refresh. Feeds and follow state reset when it changes,
+/// because every item's `isFollowing` depends on the viewer.
+final feedViewerEpochProvider = Provider<int>(
+  (ref) => ref.watch(sessionEpochProvider),
 );
 
 const Object _keep = Object();
@@ -102,7 +103,7 @@ class FeedController extends Notifier<FeedState> {
 
   @override
   FeedState build() {
-    ref.watch(feedViewerSignedInProvider);
+    ref.watch(feedViewerEpochProvider);
     _generation++;
     _cancel?.cancel();
     _cancel = null;
@@ -116,7 +117,11 @@ class FeedController extends Notifier<FeedState> {
   bool _isCurrent(int generation) => ref.mounted && generation == _generation;
 
   /// Reloads from the first page (retry, and pull-to-refresh).
-  Future<void> refresh() => _loadFirst(keepItems: state.items.isNotEmpty);
+  Future<void> refresh() {
+    // A loaded feed (even an empty one) stays on screen while it reloads.
+    final loaded = !state.isLoading && state.error == null;
+    return _loadFirst(keepItems: loaded);
+  }
 
   Future<void> _loadFirst({required bool keepItems}) async {
     final generation = ++_generation;

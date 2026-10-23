@@ -43,6 +43,20 @@ class SessionExpiredException implements Exception {
   String toString() => 'SessionExpiredException';
 }
 
+/// Increments on every sign-in and sign-out, but not on a token refresh.
+/// Per-account caches key on this: the session has no user id, and a
+/// refreshed session object must not look like a different account.
+final sessionEpochProvider = NotifierProvider<SessionEpoch, int>(
+  SessionEpoch.new,
+);
+
+class SessionEpoch extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}
+
 final clockProvider = Provider<DateTime Function()>((_) => DateTime.now);
 
 final sessionProvider = AsyncNotifierProvider<SessionNotifier, Session?>(
@@ -91,11 +105,13 @@ class SessionNotifier extends AsyncNotifier<Session?> {
   }) async {
     final session = _fromPair(accessToken, refreshToken, expiresIn);
     ref.read(accountBlockProvider.notifier).set(null);
+    ref.read(sessionEpochProvider.notifier).bump();
     state = AsyncData(session);
     await _bestEffort(() => _storage.write(session.encode()));
   }
 
   Future<void> clear() async {
+    ref.read(sessionEpochProvider.notifier).bump();
     state = const AsyncData(null);
     await _bestEffort(_storage.delete);
   }

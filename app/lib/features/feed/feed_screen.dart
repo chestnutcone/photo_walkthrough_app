@@ -36,6 +36,16 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     super.dispose();
   }
 
+  void _selectTab(FeedTab tab) {
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    setState(() => _chosen = tab);
+  }
+
+  Future<void> _refresh(FeedTab tab) {
+    ref.invalidate(unreadCountProvider);
+    return ref.read(feedControllerProvider(tab).notifier).refresh();
+  }
+
   FeedTab _effectiveTab(bool signedIn) =>
       signedIn ? (_chosen ?? FeedTab.following) : FeedTab.discover;
 
@@ -49,10 +59,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
   Future<void> _toggleFollow(ArtistSummary author, bool following) async {
     if (!await requireSignIn(context, ref) || !mounted) return;
-    final ok = await ref
+    final result = await ref
         .read(followOverridesProvider.notifier)
         .toggle(author.id, currentlyFollowing: following);
-    if (!ok && mounted) {
+    if (result == FollowResult.rolledBack && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Couldn't update follow. Try again.")),
       );
@@ -101,8 +111,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         child: RefreshIndicator(
           color: VelaColors.accent,
           backgroundColor: VelaColors.sheet,
-          onRefresh: () =>
-              ref.read(feedControllerProvider(tab).notifier).refresh(),
+          onRefresh: () => _refresh(tab),
           child: NotificationListener<ScrollNotification>(
             onNotification: (n) {
               if (n.depth == 0) _maybeLoadMore(tab);
@@ -116,7 +125,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                   child: FeedHeader(
                     tab: tab,
                     tabs: signedIn ? FeedTab.values : const [FeedTab.discover],
-                    onTab: (t) => setState(() => _chosen = t),
+                    onTab: _selectTab,
                     onSearch: () => context.push('/search'),
                     showBell: signedIn,
                     unread: unread,
@@ -133,7 +142,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   }
 
   List<Widget> _body(FeedTab tab, FeedState feed) {
-    final notifier = ref.read(feedControllerProvider(tab).notifier);
+    // Read lazily: touching the notifier while the session is still loading
+    // would start a feed request for a tab that may not be the right one.
+    FeedController notifier() => ref.read(feedControllerProvider(tab).notifier);
     if (feed.isLoading) {
       return const [SliverToBoxAdapter(child: FeedSkeleton())];
     }
@@ -142,7 +153,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         SliverToBoxAdapter(
           child: FeedErrorMessage(
             error: feed.error!,
-            onRetry: notifier.refresh,
+            onRetry: () => notifier().refresh(),
           ),
         ),
       ];
@@ -177,7 +188,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         child: FeedMoreFooter(
           loading: feed.loadingMore,
           error: feed.moreError,
-          onRetry: notifier.retryMore,
+          onRetry: () => notifier().retryMore(),
         ),
       ),
       const SliverToBoxAdapter(child: SizedBox(height: 96)),
@@ -192,7 +203,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               'Discover is full of new work.',
           actionLabel: 'Browse Discover',
           actionKey: const ValueKey('hint-discover'),
-          onAction: () => setState(() => _chosen = FeedTab.discover),
+          onAction: () => _selectTab(FeedTab.discover),
         )
       : const FeedMessage(
           title: 'Nothing here yet',

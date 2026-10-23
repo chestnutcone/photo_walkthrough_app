@@ -180,7 +180,7 @@ class _FollowPill extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(99),
-              border: Border.all(color: const Color(0x2EF2EEE6)),
+              border: Border.all(color: VelaColors.outline),
             ),
             child: Text(
               following ? 'Following' : 'Follow',

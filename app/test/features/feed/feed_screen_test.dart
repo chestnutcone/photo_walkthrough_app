@@ -57,6 +57,7 @@ void main() {
       feed: (o) => _feed(o, [feedWork('w-${o.queryParameters['tab']}')]),
     );
     expect(h.feedRequests().single.queryParameters['tab'], 'following');
+    expect(h.feedRequests().single.cancelToken?.isCancelled, isFalse);
     expect(find.text('Title w-following'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('tab-discover')));
     await tester.pumpAndSettle();
