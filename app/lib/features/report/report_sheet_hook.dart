@@ -6,12 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// caller can hide the target locally.
 ///
 /// B14 overrides [reportSheetHook] with the real sheet.
-typedef ShowReportSheet =
-    Future<bool> Function(
-      BuildContext context, {
-      required String targetType,
-      required String targetId,
-    });
+typedef ShowReportSheet = Future<bool> Function(
+  BuildContext context, {
+  required String targetType,
+  required String targetId,
+});
 
 /// Default no-op: nothing is filed.
 final reportSheetHook = Provider<ShowReportSheet>(

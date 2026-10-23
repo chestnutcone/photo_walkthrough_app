@@ -83,26 +83,22 @@ class RepliesState {
 }
 
 final repliesControllerProvider = NotifierProvider.autoDispose
-    .family<RepliesController, RepliesState, RepliesKey>(
-      RepliesController.new,
-    );
+    .family<RepliesController, RepliesState, RepliesKey>(RepliesController.new);
 
 /// Ids that identify the signed-in viewer in reply authorship (the account id
 /// and its profile id). Empty for guests or when `/me` fails.
 final viewerIdsProvider = FutureProvider.autoDispose<Set<String>>((ref) async {
   ref.watch(sessionEpochProvider);
-  final signedIn = ref.watch(
-    sessionProvider.select((s) => s.value != null),
-  );
+  final signedIn = ref.watch(sessionProvider.select((s) => s.value != null));
   if (!signedIn) return const {};
   try {
-    final env = (await apiGuard(
-      () => ref.read(apiProvider).getMeApi().getMe(),
-    )).data;
+    final env = (await apiGuard(() => ref.read(apiProvider).getMeApi().getMe()))
+        .data;
     final me = env?.data;
     if (me == null) return const {};
     return {me.id, ?me.profile?.id};
-  } on ApiException {
+  } on Object {
+    // Unknown viewer: no reply is treated as own, so nothing can be deleted.
     return const {};
   }
 });
@@ -143,9 +139,8 @@ class RepliesController extends Notifier<RepliesState> {
   bool _isCurrent(int generation) => ref.mounted && generation == _generation;
   bool _isEpoch(int epoch) => ref.mounted && epoch == _epoch;
 
-  Future<void> refresh() => _loadFirst(
-    keepItems: !state.isLoading && state.error == null,
-  );
+  Future<void> refresh() =>
+      _loadFirst(keepItems: !state.isLoading && state.error == null);
 
   Future<void> _loadFirst({required bool keepItems}) async {
     final generation = ++_generation;
@@ -163,9 +158,7 @@ class RepliesController extends Notifier<RepliesState> {
       );
     } on ApiException catch (e) {
       if (!_isCurrent(generation)) return;
-      state = keepItems
-          ? state.copyWith(moreError: e)
-          : RepliesState(error: e);
+      state = keepItems ? state.copyWith(moreError: e) : RepliesState(error: e);
     }
   }
 

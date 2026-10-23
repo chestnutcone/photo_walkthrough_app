@@ -32,20 +32,23 @@ List<String> _ids(ProviderContainer c) =>
     c.read(_p).items.map((r) => r.id).toList();
 
 void main() {
-  test('first_page_loads_oldest_first_as_served_and_dedupes_next_page', () async {
-    final (:c, :api) = _setup();
-    await pumpEventQueue();
-    api.listCalls[0].reply([reply('r1'), reply('r2')], next: 'c1');
-    await pumpEventQueue();
-    expect(_ids(c), ['r1', 'r2']);
-    final more = c.read(_p.notifier).loadMore();
-    await pumpEventQueue();
-    expect(api.listCalls[1].cursor, 'c1');
-    api.listCalls[1].reply([reply('r2'), reply('r3')]);
-    await more;
-    expect(_ids(c), ['r1', 'r2', 'r3']);
-    expect(c.read(_p).nextCursor, isNull);
-  });
+  test(
+    'first_page_loads_oldest_first_as_served_and_dedupes_next_page',
+    () async {
+      final (:c, :api) = _setup();
+      await pumpEventQueue();
+      api.listCalls[0].reply([reply('r1'), reply('r2')], next: 'c1');
+      await pumpEventQueue();
+      expect(_ids(c), ['r1', 'r2']);
+      final more = c.read(_p.notifier).loadMore();
+      await pumpEventQueue();
+      expect(api.listCalls[1].cursor, 'c1');
+      api.listCalls[1].reply([reply('r2'), reply('r3')]);
+      await more;
+      expect(_ids(c), ['r1', 'r2', 'r3']);
+      expect(c.read(_p).nextCursor, isNull);
+    },
+  );
 
   test('stale_page_two_after_session_flip_is_ignored', () async {
     final (:c, :api) = _setup();
@@ -126,7 +129,9 @@ void main() {
     await pumpEventQueue();
     final out = c.read(_p.notifier).send('x');
     await pumpEventQueue();
-    api.addCalls[0].fail(apiError('rate_limited', status: 429, retryAfter: '30'));
+    api.addCalls[0].fail(
+      apiError('rate_limited', status: 429, retryAfter: '30'),
+    );
     expect(await out, SendOutcome.failed);
     final e = c.read(_p).sendError!;
     expect(e.code, 'rate_limited');

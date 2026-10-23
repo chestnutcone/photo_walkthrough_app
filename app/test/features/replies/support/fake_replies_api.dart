@@ -123,7 +123,7 @@ class _FakeMe implements MeApi {
         'id': api.meId,
         'profile': null,
         'onboardingComplete': true,
-        'tier': 'free',
+        'tier': {'name': 'free', 'maxWorks': 20},
         'usedWorks': 0,
       },
       'error': null,
