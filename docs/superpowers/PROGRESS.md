@@ -24,7 +24,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] M1 Foundation done (T1, T2)
 - [x] M2 API core done (A1-A6)
 - [x] M3 API features done (A7-A13)
-- [ ] M4 Admin and safety done (A14-A16)
+- [x] M4 Admin and safety done (A14-A16)
 - [ ] M5 App core done (B1-B5)
 - [ ] M6 App features done (B6-B14)
 - [ ] M7 Infra and security done (C1, S1)
@@ -47,7 +47,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] A13 Account deletion and export (850a17f)
 - [x] A14 Admin moderation, ban/restore, evidence hold, DMCA (A14a 398b597; A14b d1cf76b)
 - [x] A15 Abuse and bot protection (4be2c1c, 534a1b2, fix b8b648a)
-- [ ] A16 Telemetry and crash reporting (API)
+- [x] A16 Telemetry and crash reporting (API) (d89d3ee, f4677dd, 13b2e1d)
 - [ ] B1 Theme, fonts, branding
 - [ ] B2 API wiring, session, router, guest gating
 - [ ] B3 Camera math
@@ -66,6 +66,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [ ] S1 Security review gate
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-23 M4 reached: A14b, A15, A16 complete (fix commits d1cf76b, b8b648a, 13b2e1d). 926+ API tests pass. Pushed.
 - 2026-10-23 A15 complete (4be2c1c, 534a1b2, fix b8b648a). 905 API tests pass. Not yet pushed.
 - 2026-10-23 A14 complete: A14b (e093620, bda3613, 07a0fd6, a77af4b, fix d1cf76b). 771 API tests pass. Not yet pushed (M4 pending A15, A16).
 - 2026-10-22 M3 reached: A7-A13 complete (e631618, 1f75178, 811af34, 686f382, ff35eb9, 1c5df5e, 850a17f). Pushed.
