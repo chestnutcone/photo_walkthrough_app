@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'auth/auth_controller.dart';
+import '../features/feed/feed_screen.dart';
 import '../features/story/story_screen.dart';
 import 'placeholder_screens.dart';
 
@@ -58,7 +59,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     errorBuilder: (context, state) => const NotFoundScreen(),
     routes: [
-      GoRoute(path: '/', builder: (_, _) => const PlaceholderScreen('feed')),
+      GoRoute(path: '/', builder: (_, _) => const FeedScreen()),
       GoRoute(
         path: '/story/:id',
         builder: (_, s) => StoryScreen(workId: s.pathParameters['id']!),

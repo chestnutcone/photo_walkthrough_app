@@ -6,6 +6,7 @@ import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/core/auth/session_store.dart';
 import 'package:vela_app/core/require_sign_in.dart';
 import 'package:vela_app/core/router.dart';
+import 'package:vela_app/features/feed/feed_screen.dart';
 
 import 'support/fakes.dart';
 
@@ -54,7 +55,7 @@ void main() {
   testWidgets('guest_can_open_feed_and_story_routes', (tester) async {
     final c = _container();
     final router = await _pump(tester, c);
-    expect(find.text('route:feed'), findsOneWidget);
+    expect(find.byType(FeedScreen), findsOneWidget);
 
     router.go('/story/42');
     await tester.pumpAndSettle();
@@ -74,7 +75,7 @@ void main() {
       final router = await _pump(tester, _container());
       router.go(path);
       await tester.pumpAndSettle();
-      expect(find.text('route:feed'), findsOneWidget);
+      expect(find.byType(FeedScreen), findsOneWidget);
     });
 
     testWidgets('signed in user can open $path', (tester) async {
@@ -96,7 +97,7 @@ void main() {
     await c.read(sessionProvider.notifier).clear();
     await tester.pumpAndSettle();
 
-    expect(find.text('route:feed'), findsOneWidget);
+    expect(find.byType(FeedScreen), findsOneWidget);
   });
 
   testWidgets('not onboarded signed in user is routed to onboarding', (
@@ -132,14 +133,14 @@ void main() {
     expect(find.text('route:not-found'), findsOneWidget);
     await tester.tap(find.text('Go home'));
     await tester.pumpAndSettle();
-    expect(find.text('route:feed'), findsOneWidget);
+    expect(find.byType(FeedScreen), findsOneWidget);
   });
 
   testWidgets('guest cannot stay on onboarding', (tester) async {
     final router = await _pump(tester, _container());
     router.go('/onboarding');
     await tester.pumpAndSettle();
-    expect(find.text('route:feed'), findsOneWidget);
+    expect(find.byType(FeedScreen), findsOneWidget);
   });
 
   testWidgets('require_sign_in_returns_true_when_session_exists', (
