@@ -15,12 +15,16 @@ public sealed class PlayIntegrityOptions
     /// <summary>Optional allow-list of signing-certificate SHA-256 digests (base64url). Empty = any Play-recognised build.</summary>
     public string[] AllowedCertificateDigests { get; set; } = [];
 
-    public bool IsConfigured => PackageName.Length > 0 && DecryptionKey.Length > 0 && VerificationKey.Length > 0;
+    public bool IsConfigured => MissingKeys().Count == 0;
+
+    public IReadOnlyList<string> MissingKeys() =>
+        new[] { (nameof(PackageName), PackageName), (nameof(DecryptionKey), DecryptionKey), (nameof(VerificationKey), VerificationKey) }
+            .Where(k => k.Item2.Length == 0).Select(k => $"{Section}:{k.Item1}").ToList();
 
     public void Validate()
     {
         if (!IsConfigured)
-            throw new InvalidOperationException($"{Section}:PackageName, {Section}:DecryptionKey and {Section}:VerificationKey must all be set.");
+            throw new InvalidOperationException($"These settings must all be set: {string.Join(", ", MissingKeys())}.");
         try
         {
             if (Convert.FromBase64String(DecryptionKey).Length != 32) throw new FormatException("the decryption key must be 32 bytes");
@@ -45,6 +49,8 @@ public sealed class AppAttestOptions
     public bool AllowDevelopment { get; set; }
 
     public bool IsConfigured => AppId.Length > 0;
+
+    public IReadOnlyList<string> MissingKeys() => IsConfigured ? [] : [$"{Section}:{nameof(AppId)}"];
 
     public string EffectiveRootPem => RootCertificatePem.Length > 0 ? RootCertificatePem : AppleRoots.AppAttestationRootPem;
 
@@ -71,21 +77,25 @@ public sealed class AbuseOptions
     public AppAttestOptions AppAttest { get; init; } = new();
 
     /// <summary>
-    /// Reads the section. With RequireAttestation on, outside Development and Test, both verifiers must be configured:
-    /// the API refuses to start rather than silently letting unattested clients through.
+    /// Reads the section. RequireAttestation defaults to true everywhere except Development and Test (set it to false
+    /// explicitly to opt out). Whenever it is on outside Development and Test, both verifiers must be configured: the
+    /// API refuses to start, naming every missing key, rather than silently letting unattested clients through.
     /// </summary>
     public static AbuseOptions Load(IConfiguration config, IHostEnvironment env)
     {
         var s = config.GetSection("Abuse");
         var play = s.GetSection("PlayIntegrity").Get<PlayIntegrityOptions>() ?? new();
         var apple = s.GetSection("AppAttest").Get<AppAttestOptions>() ?? new();
-        var require = s.GetValue<bool>("RequireAttestation");
         var useFake = env.IsDevelopment() || env.IsEnvironment("Test");
+        var require = s.GetValue<bool?>("RequireAttestation") ?? !useFake;
 
         if (require && !useFake)
         {
-            if (!play.IsConfigured) play.Validate();
-            if (!apple.IsConfigured) apple.Validate();
+            var missing = play.MissingKeys().Concat(apple.MissingKeys()).ToList();
+            if (missing.Count > 0)
+                throw new InvalidOperationException(
+                    $"Abuse:RequireAttestation is on (the default outside Development and Test) but these settings are missing: {string.Join(", ", missing)}. " +
+                    "Configure both verifiers, or set Abuse:RequireAttestation to false to opt out.");
         }
         if (!useFake)
         {

@@ -151,6 +151,15 @@ public class AttestationEndpointTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
+    public void Production_requires_attestation_by_default_and_names_every_missing_key()
+    {
+        using var f = Production(ProductionSettings());
+        var ex = Assert.Throws<InvalidOperationException>(() => f.CreateClient());
+        foreach (var key in new[] { "Abuse:PlayIntegrity:PackageName", "Abuse:PlayIntegrity:DecryptionKey", "Abuse:PlayIntegrity:VerificationKey", "Abuse:AppAttest:AppId" })
+            Assert.Contains(key, ex.Message);
+    }
+
+    [Fact]
     public void Production_refuses_to_start_when_attestation_is_required_but_verifier_config_is_missing()
     {
         using var f = Production(ProductionSettings(new() { ["Abuse:RequireAttestation"] = "true" }));
@@ -175,7 +184,7 @@ public class AttestationEndpointTests(PostgresFixture pg) : IDisposable
     [Fact]
     public async Task Production_starts_without_attestation_config_when_not_required_and_uses_a_rejecting_verifier()
     {
-        using var f = Production(ProductionSettings());
+        using var f = Production(ProductionSettings(new() { ["Abuse:RequireAttestation"] = "false" }));
         f.CreateClient();
         var verifier = f.Services.GetRequiredService<IAttestationVerifier>();
         Assert.IsNotType<FakeAttestationVerifier>(verifier);

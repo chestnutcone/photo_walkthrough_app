@@ -11,6 +11,7 @@ public class ContentSafetyConfigTests
         new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment(env);
+            b.UseSetting("Abuse:RequireAttestation", "false"); // attestation start-up rules are covered in AttestationEndpointTests
             b.UseSetting("ConnectionStrings:Default", "Host=localhost;Database=x;Username=x;Password=x");
             b.UseSetting("Admin:Enabled", "false"); // these tests boot production-like environments without admin config
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");

@@ -10,6 +10,8 @@ public class DisposableEmailListTests
     [InlineData("a@inbox.mailinator.com")]
     [InlineData("a@guerrillamail.com")]
     [InlineData("a@10minutemail.com")]
+    [InlineData("a@mailinator.com.")]
+    [InlineData("a@Inbox.Mailinator.COM.")]
     public void Embedded_domains_and_their_subdomains_are_disposable(string email) =>
         Assert.True(new DisposableEmailList([]).IsDisposable(email));
 

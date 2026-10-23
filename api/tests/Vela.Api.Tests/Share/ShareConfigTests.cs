@@ -9,6 +9,7 @@ public class ShareConfigTests
         new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
+            b.UseSetting("Abuse:RequireAttestation", "false"); // attestation start-up rules are covered in AttestationEndpointTests
             b.UseSetting("ConnectionStrings:Default", "Host=localhost;Database=x;Username=x;Password=x");
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");
             b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");

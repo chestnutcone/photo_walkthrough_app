@@ -8,7 +8,7 @@ public class StartupConfigTests
     [Fact]
     public void Startup_outside_development_without_connection_string_fails()
     {
-        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b.UseEnvironment("Production"));
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Abuse:RequireAttestation", "false"); });
         var ex = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
         Assert.Contains("ConnectionStrings:Default", ex.Message);
     }

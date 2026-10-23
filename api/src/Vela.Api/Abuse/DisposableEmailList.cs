@@ -37,5 +37,5 @@ public sealed class DisposableEmailList
         return false;
     }
 
-    private static string Normalise(string d) => d.Trim().TrimStart('@').ToLowerInvariant();
+    private static string Normalise(string d) => d.Trim().TrimStart('@').TrimEnd('.').ToLowerInvariant();
 }

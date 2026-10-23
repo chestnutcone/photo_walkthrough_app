@@ -139,13 +139,19 @@ public sealed class EmailCodeService(
         if (waits.Count > 0) throw new RateLimitedException(waits.Max()!.Value);
     }
 
-    /// <summary>Trim + lower-case; null when not exactly one '@' with non-empty parts or over 254 chars.</summary>
+    /// <summary>
+    /// Trim + lower-case; one trailing dot (an absolute domain) is dropped so "a@x.com." and "a@x.com" are one address.
+    /// Null when not exactly one '@' with non-empty parts, a domain with an empty label or whitespace, or over 254 chars.
+    /// </summary>
     internal static string? Normalize(string? email)
     {
         var e = email?.Trim().ToLowerInvariant();
         if (string.IsNullOrEmpty(e) || e.Length > MaxEmailLength) return null;
         var parts = e.Split('@');
-        return parts.Length == 2 && parts[0].Length > 0 && parts[1].Length > 0 ? e : null;
+        if (parts.Length != 2 || parts[0].Length == 0) return null;
+        var domain = parts[1].TrimEnd('.');
+        if (domain.Length == 0 || domain.Any(char.IsWhiteSpace) || domain.Split('.').Any(l => l.Length == 0)) return null;
+        return $"{parts[0]}@{domain}";
     }
 
     private static string GenerateCode() => RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");

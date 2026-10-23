@@ -3,7 +3,11 @@ using Vela.Api.Common;
 
 namespace Vela.Api.Abuse;
 
-/// <summary>JSON bodies: at most 1 MB and 32 levels of nesting. The body is read once here and replayed to the endpoint.</summary>
+/// <summary>
+/// Every request body, whatever its Content-Type or framing: at most 1 MB and, when it parses as JSON, 32 levels of
+/// nesting. Endpoints parse bodies without checking the type, so the cap cannot depend on it. Uploads go straight to
+/// blob storage. The body is read once here and replayed to the endpoint.
+/// </summary>
 public sealed class RequestLimitsMiddleware(RequestDelegate next)
 {
     public const int MaxBodyBytes = 1024 * 1024;
@@ -11,7 +15,7 @@ public sealed class RequestLimitsMiddleware(RequestDelegate next)
 
     public async Task InvokeAsync(HttpContext ctx)
     {
-        if (!ctx.Request.HasJsonContentType() || ctx.Request.ContentLength == 0)
+        if (!MayHaveBody(ctx.Request))
         {
             await next(ctx);
             return;
@@ -36,6 +40,10 @@ public sealed class RequestLimitsMiddleware(RequestDelegate next)
         ctx.Request.Body = new MemoryStream(body, writable: false);
         await next(ctx);
     }
+
+    private static bool MayHaveBody(HttpRequest r) =>
+        r.ContentLength is > 0 ||
+        (r.ContentLength is null && !HttpMethods.IsGet(r.Method) && !HttpMethods.IsHead(r.Method) && !HttpMethods.IsOptions(r.Method));
 
     private static IResult TooLarge() =>
         Results.Fail(StatusCodes.Status413PayloadTooLarge, "payload_too_large", "The request body is too large.");

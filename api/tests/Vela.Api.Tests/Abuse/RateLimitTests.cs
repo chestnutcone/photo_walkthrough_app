@@ -49,6 +49,20 @@ public class RateLimitTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
+    public async Task Auth_email_policy_limits_by_ip_independently_of_the_database_limit()
+    {
+        var c = (await NewHost(new() { ["Abuse:RateLimits:auth-email:Permit"] = "3" })).Anonymous();
+        var ip = NewIp();
+        for (var i = 0; i < 3; i++) Assert.Equal(HttpStatusCode.OK, (await EmailRequest(c, NewEmail(), ip)).Status);
+
+        var r = await EmailRequest(c, NewEmail(), ip);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, r.Status);
+        Assert.Equal("rate_limited", r.ErrorCode);
+        Assert.Equal(HttpStatusCode.OK, (await EmailRequest(c, NewEmail(), NewIp())).Status);
+    }
+
+    [Fact]
     public async Task Spoofed_cf_connecting_ip_cannot_dodge_the_ip_limit_end_to_end()
     {
         var c = (await NewHost(useHeaderIp: false)).Anonymous();
