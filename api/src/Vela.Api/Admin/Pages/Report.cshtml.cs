@@ -38,6 +38,17 @@ public sealed class ReportModel(IModerationService moderation, IBlobStore blobs,
         return Done(id, await moderation.SuspendUserAsync(AdminId, owner, reason ?? ""));
     }
 
+    /// <summary>Holds the evidence, takes the content down and bans the owner. Needs the confirmation box.</summary>
+    public async Task<IActionResult> OnPostMarkIllegalAsync(Guid id, string? reason, string? confirm)
+    {
+        if (confirm is null) return Done(id, "confirmation_required");
+        var result = await moderation.MarkIllegalAsync(AdminId, id, reason ?? "");
+        if (result.Outcome != ModerationOutcome.Ok || result.HoldId is not { } hold) return Done(id, FlashCode(result.Outcome));
+        return RedirectToPage("/EvidenceDetail", new { id = hold, flash = result.BanRefused ? "ban_refused" : "ok" });
+    }
+
+    private IActionResult Done(Guid id, string flash) => RedirectToPage(new { id, flash });
+
     private async Task<IActionResult> Target(Guid reportId, string type, Func<Guid, Guid, Task<ModerationOutcome>> act)
     {
         if (await moderation.GetReportAsync(reportId) is not { } d || d.Item.TargetType != type)

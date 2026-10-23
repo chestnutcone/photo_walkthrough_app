@@ -9,6 +9,9 @@ public static class AdminEndpoints
     {
         services.AddSingleton<AdminReconciler>().AddSingleton<Moderation.TakedownReconciler>();
         if (!env.IsEnvironment("Test")) services.AddHostedService<AdminReconcileWorker>();
+        services.AddSingleton<EvidenceRetentionJob>().AddSingleton<INcmecReporter>(NcmecReporterFor(env))
+            .AddScoped<IEvidenceService, EvidenceService>().AddScoped<EvidenceSnapshotBuilder>();
+        if (!env.IsEnvironment("Test")) services.AddHostedService(sp => sp.GetRequiredService<EvidenceRetentionJob>());
         services.AddSingleton(AdminSettings.Load(config, env));
         services.AddSingleton<IAdminAllowList>(new ConfigAdminAllowList(config));
         services.AddScoped<IModerationService, ModerationService>().AddScoped<IWorkVariantLifecycle, WorkVariantLifecycle>()
@@ -39,6 +42,10 @@ public static class AdminEndpoints
         });
         return services;
     }
+
+    /// <summary>The fake reporter in Development and Test; everywhere else reporting is unconfigured until a real one is wired in.</summary>
+    public static INcmecReporter NcmecReporterFor(IHostEnvironment env) =>
+        env.EnvironmentName is "Development" or "Test" ? new FakeNcmecReporter() : new UnconfiguredNcmecReporter();
 
     public static IApplicationBuilder UseAdminHeaders(this IApplicationBuilder app) =>
         app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/admin"), b => b.UseMiddleware<AdminHeadersMiddleware>());

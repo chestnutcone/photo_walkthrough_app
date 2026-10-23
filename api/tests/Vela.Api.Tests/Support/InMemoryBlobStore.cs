@@ -54,7 +54,7 @@ public sealed class InMemoryBlobStore : IBlobStore
     }
 
     public Uri PublicUrl(string name) =>
-        (name.StartsWith(BlobNames.Originals + "/", StringComparison.Ordinal) || name.StartsWith(BlobNames.Exports + "/", StringComparison.Ordinal))
+        (name.StartsWith(BlobNames.Originals + "/", StringComparison.Ordinal) || name.StartsWith(BlobNames.Exports + "/", StringComparison.Ordinal) || name.StartsWith(BlobNames.Evidence + "/", StringComparison.Ordinal))
             ? throw new ArgumentException("Originals are private.", nameof(name))
             : new($"https://cdn.test/{name}");
 }

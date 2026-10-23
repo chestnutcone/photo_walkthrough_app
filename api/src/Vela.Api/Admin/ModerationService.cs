@@ -12,7 +12,7 @@ namespace Vela.Api.Admin;
 /// on the same target together, and writes one audit row, all in one transaction.
 /// </summary>
 public sealed partial class ModerationService(
-    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings, IUserStateCache stateCache, IAdminAllowList allow, ILogger<ModerationService> log)
+    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings, IUserStateCache stateCache, IAdminAllowList allow, IEvidenceService evidenceService, ILogger<ModerationService> log)
     : IModerationService
 {
     public const int MaxReasonLength = 500;

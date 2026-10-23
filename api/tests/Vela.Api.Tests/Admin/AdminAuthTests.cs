@@ -224,7 +224,7 @@ public class AdminAuthTests(PostgresFixture pg) : IAsyncLifetime
         var sources = _site.Host.Services.GetServices<EndpointDataSource>().SelectMany(s => s.Endpoints).OfType<RouteEndpoint>()
             .Select(e => (Path: (e.RoutePattern.RawText ?? "").TrimStart('/').ToLowerInvariant(), E: e))
             .Where(x => x.Path == "admin" || x.Path.StartsWith("admin/")).ToList();
-        Assert.True(sources.Count >= 7, $"expected the admin pages to be mapped, found {sources.Count}");
+        Assert.True(sources.Count >= 9, $"expected the admin pages to be mapped, found {sources.Count}");
         foreach (var (path, e) in sources)
         {
             var policies = e.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(a => a.Policy).ToList();
@@ -236,7 +236,7 @@ public class AdminAuthTests(PostgresFixture pg) : IAsyncLifetime
             Assert.True(policies.Contains(AdminAuth.Policy), $"/{path} is missing the {AdminAuth.Policy} policy");
             Assert.Empty(e.Metadata.GetOrderedMetadata<IAllowAnonymous>());
         }
-        foreach (var expected in new[] { "admin", "admin/login", "admin/logout", "admin/audit", "admin/users", "admin/users/{id:guid}", "admin/reports/{id:guid}" })
+        foreach (var expected in new[] { "admin", "admin/login", "admin/logout", "admin/audit", "admin/users", "admin/users/{id:guid}", "admin/reports/{id:guid}", "admin/evidence", "admin/evidence/{id:guid}" })
             Assert.Contains(sources, x => x.Path == expected);
     }
 

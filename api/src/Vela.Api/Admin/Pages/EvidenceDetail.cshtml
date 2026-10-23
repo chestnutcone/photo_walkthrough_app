@@ -1,0 +1,95 @@
+@page "/admin/evidence/{id:guid}"
+@model EvidenceDetailModel
+@{
+    ViewData["Title"] = "Evidence hold";
+    var d = Model.Detail;
+    var s = d.Snapshot;
+}
+<p><a href="/admin/evidence">Back to evidence holds</a></p>
+<h1>Evidence hold: @d.Item.TargetType</h1>
+@if (Model.Flash is { } flash)
+{
+    <p class="@(flash.Error ? "flash err" : "flash")">@flash.Text</p>
+}
+<dl class="facts">
+    <dt>Created</dt><dd>@AdminFormat.When(d.Item.CreatedAt)</dd>
+    <dt>Held until</dt><dd>@AdminFormat.When(d.Item.HoldUntil)</dd>
+    <dt>Reason</dt><dd>@d.Reason</dd>
+    <dt>Owner</dt><dd><a href="/admin/users/@d.UserId">@(d.Item.OwnerHandle is { } h ? "@" + h : d.UserId.ToString())</a>@(s?.Owner.DisplayName is { } dn ? " (" + dn + ")" : "")</dd>
+    <dt>NCMEC</dt>
+    <dd>
+        @if (d.Item.NcmecReportId is { } rid)
+        {
+            <span>Submitted @AdminFormat.When(d.Item.NcmecSubmittedAt!.Value) - report @rid</span>
+        }
+        else { <span>not submitted</span> }
+    </dd>
+</dl>
+
+@if (s is null)
+{
+    <p class="muted">The stored snapshot could not be read.</p>
+}
+else
+{
+    <h2>Snapshot</h2>
+    <p class="muted">Captured @AdminFormat.When(s.CapturedAt). Sign-in identities: @(s.Owner.Identities.Count == 0 ? "none" : string.Join(", ", s.Owner.Identities.Select(i => i.Provider + (i.Email is { } e ? " " + e : ""))))</p>
+    @if (Model.ImageUrl is { } image)
+    {
+        <img class="detail-img" src="@image" alt="Held image (private evidence copy)">
+    }
+    @if (s.Work is { } w)
+    {
+        <h2>@w.Title</h2>
+        <div class="text">@w.Intro</div>
+        @foreach (var c in w.Chapters)
+        {
+            <h2>Chapter @(c.Index + 1): @c.Title</h2>
+            <p class="muted">Pin @c.X, @c.Y@(c.Zoom is { } z ? ", zoom " + z : "")</p>
+            <div class="text">@c.Body</div>
+        }
+    }
+    @if (s.Reply is { } r)
+    {
+        <h2>Reply</h2>
+        <p class="muted">by @(r.AuthorHandle is { } ah ? "@" + ah : "unknown") on story @r.WorkId, chapter @(r.ChapterIndex + 1)</p>
+        <div class="text">@r.Text</div>
+    }
+    @if (s.Owner.Profile is { } p)
+    {
+        <h2>Profile</h2>
+        <dl class="facts">
+            <dt>Display name</dt><dd>@p.DisplayName</dd>
+            <dt>Bio</dt><dd>@p.Bio</dd>
+            <dt>City</dt><dd>@p.City</dd>
+            <dt>Discipline</dt><dd>@p.Discipline</dd>
+            <dt>Website</dt><dd>@p.Website</dd>
+            <dt>Public email</dt><dd>@(p.PublicEmail ?? "none")</dd>
+        </dl>
+    }
+    <h2>Reports</h2>
+    <ul>
+        @foreach (var rp in s.Reports)
+        {
+            <li>@rp.Id: @AdminFormat.Reason(rp.Reason) (@rp.Source, @AdminFormat.When(rp.CreatedAt))</li>
+        }
+    </ul>
+}
+
+<h2>NCMEC report</h2>
+@if (d.Item.NcmecReportId is null)
+{
+    <form method="post" asp-page-handler="SubmitNcmec" asp-route-id="@d.Item.Id" class="stack">
+        <fieldset>
+            <legend>Submit to NCMEC</legend>
+            <p class="muted">Nothing is ever sent automatically. This sends one report to the NCMEC CyberTipline for this hold, once.</p>
+            <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to submit to NCMEC">
+            <label><input type="checkbox" name="confirm" value="on"> I have reviewed this evidence and confirm the report should be submitted.</label>
+            <button type="submit" class="danger">Submit report to NCMEC</button>
+        </fieldset>
+    </form>
+}
+else
+{
+    <p class="muted">A report was already submitted; it cannot be submitted again.</p>
+}

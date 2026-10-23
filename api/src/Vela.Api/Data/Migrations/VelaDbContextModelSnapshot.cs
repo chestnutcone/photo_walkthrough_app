@@ -223,6 +223,93 @@ namespace Vela.Api.Data.Migrations
                     b.ToTable("email_codes", (string)null);
                 });
 
+            modelBuilder.Entity("Vela.Api.Data.Entities.EvidenceHold", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BlobPrefix")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("blob_prefix");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByAdminId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_admin_id");
+
+                    b.Property<DateTimeOffset>("HoldUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("hold_until");
+
+                    b.Property<string>("NcmecReportId")
+                        .HasColumnType("text")
+                        .HasColumnName("ncmec_report_id");
+
+                    b.Property<DateTimeOffset?>("NcmecSubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ncmec_submitted_at");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid?>("ReplyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reply_id");
+
+                    b.Property<string>("Snapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("target_type");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid?>("WorkId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("work_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_evidence_holds");
+
+                    b.HasIndex("HoldUntil")
+                        .HasDatabaseName("ix_evidence_holds_hold_until");
+
+                    b.HasIndex("ReplyId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_evidence_holds_reply")
+                        .HasFilter("target_type = 'reply'");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_evidence_holds_user")
+                        .HasFilter("target_type = 'user'");
+
+                    b.HasIndex("WorkId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_evidence_holds_work")
+                        .HasFilter("target_type = 'work'");
+
+                    b.HasIndex("CreatedAt", "Id")
+                        .HasDatabaseName("ix_evidence_holds_created_at_id");
+
+                    b.ToTable("evidence_holds", (string)null);
+                });
+
             modelBuilder.Entity("Vela.Api.Data.Entities.ExportJob", b =>
                 {
                     b.Property<Guid>("Id")

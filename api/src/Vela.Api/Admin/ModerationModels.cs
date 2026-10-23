@@ -6,6 +6,7 @@ public enum ModerationOutcome
 {
     Ok, ReasonRequired, ReasonTooLong, NotFound, NotApplicable, Forbidden, CannotBanSelf, CannotBanAdmin,
     TargetStillBlocked, VariantsUnavailable, AlreadyResolved,
+    EvidenceCopyFailed, AlreadySubmitted, NotConfigured, SubmissionFailed,
 }
 
 public sealed record ReportItem(Guid Id, string Source, string Reason, string Status, string TargetType, Guid TargetId, DateTimeOffset CreatedAt);
@@ -25,7 +26,7 @@ public sealed record ReportDetail(
     Guid? OwnerId, string? OwnerHandle, bool OwnerIsAdmin, bool OwnerSuspended,
     string? WorkTitle, string? WorkIntro, string? WorkStatus, bool WorkReportHidden, IReadOnlyList<ChapterText> Chapters,
     string? ReplyText, string? ReplyAuthorHandle, bool ReplyHidden, string? ReplyHiddenBy, Guid? ReplyWorkId,
-    int OwnerReportCount, int OwnerRemovals);
+    int OwnerReportCount, int OwnerRemovals, Guid? EvidenceHoldId = null);
 
 public sealed record UserDetail(AdminUserItem User, int BannedIdentityCount, int ReportsAbout, int Removals, IReadOnlyList<AuditItem> RecentActions);
 
@@ -48,4 +49,9 @@ public interface IModerationService
     /// <summary>Shown in the UI as "Ban account".</summary>
     Task<ModerationOutcome> SuspendUserAsync(Guid adminId, Guid userId, string reason);
     Task<ModerationOutcome> ReinstateUserAsync(Guid adminId, Guid userId, string reason);
+    /// <summary>
+    /// Holds the evidence first (snapshot plus blob copies; a failure takes nothing down), then takes the content down,
+    /// bans the owner (never an admin) and resolves the pending reports. Marking the same target again returns the same hold.
+    /// </summary>
+    Task<MarkIllegalResult> MarkIllegalAsync(Guid adminId, Guid reportId, string reason);
 }

@@ -118,3 +118,20 @@ else if (d.Item.TargetType == "reply")
         </fieldset>
     </form>
 }
+
+@if (d.EvidenceHoldId is { } holdId)
+{
+    <p><a href="/admin/evidence/@holdId">Evidence hold for this content</a></p>
+}
+else
+{
+    <form method="post" asp-page-handler="MarkIllegal" asp-route-id="@d.Item.Id" class="stack">
+        <fieldset>
+            <legend>Mark as illegal content</legend>
+            <p class="muted">Copies the content and images into the restricted evidence store for one year, takes the content down, bans the owner (never an admin) and closes the reports. Nothing is reported to any authority from here.</p>
+            <input type="text" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason to mark as illegal content">
+            <label><input type="checkbox" name="confirm" value="on"> I have reviewed this content and confirm it should be held as evidence.</label>
+            <button type="submit" class="danger">Mark as illegal content</button>
+        </fieldset>
+    </form>
+}

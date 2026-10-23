@@ -24,6 +24,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
     public DbSet<ExportJob> ExportJobs => Set<ExportJob>();
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
     public DbSet<BannedIdentity> BannedIdentities => Set<BannedIdentity>();
+    public DbSet<EvidenceHold> EvidenceHolds => Set<EvidenceHold>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -186,6 +187,17 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         {
             e.HasKey(x => new { x.Provider, x.SubjectHash });
             e.HasIndex(x => x.UserRef);
+        });
+        b.Entity<EvidenceHold>(e =>
+        {
+            e.Property(x => x.Reason).HasMaxLength(500);
+            e.Property(x => x.Snapshot).HasColumnType("jsonb");
+            e.HasIndex(x => x.HoldUntil);
+            e.HasIndex(x => new { x.CreatedAt, x.Id });
+            // One hold per target: marking again returns the existing hold.
+            e.HasIndex(x => x.WorkId).IsUnique().HasFilter("target_type = 'work'").HasDatabaseName("ux_evidence_holds_work");
+            e.HasIndex(x => x.ReplyId).IsUnique().HasFilter("target_type = 'reply'").HasDatabaseName("ux_evidence_holds_reply");
+            e.HasIndex(x => x.UserId).IsUnique().HasFilter("target_type = 'user'").HasDatabaseName("ux_evidence_holds_user");
         });
     }
 

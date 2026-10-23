@@ -21,6 +21,7 @@ public class DeletionCompletenessTests(PostgresFixture pg)
     private static readonly Dictionary<string, string> RetainedTables = new()
     {
         ["banned_identities"] = "retained for safety: HMAC hashes only, so a banned person cannot evade the ban by deleting the account",
+        ["evidence_holds"] = "retained for law enforcement: illegal-content evidence is held for at least a year (user_id, work_id and reply_id are plain ids, no foreign keys) and account deletion must never purge it",
         ["admin_actions"] = "retained for legal accountability: the moderation audit trail must outlive admin and target accounts",
     };
 

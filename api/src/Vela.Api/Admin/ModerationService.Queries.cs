@@ -138,7 +138,8 @@ public sealed partial class ModerationService
             owner, owner is { } oh ? await HandleOfAsync(oh) : null, ownerRow?.IsAdmin ?? false, ownerRow?.Suspended ?? false,
             work?.Title, work?.Intro, work?.Status.ToString().ToLowerInvariant(), work?.ReportHidden ?? false, chapters,
             reply?.Text, authorHandle, reply?.Hidden ?? false, reply?.HiddenBy?.ToString().ToLowerInvariant(), reply?.WorkId,
-            owner is { } oc ? await CountReportsAboutAsync(oc) : 0, owner is { } or ? await CountRemovalsAsync(or) : 0);
+            owner is { } oc ? await CountReportsAboutAsync(oc) : 0, owner is { } or ? await CountRemovalsAsync(or) : 0,
+            await EvidenceHoldIdAsync(report));
     }
 
     private Task<string?> HandleOfAsync(Guid userId) =>
@@ -154,4 +155,16 @@ public sealed partial class ModerationService
     private async Task<int> CountRemovalsAsync(Guid userId) =>
         await db.Works.AsNoTracking().CountAsync(w => w.ArtistId == userId && w.Status == WorkStatus.Removed)
         + await db.Replies.AsNoTracking().CountAsync(r => r.AuthorId == userId && r.HiddenBy == HiddenBy.Admin);
+
+    private async Task<Guid?> EvidenceHoldIdAsync(Report r)
+    {
+        var id = r.TargetId;
+        var holds = db.EvidenceHolds.AsNoTracking();
+        return r.TargetType switch
+        {
+            "work" => await holds.Where(h => h.WorkId == id).Select(h => (Guid?)h.Id).FirstOrDefaultAsync(),
+            "reply" => await holds.Where(h => h.ReplyId == id).Select(h => (Guid?)h.Id).FirstOrDefaultAsync(),
+            _ => await holds.Where(h => h.TargetType == "user" && h.UserId == id).Select(h => (Guid?)h.Id).FirstOrDefaultAsync(),
+        };
+    }
 }

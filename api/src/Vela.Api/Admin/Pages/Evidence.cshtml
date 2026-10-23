@@ -1,0 +1,32 @@
+@page "/admin/evidence"
+@model EvidenceModel
+@{
+    ViewData["Title"] = "Evidence holds";
+}
+<h1>Evidence holds</h1>
+@if (Model.Items.Count == 0)
+{
+    <p class="muted">No evidence is held.</p>
+}
+else
+{
+    <table>
+        <thead><tr><th>Created</th><th>Target</th><th>Owner</th><th>Held until</th><th>NCMEC</th></tr></thead>
+        <tbody>
+        @foreach (var h in Model.Items)
+        {
+            <tr>
+                <td><a href="/admin/evidence/@h.Id">@AdminFormat.When(h.CreatedAt)</a></td>
+                <td>@h.TargetType</td>
+                <td>@(h.OwnerHandle is { } oh ? "@" + oh : "unknown")</td>
+                <td>@AdminFormat.When(h.HoldUntil)</td>
+                <td>@(h.NcmecReportId is null ? "not submitted" : "submitted " + AdminFormat.When(h.NcmecSubmittedAt!.Value))</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    @if (Model.NextCursor is { } next)
+    {
+        <p><a asp-page="/Evidence" asp-route-cursor="@next">Older holds</a></p>
+    }
+}
