@@ -25,7 +25,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] M2 API core done (A1-A6)
 - [x] M3 API features done (A7-A13)
 - [x] M4 Admin and safety done (A14-A16)
-- [ ] M5 App core done (B1-B5)
+- [x] M5 App core done (B1-B5)
 - [ ] M6 App features done (B6-B14)
 - [ ] M7 Infra and security done (C1, S1)
 
@@ -52,7 +52,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B2 API wiring, session, router, guest gating (f9e0e28, 63c8c2b + fix)
 - [x] B3 Camera math (7a19b28)
 - [x] B4 Story viewer (9591cce, 6b111eb, f536591, fix 4f4e3f5)
-- [ ] B5 Feed
+- [x] B5 Feed (5f1a28c, ce512c0, fix ba260ab)
 - [ ] B6 Replies sheet
 - [ ] B7 Portfolio, followers, contact
 - [ ] B8 Sign-in and onboarding
@@ -66,6 +66,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [ ] S1 Security review gate
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-23 M5 reached: B1-B5 complete. 214 app tests pass. Pushed.
 - 2026-10-23 M4 reached: A14b, A15, A16 complete (fix commits d1cf76b, b8b648a, 13b2e1d). 926+ API tests pass. Pushed.
 - 2026-10-23 A15 complete (4be2c1c, 534a1b2, fix b8b648a). 905 API tests pass. Not yet pushed.
 - 2026-10-23 A14 complete: A14b (e093620, bda3613, 07a0fd6, a77af4b, fix d1cf76b). 771 API tests pass. Not yet pushed (M4 pending A15, A16).
