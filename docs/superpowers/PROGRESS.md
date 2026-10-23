@@ -57,7 +57,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B7 Portfolio, followers, contact (d2962ae, 4848bf5, fix 90da9cb)
 - [x] B8 Sign-in and onboarding (8bedeb2, 4293b11, e229f80, 6c77de7, fix 955e3bb)
 - [x] B9 Create story (8d037db, 2971950, fix 44d7a4b)
-- [ ] B10 Edit profile and settings
+- [x] B10 Edit profile and settings (1f73962, b11e904, d894c13, fix = HEAD before docs)
 - [ ] B11 Search
 - [ ] B12 Notifications list
 - [ ] B13 Web viewer and deep links
