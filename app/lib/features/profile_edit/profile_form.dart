@@ -118,7 +118,10 @@ class ProfileForm {
 
 /// Field problems keyed by field name. Empty means the form can be sent.
 /// Messages never echo what the user typed.
-Map<String, String> validateForm(ProfileForm raw) {
+///
+/// A stored website that was not touched is not re-validated, so an older
+/// http address cannot block saving other fields; new input must be https.
+Map<String, String> validateForm(ProfileForm raw, {ProfileForm? original}) {
   final f = raw.normalized;
   final errors = <String, String>{};
   final nameLen = codePointCount(f.displayName);
@@ -151,7 +154,9 @@ Map<String, String> validateForm(ProfileForm raw) {
           !_emailPattern.hasMatch(f.publicEmail))) {
     errors['publicEmail'] = 'Enter a valid email address.';
   }
-  if (f.website.isNotEmpty && !_validWebsite(f.website)) {
+  final websiteTouched =
+      original == null || original.normalized.website != f.website;
+  if (websiteTouched && f.website.isNotEmpty && !_validWebsite(f.website)) {
     errors['website'] = 'Use a web address that starts with https://';
   }
   if (f.services.length > maxServices) {

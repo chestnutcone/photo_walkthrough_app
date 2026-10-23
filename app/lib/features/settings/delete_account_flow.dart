@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/auth/auth_controller.dart' show SessionExpiredException;
 import '../../core/auth/local_data.dart';
 import '../../core/theme/form_styles.dart';
 import '../../core/theme/tokens.dart';
@@ -25,13 +26,28 @@ bool deleteConfirmed(String typed, String? handle) {
 
 /// Deletes the account on the server; only after it succeeds is the device
 /// wiped and the session ended (the router then shows the feed as a guest).
-/// On failure nothing local changes.
+/// A refused request changes nothing local.
+///
+/// A lost response is the one ambiguous case: the server may have deleted the
+/// account already. The retry then meets 401 or 403 `account_deleted` (tokens
+/// are revoked), which means the account is gone, so it counts as success.
 final deleteAccountProvider = Provider<Future<void> Function()>((ref) {
   return () async {
-    await apiGuard(() => ref.read(apiProvider).getMeApi().deleteAccount());
+    try {
+      await apiGuard(() => ref.read(apiProvider).getMeApi().deleteAccount());
+    } on ApiException catch (e) {
+      if (!_accountAlreadyGone(e)) rethrow;
+    } on SessionExpiredException {
+      // Refresh failed because the account no longer exists.
+    }
     await ref.read(wipeLocalDataProvider)();
   };
 });
+
+bool _accountAlreadyGone(ApiException e) =>
+    e.code == 'account_deleted' ||
+    e.statusCode == 401 ||
+    e.code == 'unauthorized';
 
 Future<void> showDeleteAccountDialog(BuildContext context, {String? handle}) =>
     showDialog<void>(
@@ -68,11 +84,12 @@ class _DeleteState extends ConsumerState<DeleteAccountDialog> {
     try {
       await ref.read(deleteAccountProvider)();
       if (mounted) Navigator.of(context).pop();
-    } on ApiException catch (e) {
+    } on Object catch (e) {
+      // Any failure ends the busy state; the dialog never gets stuck.
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = e.code == 'network_error'
+        _error = e is ApiException && e.code == 'network_error'
             ? "Can't reach the server. Your account was not deleted."
             : "Couldn't delete your account. Nothing was deleted; try again.";
       });

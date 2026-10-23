@@ -150,6 +150,7 @@ Future<T?> showItemSheet<T>(
   required T? Function() build,
   required String? Function() problem,
   required String idPrefix,
+  List<TextEditingController> controllers = const [],
 }) => showModalBottomSheet<T>(
   context: context,
   isScrollControlled: true,
@@ -161,6 +162,7 @@ Future<T?> showItemSheet<T>(
     build: build,
     problem: problem,
     idPrefix: idPrefix,
+    controllers: controllers,
   ),
 );
 
@@ -171,8 +173,10 @@ class _ItemSheet<T> extends StatefulWidget {
     required this.build,
     required this.problem,
     required this.idPrefix,
+    required this.controllers,
   });
 
+  final List<TextEditingController> controllers;
   final String title;
   final List<Widget> fields;
   final T? Function() build;
@@ -185,6 +189,15 @@ class _ItemSheet<T> extends StatefulWidget {
 
 class _ItemSheetState<T> extends State<_ItemSheet<T>> {
   String? _problem;
+
+  /// Disposed with the sheet's state, i.e. after its closing animation.
+  @override
+  void dispose() {
+    for (final c in widget.controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
 
   void _save() {
     final p = widget.problem();

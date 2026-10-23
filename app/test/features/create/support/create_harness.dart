@@ -69,7 +69,8 @@ class FakePhotoPicker implements PhotoPicker {
 }
 
 class FakeBlobUploader implements BlobUploader {
-  final List<({Uri url, int length, String contentType})> uploads = [];
+  final List<({Uri url, int length, String contentType, Uint8List bytes})>
+  uploads = [];
   Object? failWith;
 
   @override
@@ -79,7 +80,12 @@ class FakeBlobUploader implements BlobUploader {
     required String contentType,
   }) async {
     if (failWith != null) throw failWith!;
-    uploads.add((url: url, length: bytes.length, contentType: contentType));
+    uploads.add((
+      url: url,
+      length: bytes.length,
+      contentType: contentType,
+      bytes: bytes,
+    ));
   }
 }
 

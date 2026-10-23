@@ -11,9 +11,12 @@ import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/core/auth/session_store.dart';
 import 'package:vela_app/core/router.dart';
 import 'package:vela_app/core/theme/app_theme.dart';
-import 'package:vela_app/features/onboarding/avatar_picker.dart';
+import 'package:vela_app/features/create/photo_info.dart';
+import 'package:vela_app/features/create/photo_picker.dart';
 
+import '../../../core/support/avatar_marker.dart';
 import '../../../core/support/fakes.dart';
+import '../../create/support/create_harness.dart' show FakePhotoPicker;
 
 const phone = Size(390, 844);
 
@@ -159,18 +162,6 @@ class OnboardingApi {
   }
 }
 
-class FakeAvatarPicker implements AvatarPicker {
-  FakeAvatarPicker({this.result});
-  PickedAvatar? result;
-  int picks = 0;
-
-  @override
-  Future<PickedAvatar?> pick() async {
-    picks++;
-    return result;
-  }
-}
-
 class OnboardingHarness {
   OnboardingHarness(this.api, this.storage, this.container);
   final OnboardingApi api;
@@ -188,7 +179,7 @@ final _session = Session(
 Future<OnboardingHarness> pumpOnboarding(
   WidgetTester tester, {
   OnboardingApi? api,
-  AvatarPicker? picker,
+  FakePhotoPicker? picker,
   List<Override> overrides = const [],
   bool onboarded = false,
 }) async {
@@ -203,7 +194,8 @@ Future<OnboardingHarness> pumpOnboarding(
       overrides: [
         sessionStorageProvider.overrideWithValue(storage),
         httpClientAdapterProvider.overrideWithValue(FakeAdapter(a.handle)),
-        if (picker != null) avatarPickerProvider.overrideWithValue(picker),
+        if (picker != null) photoPickerProvider.overrideWithValue(picker),
+        photoNormalizerProvider.overrideWithValue(markerNormalizer),
         ...overrides,
       ],
       child: Consumer(

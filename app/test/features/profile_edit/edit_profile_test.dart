@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:vela_app/features/create/photo_picker.dart';
 
+import '../../core/support/avatar_marker.dart';
 import 'support/edit_harness.dart';
 
 FilledButton _save(WidgetTester t) => t.widget(key('edit-save'));
@@ -235,6 +236,12 @@ void main() {
     expect(h.api.to('POST', '/v1/me/avatar-upload'), hasLength(1));
     expect(h.uploader.uploads.single.contentType, 'image/png');
     expect(h.uploader.uploads.single.url.host, 'blob.test');
+    // The bytes that leave the phone are the normalized ones, not the picked.
+    expect(
+      hasMarker(h.uploader.uploads.single.bytes, tinyPng),
+      isTrue,
+      reason: 'avatar must pass through photoNormalizerProvider',
+    );
     expect(h.api.body(h.api.to('PATCH', '/v1/me/profile').single), {
       'avatarUploaded': true,
     });
@@ -254,6 +261,35 @@ void main() {
     await settle(tester);
     expect(find.textContaining('JPEG, PNG or WebP'), findsOneWidget);
     expect(_save(tester).onPressed, isNull);
+  });
+
+  group('legacy website', () {
+    testWidgets('stored_http_website_does_not_block_other_edits', (
+      tester,
+    ) async {
+      final h = await pumpEdit(
+        tester,
+        path: '/profile/edit',
+        api: EditApi(profile: myProfile(website: 'http://old.example')),
+      );
+      await typeInto(tester, 'edit-city', 'Porto');
+      expect(_save(tester).onPressed, isNotNull);
+      await tester.tap(key('edit-save'));
+      await settle(tester);
+      expect(h.api.body(h.api.to('PATCH', '/v1/me/profile').single), {
+        'city': 'Porto',
+      });
+    });
+
+    testWidgets('new_http_website_is_still_refused', (tester) async {
+      await pumpEdit(
+        tester,
+        path: '/profile/edit',
+        api: EditApi(profile: myProfile(website: 'http://old.example')),
+      );
+      await typeInto(tester, 'edit-website', 'http://other.example');
+      expect(_save(tester).onPressed, isNull);
+    });
   });
 
   group('services and shows', () {

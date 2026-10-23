@@ -67,15 +67,13 @@ class _ProfileSetupState extends ConsumerState<ProfileSetupScreen> {
 
   Future<void> _pickAvatar() async {
     final messenger = ScaffoldMessenger.of(context);
-    try {
-      final picked = await ref.read(avatarPickerProvider).pick();
-      if (picked != null && mounted) {
-        ref.read(onboardingDraftProvider.notifier).setAvatar(picked);
-      }
-    } on Object {
-      messenger.showSnackBar(
-        const SnackBar(content: Text("Couldn't open your photos.")),
-      );
+    final pick = await ref.read(avatarPreparerProvider)();
+    if (!mounted) return;
+    final avatar = pick.avatar;
+    if (avatar != null) {
+      ref.read(onboardingDraftProvider.notifier).setAvatar(avatar);
+    } else if (pick.error != null) {
+      messenger.showSnackBar(SnackBar(content: Text(pick.error!)));
     }
   }
 

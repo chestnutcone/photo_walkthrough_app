@@ -1,8 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
-/// A chosen profile photo held in memory until onboarding is complete.
+import '../create/create_controller.dart' show maxUploadBytes;
+import '../create/create_messages.dart';
+import '../create/photo_info.dart';
+import '../create/photo_picker.dart';
+
+/// A chosen profile photo, already cleaned: orientation baked in and all
+/// metadata (EXIF, GPS, XMP) removed. Held in memory until it is uploaded.
 @immutable
 class PickedAvatar {
   const PickedAvatar({required this.bytes, required this.contentType});
@@ -13,42 +18,47 @@ class PickedAvatar {
   final String contentType;
 }
 
-abstract interface class AvatarPicker {
-  /// Null when the user cancels or the file is not a supported image.
-  Future<PickedAvatar?> pick();
+/// Outcome of [avatarPreparerProvider]: a photo, a cancel (both fields
+/// null), or a user-facing [error].
+@immutable
+class AvatarPick {
+  const AvatarPick({this.avatar, this.error});
+  final PickedAvatar? avatar;
+  final String? error;
 }
 
-/// Gallery picker. The platform downsizes to 1024 px, far below the API's
-/// 25 MB limit; the server builds the 256 px avatar.
-class ImagePickerAvatarPicker implements AvatarPicker {
-  const ImagePickerAvatarPicker();
-
-  static const _types = {
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'png': 'image/png',
-    'webp': 'image/webp',
-  };
-
-  @override
-  Future<PickedAvatar?> pick() async {
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 90,
+/// The one way a profile photo is chosen, for onboarding and edit-profile:
+/// the B9 photo picker, then type/size checks, then the B9 normalizer
+/// (`photoNormalizerProvider`). Nothing else may feed an avatar upload.
+final avatarPreparerProvider = Provider<Future<AvatarPick> Function()>((ref) {
+  return () async {
+    final PickedPhoto? picked;
+    try {
+      picked = await ref.read(photoPickerProvider).pick(PhotoSource.library);
+    } on PhotoAccessDenied {
+      return const AvatarPick(error: photoAccessDeniedMessage);
+    } on Object {
+      return const AvatarPick(error: "Couldn't open your photos.");
+    }
+    if (picked == null) return const AvatarPick();
+    final meta = readPhotoMeta(picked.bytes);
+    if (meta == null || !supportedTypes.contains(meta.contentType)) {
+      return const AvatarPick(error: unsupportedTypeMessage);
+    }
+    if (meta.width * meta.height > maxPhotoPixels) {
+      return const AvatarPick(error: tooManyPixelsMessage);
+    }
+    final Uint8List bytes;
+    try {
+      bytes = await ref.read(photoNormalizerProvider)(picked.bytes);
+    } on Object {
+      return const AvatarPick(error: "Couldn't use that photo. Try another.");
+    }
+    if (bytes.length > maxUploadBytes) {
+      return const AvatarPick(error: tooLargeMessage);
+    }
+    return AvatarPick(
+      avatar: PickedAvatar(bytes: bytes, contentType: meta.contentType),
     );
-    if (file == null) return null;
-    final ext = file.name.split('.').last.toLowerCase();
-    final type = _supported(file.mimeType) ?? _types[ext];
-    if (type == null) return null;
-    return PickedAvatar(bytes: await file.readAsBytes(), contentType: type);
-  }
-
-  static String? _supported(String? mime) =>
-      _types.containsValue(mime) ? mime : null;
-}
-
-final avatarPickerProvider = Provider<AvatarPicker>(
-  (_) => const ImagePickerAvatarPicker(),
-);
+  };
+});

@@ -38,6 +38,7 @@ class ShowsEditor extends StatelessWidget {
     return showItemSheet<ShowItem>(
       context,
       idPrefix: 'show-form',
+      controllers: [year, text],
       title: existing == null ? 'Add a show' : 'Edit show',
       fields: [
         Semantics(

@@ -15,6 +15,7 @@ import 'package:vela_app/features/create/photo_info.dart';
 import 'package:vela_app/features/create/photo_picker.dart';
 import 'package:vela_app/features/onboarding/legal_links.dart';
 
+import '../../../core/support/avatar_marker.dart';
 import '../../../core/support/fakes.dart';
 import '../../create/support/create_harness.dart'
     show FakeBlobUploader, FakePhotoPicker, tinyPng;
@@ -26,6 +27,7 @@ Finder key(String k) => find.byKey(ValueKey(k));
 Map<String, Object?> myProfile({
   String handle = 'ana',
   String? publicEmail,
+  String website = 'https://ana.example',
   List<Map<String, String>> services = const [],
   List<Map<String, String>> shows = const [],
 }) => {
@@ -38,7 +40,7 @@ Map<String, Object?> myProfile({
   'workCount': 2,
   'onboardingComplete': true,
   'city': 'Lisbon',
-  'website': 'https://ana.example',
+  'website': website,
   'publicEmail': ?publicEmail,
   'services': services,
   'shows': shows,
@@ -52,6 +54,7 @@ class EditApi {
     this.patchCode = 'validation_failed',
     this.patchMessage = 'bio must be at most 280 characters.',
     this.deleteStatus = 200,
+    this.deleteCode = 'server_error',
     this.taken = const {},
     this.exportRequestStatus = 200,
     this.exportStatuses = const ['pending', 'ready'],
@@ -62,6 +65,7 @@ class EditApi {
   String patchCode;
   String patchMessage;
   int deleteStatus;
+  String deleteCode;
   Set<String> taken;
   int exportRequestStatus;
 
@@ -130,7 +134,9 @@ class EditApi {
         await deleteGate?.future;
         return deleteStatus == 200
             ? jsonResponse(200, okEnvelope(null))
-            : jsonResponse(deleteStatus, errEnvelope('server_error'));
+            : jsonResponse(deleteStatus, errEnvelope(deleteCode));
+      case 'POST /v1/auth/refresh':
+        return jsonResponse(401, errEnvelope('unauthorized'));
       case 'POST /v1/auth/logout':
         return jsonResponse(200, okEnvelope(null));
       case 'POST /v1/me/export':
@@ -206,7 +212,7 @@ Future<EditHarness> pumpEdit(
         httpClientAdapterProvider.overrideWithValue(FakeAdapter(a.handle)),
         photoPickerProvider.overrideWithValue(picker),
         blobUploaderProvider.overrideWithValue(uploader),
-        photoNormalizerProvider.overrideWithValue((b) async => b),
+        photoNormalizerProvider.overrideWithValue(markerNormalizer),
         legalUrlLauncherProvider.overrideWithValue((uri) async {
           launched.add(uri);
           return launchSucceeds;

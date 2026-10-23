@@ -4,7 +4,9 @@ import 'package:vela_api_client/vela_api_client.dart';
 import '../../core/api/api_providers.dart';
 
 /// Revokes the refresh token on a best-effort basis, then always clears the
-/// session; the router sends a guest back to the feed.
+/// session; the router sends a guest back to the feed. Only the session is
+/// cleared: device data (see `local_data.dart`) is kept, and only account
+/// deletion wipes it.
 final signOutProvider = Provider<Future<void> Function()>((ref) {
   return () async {
     final notifier = ref.read(sessionProvider.notifier);

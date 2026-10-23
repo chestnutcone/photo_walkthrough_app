@@ -1,12 +1,16 @@
+import 'dart:typed_data';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vela_app/core/auth/auth_controller.dart';
 import 'package:vela_app/core/router.dart';
-import 'package:vela_app/features/onboarding/avatar_picker.dart';
+import 'package:vela_app/features/create/photo_picker.dart';
 import 'package:vela_app/features/onboarding/legal_links.dart';
 
+import '../../core/support/avatar_marker.dart';
+import '../create/support/create_harness.dart' show FakePhotoPicker;
 import 'support/onboarding_harness.dart';
 
 String _location(OnboardingHarness h) {
@@ -217,9 +221,7 @@ void main() {
     });
 
     testWidgets('avatar_is_optional_and_previewed_when_picked', (tester) async {
-      final picker = FakeAvatarPicker(
-        result: PickedAvatar(bytes: png, contentType: 'image/png'),
-      );
+      final picker = FakePhotoPicker(PickedPhoto(png));
       await pumpOnboarding(tester, picker: picker);
       await fillProfile(tester);
       FilledButton cont() => tester.widget(key('profile-continue'));
@@ -227,7 +229,7 @@ void main() {
       await tester.ensureVisible(key('avatar-button'));
       await tester.tap(key('avatar-button'));
       await settle(tester);
-      expect(picker.picks, 1);
+      expect(picker.calls, 1);
       expect(find.byType(Image), findsWidgets);
     });
   });
@@ -500,9 +502,7 @@ void main() {
     testWidgets('avatar_uploads_after_onboarding_without_the_bearer_token', (
       tester,
     ) async {
-      final picker = FakeAvatarPicker(
-        result: PickedAvatar(bytes: png, contentType: 'image/png'),
-      );
+      final picker = FakePhotoPicker(PickedPhoto(png));
       final h = await pumpOnboarding(
         tester,
         picker: picker,
@@ -522,18 +522,32 @@ void main() {
       expect(put.headers['x-ms-blob-type'], 'BlockBlob');
       expect(put.headers['Content-Type'], 'image/png');
       expect(put.headers.containsKey('Authorization'), isFalse);
+      // The uploaded bytes went through the shared photo normalizer.
+      expect(hasMarker(put.data as List<int>, png), isTrue);
       expect(h.api.body(h.api.to('/v1/me/profile').single), {
         'avatarUploaded': true,
       });
       expect(_location(h), '/');
     });
 
+    testWidgets('unsupported_avatar_is_refused_before_upload', (tester) async {
+      final picker = FakePhotoPicker(
+        PickedPhoto(Uint8List.fromList(List.filled(32, 7))),
+      );
+      final h = await pumpOnboarding(tester, picker: picker);
+      await fillProfile(tester);
+      await tester.ensureVisible(key('avatar-button'));
+      await tester.tap(key('avatar-button'));
+      await settle(tester);
+      expect(find.textContaining('JPEG, PNG or WebP'), findsOneWidget);
+      expect(find.byType(Image), findsNothing);
+      expect(h.api.all.where((r) => r.uri.host == 'blob.test'), isEmpty);
+    });
+
     testWidgets('failed_avatar_upload_does_not_block_onboarding', (
       tester,
     ) async {
-      final picker = FakeAvatarPicker(
-        result: PickedAvatar(bytes: png, contentType: 'image/png'),
-      );
+      final picker = FakePhotoPicker(PickedPhoto(png));
       final h = await pumpOnboarding(
         tester,
         picker: picker,

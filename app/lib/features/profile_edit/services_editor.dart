@@ -39,6 +39,7 @@ class ServicesEditor extends StatelessWidget {
     return showItemSheet<ServiceItem>(
       context,
       idPrefix: 'service-form',
+      controllers: [title, description, price],
       title: existing == null ? 'Add a service' : 'Edit service',
       fields: [
         _field('service-title', 'Title', title),

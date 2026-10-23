@@ -1,17 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 import '../../core/api/api_exception.dart';
+import '../onboarding/avatar_picker.dart';
 import '../onboarding/handle_availability.dart';
 import 'profile_form.dart';
-
-/// A prepared avatar (orientation baked in, metadata stripped), waiting to
-/// be uploaded with the next save.
-@immutable
-class NewAvatar {
-  const NewAvatar({required this.bytes, required this.contentType});
-  final Uint8List bytes;
-  final String contentType;
-}
 
 @immutable
 class EditState {
@@ -30,7 +22,7 @@ class EditState {
 
   final ProfileForm original;
   final ProfileForm form;
-  final NewAvatar? avatar;
+  final PickedAvatar? avatar;
   final bool saving;
   final bool pickingAvatar;
 
@@ -49,7 +41,7 @@ class EditState {
 
   bool get handleChanged => form.normalized.handle != original.handle;
 
-  Map<String, String> get fieldErrors => validateForm(form);
+  Map<String, String> get fieldErrors => validateForm(form, original: original);
 
   /// Message for the handle field, or null when it is fine so far.
   String? handleMessage(HandleCheck check) {
@@ -94,7 +86,7 @@ class EditState {
   EditState copyWith({
     ProfileForm? original,
     ProfileForm? form,
-    NewAvatar? avatar,
+    PickedAvatar? avatar,
     bool clearAvatar = false,
     bool? saving,
     bool? pickingAvatar,

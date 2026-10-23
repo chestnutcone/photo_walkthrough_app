@@ -6,6 +6,7 @@ import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/core/auth/local_data.dart';
 import 'package:vela_app/core/router.dart';
 import 'package:vela_app/features/onboarding/legal_links.dart';
+import 'package:vela_app/features/settings/delete_account_flow.dart';
 import 'package:vela_app/features/settings/export_flow.dart';
 
 import '../profile_edit/support/edit_harness.dart';
@@ -39,15 +40,10 @@ void main() {
       tester,
     ) async {
       final wiped = <String>[];
-      final h = await pumpEdit(
-        tester,
-        path: '/settings',
-        overrides: [
-          localDataCleanersProvider.overrideWithValue([
-            () async => wiped.add('cache'),
-          ]),
-        ],
-      );
+      final h = await pumpEdit(tester, path: '/settings', overrides: []);
+      h.container
+          .read(localDataRegistryProvider)
+          .register('cache', () async => wiped.add('cache'));
       await _openDelete(tester);
       expect(find.textContaining('permanently deletes'), findsOneWidget);
       expect(find.textContaining('30 days'), findsOneWidget);
@@ -101,6 +97,65 @@ void main() {
       expect(h.storage.value, isNotNull);
       expect(h.container.read(sessionProvider).value, isNotNull);
       expect(h.location, '/settings');
+    });
+
+    Future<void> confirmDelete(WidgetTester tester) async {
+      await _openDelete(tester);
+      await tester.enterText(key('delete-confirm-field'), 'DELETE');
+      await tester.pump();
+      await tester.tap(key('delete-confirm'));
+      await settle(tester);
+    }
+
+    testWidgets('account_already_deleted_counts_as_success', (tester) async {
+      // The first request deleted the account but its response was lost;
+      // the retry meets 403 account_deleted.
+      final wiped = <String>[];
+      final h = await pumpEdit(
+        tester,
+        path: '/settings',
+        api: EditApi(deleteStatus: 403, deleteCode: 'account_deleted'),
+      );
+      h.container
+          .read(localDataRegistryProvider)
+          .register('cache', () async => wiped.add('cache'));
+      await confirmDelete(tester);
+      expect(wiped, ['cache']);
+      expect(h.storage.value, isNull);
+      expect(h.location, '/');
+      expect(key('delete-error'), findsNothing);
+    });
+
+    testWidgets('unauthorized_after_refresh_counts_as_success', (tester) async {
+      final h = await pumpEdit(
+        tester,
+        path: '/settings',
+        api: EditApi(deleteStatus: 401, deleteCode: 'unauthorized'),
+      );
+      await confirmDelete(tester);
+      expect(h.storage.value, isNull);
+      expect(h.location, '/');
+    });
+
+    testWidgets('unexpected_error_never_leaves_the_dialog_busy', (
+      tester,
+    ) async {
+      final h = await pumpEdit(
+        tester,
+        path: '/settings',
+        overrides: [
+          deleteAccountProvider.overrideWithValue(
+            () async => throw StateError('boom'),
+          ),
+        ],
+      );
+      await confirmDelete(tester);
+      expect(key('delete-error'), findsOneWidget);
+      expect(
+        tester.widget<FilledButton>(key('delete-confirm')).onPressed,
+        isNotNull,
+      );
+      expect(h.container.read(sessionProvider).value, isNotNull);
     });
 
     testWidgets('double_tap_sends_one_request', (tester) async {

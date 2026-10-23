@@ -79,4 +79,17 @@ void main() {
   test('handle_is_normalised_before_comparison', () {
     expect(changedFields(base, base.copyWith(handle: ' @Ana ')), isEmpty);
   });
+
+  test('unchanged_legacy_http_website_is_tolerated', () {
+    final legacy = base.copyWith(website: 'http://old.example');
+    expect(validateForm(legacy, original: legacy), isEmpty);
+    expect(validateForm(legacy), isNotEmpty);
+    expect(
+      validateForm(
+        legacy.copyWith(website: 'http://new.example'),
+        original: legacy,
+      ).keys,
+      ['website'],
+    );
+  });
 }

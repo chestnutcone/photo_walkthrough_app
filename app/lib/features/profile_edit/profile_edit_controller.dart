@@ -3,12 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/api/api_providers.dart';
 import '../create/blob_uploader.dart';
-import '../create/create_controller.dart' show maxUploadBytes;
-import '../create/create_messages.dart';
-import '../create/photo_info.dart';
-import '../create/photo_picker.dart';
 import '../feed/feed_controller.dart';
 import '../portfolio/portfolio_data.dart';
+import '../onboarding/avatar_picker.dart';
 import 'edit_state.dart';
 import 'profile_form.dart';
 
@@ -51,59 +48,17 @@ class ProfileEditController extends Notifier<EditState> {
 
   void showErrors() => state = state.copyWith(showErrors: true);
 
-  /// Picks, validates and cleans a profile photo with the same pipeline as
-  /// stories (orientation baked in, EXIF/GPS removed).
+  /// Picks a profile photo through the shared pipeline (picker, checks,
+  /// orientation + metadata strip); it is uploaded when saved.
   Future<void> pickAvatar() async {
     if (state.pickingAvatar || state.saving) return;
     state = state.copyWith(pickingAvatar: true, clearAvatarError: true);
-    try {
-      final picked = await ref
-          .read(photoPickerProvider)
-          .pick(PhotoSource.library);
-      if (!ref.mounted) return;
-      if (picked == null) {
-        state = state.copyWith(pickingAvatar: false);
-        return;
-      }
-      state = await _withPhoto(picked);
-    } on PhotoAccessDenied {
-      if (ref.mounted) {
-        state = state.copyWith(
-          pickingAvatar: false,
-          avatarError: photoAccessDeniedMessage,
-        );
-      }
-    } on Object {
-      if (ref.mounted) {
-        state = state.copyWith(
-          pickingAvatar: false,
-          avatarError: "Couldn't open your photos.",
-        );
-      }
-    }
-  }
-
-  Future<EditState> _withPhoto(PickedPhoto picked) async {
-    final meta = readPhotoMeta(picked.bytes);
-    if (meta == null || !supportedTypes.contains(meta.contentType)) {
-      return state.copyWith(
-        pickingAvatar: false,
-        avatarError: unsupportedTypeMessage,
-      );
-    }
-    if (meta.width * meta.height > maxPhotoPixels) {
-      return state.copyWith(
-        pickingAvatar: false,
-        avatarError: tooManyPixelsMessage,
-      );
-    }
-    final bytes = await ref.read(photoNormalizerProvider)(picked.bytes);
-    if (bytes.length > maxUploadBytes) {
-      return state.copyWith(pickingAvatar: false, avatarError: tooLargeMessage);
-    }
-    return state.copyWith(
+    final pick = await ref.read(avatarPreparerProvider)();
+    if (!ref.mounted) return;
+    state = state.copyWith(
       pickingAvatar: false,
-      avatar: NewAvatar(bytes: bytes, contentType: meta.contentType),
+      avatar: pick.avatar,
+      avatarError: pick.error,
     );
   }
 
@@ -170,7 +125,7 @@ class ProfileEditController extends Notifier<EditState> {
     return const SaveOutcome(saved: false);
   }
 
-  Future<void> _uploadAvatar(NewAvatar avatar) async {
+  Future<void> _uploadAvatar(PickedAvatar avatar) async {
     final ticket = unwrapEnvelope(
       success: true,
       data: (await apiGuard(
