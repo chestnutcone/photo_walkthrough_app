@@ -53,7 +53,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B3 Camera math (7a19b28)
 - [x] B4 Story viewer (9591cce, 6b111eb, f536591, fix 4f4e3f5)
 - [x] B5 Feed (5f1a28c, ce512c0, fix ba260ab)
-- [ ] B6 Replies sheet
+- [x] B6 Replies sheet (6e6037f, 788e925, 7ac3baa, fix c54f454)
 - [ ] B7 Portfolio, followers, contact
 - [ ] B8 Sign-in and onboarding
 - [ ] B9 Create story
