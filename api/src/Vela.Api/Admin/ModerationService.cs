@@ -12,7 +12,7 @@ namespace Vela.Api.Admin;
 /// on the same target together, and writes one audit row, all in one transaction.
 /// </summary>
 public sealed partial class ModerationService(
-    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings, IUserStateCache stateCache)
+    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings, IUserStateCache stateCache, IAdminAllowList allow)
     : IModerationService
 {
     public const int MaxReasonLength = 500;
@@ -136,7 +136,8 @@ public sealed partial class ModerationService(
         var user = await db.Users.AsNoTracking().Where(u => u.Id == userId && u.DeletedAt == null)
             .Select(u => new { u.IsAdmin }).SingleOrDefaultAsync();
         if (user is null) return ModerationOutcome.NotFound;
-        if (user.IsAdmin) return ModerationOutcome.CannotBanAdmin;
+        // Only a current admin is protected: someone removed from the allow-list can be banned like anyone else.
+        if (user.IsAdmin && await IsAllowListedAsync(userId)) return ModerationOutcome.CannotBanAdmin;
         if (settings.BanPepper.Length == 0) throw new InvalidOperationException("Admin:BanPepper is not configured.");
 
         var now = clock.GetUtcNow();
@@ -151,6 +152,12 @@ public sealed partial class ModerationService(
         await tx.CommitAsync();
         stateCache.Evict(userId);
         return ModerationOutcome.Ok;
+    }
+
+    private async Task<bool> IsAllowListedAsync(Guid userId)
+    {
+        var emails = await db.Identities.AsNoTracking().Where(i => i.UserId == userId && i.Provider == "email").Select(i => i.Subject).ToListAsync();
+        return emails.Any(allow.Contains);
     }
 
     private async Task BanIdentitiesAsync(Guid userId, IEnumerable<(string Provider, string Subject)> identities, DateTimeOffset now)

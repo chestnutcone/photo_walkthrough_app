@@ -20,6 +20,7 @@ public sealed class MutableAllowList(IEnumerable<string> emails) : IAdminAllowLi
     public bool Any => _set.Count > 0;
     public bool Contains(string normalizedEmail) => _set.Contains(normalizedEmail);
     public void Remove(string email) => _set.Remove(email);
+    public void Add(string email) => _set.Add(email);
 }
 
 public sealed class FixedIp(string ip) : IClientIpResolver

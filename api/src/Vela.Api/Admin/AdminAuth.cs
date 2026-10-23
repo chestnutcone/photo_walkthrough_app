@@ -54,7 +54,12 @@ public sealed class AdminSessionValidator(VelaDbContext db, IAdminAllowList allo
         var id = AdminAuth.UserId(principal);
         var email = principal?.FindFirstValue(AdminAuth.EmailClaim);
         if (id is null || email is null || principal!.FindFirstValue(AdminAuth.AdminClaim) != "1") return false;
-        if (!allow.Contains(email)) return false;
+        if (!allow.Contains(email))
+        {
+            // Removed from the allow-list: the admin flag goes too, not just this session.
+            await db.Users.Where(u => u.Id == id && u.IsAdmin).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, false));
+            return false;
+        }
         return await db.Users.AsNoTracking().AnyAsync(u => u.Id == id && u.IsAdmin && u.DeletedAt == null && u.SuspendedAt == null
             && db.Identities.Any(i => i.UserId == u.Id && i.Provider == "email" && i.Subject == email));
     }

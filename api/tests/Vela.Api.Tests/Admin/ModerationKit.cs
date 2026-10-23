@@ -17,11 +17,25 @@ public static class ModerationKit
     public static async Task<TestUser> NewUser(this AdminSite s, string? email = null) =>
         await s.Host.SignInOnboarded(ProfileTestHost.UniqueHandle());
 
+    /// <summary>A current admin: flagged, with an email identity that is on the allow-list.</summary>
     public static async Task<Guid> NewAdminUser(this AdminSite s)
     {
         var u = await s.NewUser();
+        var email = $"adm-{Guid.NewGuid():N}@vela-admin.test";
+        await using (var db = s.Host.Db())
+        {
+            db.Identities.Add(new Identity { Id = Guid.NewGuid(), UserId = u.Id, Provider = "email", Subject = email, Email = email });
+            await db.SaveChangesAsync();
+        }
+        s.Allow.Add(email);
         await MakeAdmin(s.Host, u.Id);
         return u.Id;
+    }
+
+    public static async Task<string> EmailOf(this AdminSite s, Guid userId)
+    {
+        await using var db = s.Host.Db();
+        return await db.Identities.Where(i => i.UserId == userId && i.Provider == "email").Select(i => i.Subject).SingleAsync();
     }
 
     public static Task RunPipeline(this AdminSite s) =>

@@ -27,7 +27,12 @@ public sealed class AdminLoginService(IAdminAllowList allow, IEmailCodeService c
     public async Task<AdminSignIn?> VerifyAsync(string? email, string? code, string ip)
     {
         // An outsider's code is never burned at this door.
-        if (EmailCodeService.Normalize(email) is not { } normalized || !allow.Contains(normalized)) return null;
+        if (EmailCodeService.Normalize(email) is not { } normalized) return null;
+        if (!allow.Contains(normalized))
+        {
+            await ClearStaleAdminAsync(normalized);
+            return null;
+        }
         EmailSignInResult result;
         try { result = await codes.VerifyAsync(normalized, code ?? "", ip); }
         catch (Exception e) when (e is InvalidCodeException or RateLimitedException or AccountSuspendedException or AccountDeletedException)
@@ -36,8 +41,17 @@ public sealed class AdminLoginService(IAdminAllowList allow, IEmailCodeService c
         }
 
         await tokens.RevokeAsync(result.Pair.RefreshToken);
-        if (!allow.Contains(normalized)) return null;
+        if (!allow.Contains(normalized))
+        {
+            await ClearStaleAdminAsync(normalized);
+            return null;
+        }
         await db.Users.Where(u => u.Id == result.UserId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, true));
         return new AdminSignIn(result.UserId, normalized);
     }
+
+    /// <summary>An admin whose address left the allow-list loses the flag the next time it is seen here.</summary>
+    private Task<int> ClearStaleAdminAsync(string normalizedEmail) =>
+        db.Users.Where(u => u.IsAdmin && db.Identities.Any(i => i.UserId == u.Id && i.Provider == "email" && i.Subject == normalizedEmail))
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, false));
 }
