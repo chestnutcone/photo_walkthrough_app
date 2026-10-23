@@ -15,8 +15,9 @@ public sealed class ThrowAfterNotifyHandler : IDomainEventHandler<ReplyAdded>
 
 public static class NotificationKit
 {
-    public static ProfileTestHost NewHost(Vela.Api.Tests.Support.PostgresFixture pg, string? cs = null, Action<IServiceCollection>? extra = null) =>
-        new(pg, null, cs, extra);
+    public static ProfileTestHost NewHost(Vela.Api.Tests.Support.PostgresFixture pg, string? cs = null, Action<IServiceCollection>? extra = null,
+        IReadOnlyDictionary<string, string>? settings = null) =>
+        new(pg, settings, cs, extra);
 
     public static Task<TestUser> User(ProfileTestHost h) => h.SignInOnboarded(ProfileTestHost.UniqueHandle());
 

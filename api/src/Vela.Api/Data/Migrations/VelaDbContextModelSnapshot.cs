@@ -944,6 +944,34 @@ namespace Vela.Api.Data.Migrations
                     b.ToTable("reports", (string)null);
                 });
 
+            modelBuilder.Entity("Vela.Api.Data.Entities.SignupEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("IpKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ip_key");
+
+                    b.HasKey("Id")
+                        .HasName("pk_signup_events");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_signup_events_created_at");
+
+                    b.HasIndex("IpKey", "CreatedAt")
+                        .HasDatabaseName("ix_signup_events_ip_key_created_at");
+
+                    b.ToTable("signup_events", (string)null);
+                });
+
             modelBuilder.Entity("Vela.Api.Data.Entities.Tier", b =>
                 {
                     b.Property<Guid>("Id")

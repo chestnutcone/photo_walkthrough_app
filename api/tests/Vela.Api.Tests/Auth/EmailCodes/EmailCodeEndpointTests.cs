@@ -273,11 +273,11 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
-    public void Default_client_ip_resolver_returns_remote_address()
+    public void Default_client_ip_resolver_returns_remote_address_for_a_non_cloudflare_peer()
     {
         var ctx = new DefaultHttpContext();
         ctx.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("203.0.113.9");
-        Assert.Equal("203.0.113.9", new RemoteAddressClientIpResolver().Resolve(ctx).ToString());
+        Assert.Equal("203.0.113.9", new Vela.Api.Abuse.ClientIpResolver(Vela.Api.Abuse.CloudflareRanges.Default).Resolve(ctx).ToString());
     }
 
     [Fact]

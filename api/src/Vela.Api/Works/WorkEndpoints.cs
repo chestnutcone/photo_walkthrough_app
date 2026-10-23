@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Vela.Api.Abuse;
 using Vela.Api.Auth;
 using Vela.Api.Common;
 using Vela.Api.Moderation;
@@ -23,7 +24,7 @@ public static class WorkEndpoints
 
     public static IEndpointRouteBuilder MapWorkEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/v1/works", CreateDraftAsync).RequireAuthorization().WithName("createDraft");
+        app.MapPost("/v1/works", CreateDraftAsync).RequireAuthorization().RequireUploadLimit().RequireAttestation("create_work").WithName("createDraft");
         app.MapGet("/v1/works/{id}", (string id, ICurrentUser me, IWorkService svc) =>
             Run(async () => Guid.TryParse(id, out var wid) && await svc.GetAsync(wid, me.UserId) is { } work ? Results.Ok(work) : NotFound())).WithName("getWork");
         app.MapPut("/v1/works/{id}", (string id, HttpContext ctx, ICurrentUser me, IWorkService svc) =>

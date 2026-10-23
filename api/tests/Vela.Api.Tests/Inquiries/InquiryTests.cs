@@ -27,7 +27,9 @@ public class InquiryTests(PostgresFixture pg) : IDisposable
     private readonly List<ProfileTestHost> _hosts = [];
     private async Task<ProfileTestHost> Host(string? cs = null, Action<IServiceCollection>? extra = null)
     {
-        var h = NewHost(pg, cs ?? await pg.CreateIsolatedDatabaseAsync(), extra);
+        // These tests exercise the inquiry service's own caps, so lift the edge policy that would answer first.
+        var h = NewHost(pg, cs ?? await pg.CreateIsolatedDatabaseAsync(), extra,
+            new Dictionary<string, string> { ["Abuse:RateLimits:public-form:Permit"] = "1000" });
         _hosts.Add(h);
         return h;
     }

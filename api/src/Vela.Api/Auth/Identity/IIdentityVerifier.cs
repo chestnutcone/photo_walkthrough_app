@@ -17,5 +17,6 @@ public sealed class AccountDeletedException() : Exception("The account is delete
 
 public interface IAccountResolver
 {
-    Task<(Guid UserId, bool IsNew)> SignInAsync(VerifiedIdentity identity);
+    /// <summary>Finds or creates the user. A new account from <paramref name="clientIp"/> counts against the per-address daily signup limit (RateLimitedException when over).</summary>
+    Task<(Guid UserId, bool IsNew)> SignInAsync(VerifiedIdentity identity, System.Net.IPAddress? clientIp = null);
 }

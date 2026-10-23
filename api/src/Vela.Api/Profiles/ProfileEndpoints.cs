@@ -1,3 +1,4 @@
+using Vela.Api.Abuse;
 using System.Text.Json;
 using Vela.Api.Auth;
 using Vela.Api.Images;
@@ -35,7 +36,7 @@ public static class ProfileEndpoints
         {
             var url = blobs.CreateUploadUrl(BlobNames.AvatarOriginal(me.UserId!.Value), WorkEndpoints.UploadUrlLifetime);
             return Results.Ok(new UploadTicket(url.ToString(), clock.GetUtcNow() + WorkEndpoints.UploadUrlLifetime));
-        }).RequireAuthorization().WithName("avatarUpload");
+        }).RequireAuthorization().RequireUploadLimit().WithName("avatarUpload");
 
         // Public with optional auth: a valid bearer token only adds isFollowing and the exclusions.
         app.MapGet("/v1/artists/suggested", (ICurrentUser me, IProfileService svc) =>

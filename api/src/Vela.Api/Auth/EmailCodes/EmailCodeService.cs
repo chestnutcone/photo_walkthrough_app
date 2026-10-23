@@ -58,7 +58,8 @@ public sealed class EmailCodeService(
         var normalized = Normalize(email) ?? throw new InvalidCodeException();
         if (!await CodeAcceptedAsync(normalized, code ?? "")) throw new InvalidCodeException();
 
-        var (userId, isNew) = await resolver.SignInAsync(new VerifiedIdentity("email", normalized, normalized, true));
+        var (userId, isNew) = await resolver.SignInAsync(new VerifiedIdentity("email", normalized, normalized, true),
+            System.Net.IPAddress.TryParse(ip, out var clientIp) ? clientIp : null);
         return new EmailSignInResult(await tokens.IssueAsync(userId), userId, isNew);
     }
 

@@ -1,3 +1,4 @@
+using Vela.Api.Abuse;
 using Vela.Api.Branding;
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Data;
@@ -74,6 +75,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityVerification(builder.Configuration, builder.Environment);
+builder.Services.AddAbuseProtection(builder.Configuration, builder.Environment);
 builder.Services.AddEmailCodes(builder.Configuration, builder.Environment);
 builder.Services.AddSafety(builder.Configuration);
 builder.Services.AddSocial();
@@ -95,6 +97,7 @@ if (app.Services.GetRequiredService<EmailCodeSettings>().ReviewMode && !app.Envi
     app.Logger.LogWarning("Review mode is ON: a fixed sign-in code is accepted for allow-listed review accounts. Turn Auth:ReviewMode off after app review.");
 app.UseAdminHeaders();
 app.UseAuthentication();
+app.UseAbuseProtection();
 app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));

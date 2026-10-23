@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Vela.Api.Abuse;
 using Vela.Api.Auth.Identity;
 using Vela.Api.Common;
 using Vela.Api.Data;
@@ -13,7 +14,6 @@ public static class EmailCodeEndpoints
     public static IServiceCollection AddEmailCodes(this IServiceCollection services, IConfiguration config, IHostEnvironment env)
     {
         services.AddSingleton(EmailCodeSettings.Load(config, env));
-        services.AddSingleton<IClientIpResolver, RemoteAddressClientIpResolver>();
         services.AddScoped<IEmailCodeService, EmailCodeService>();
         // Literal names on purpose: only Development prints codes and only Test keeps an outbox.
         switch (env.EnvironmentName)
@@ -34,13 +34,15 @@ public static class EmailCodeEndpoints
 
     public static IEndpointRouteBuilder MapEmailCodeEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/v1/auth/email/request", RequestAsync).WithName("emailRequest");
+        app.MapPost("/v1/auth/email/request", RequestAsync).RequireAuthEmailLimit().RequireAttestation("email_request").WithName("emailRequest");
         app.MapPost("/v1/auth/email/verify", VerifyAsync).WithName("emailVerify");
         return app;
     }
 
-    private static async Task<IResult> RequestAsync(EmailRequestBody? req, HttpContext ctx, IEmailCodeService svc, IClientIpResolver ips)
+    private static async Task<IResult> RequestAsync(EmailRequestBody? req, HttpContext ctx, IEmailCodeService svc, IClientIpResolver ips, DisposableEmailList disposable)
     {
+        if (EmailCodeService.Normalize(req?.Email) is { } email && disposable.IsDisposable(email))
+            return Results.Fail(StatusCodes.Status400BadRequest, "disposable_email", "Use a permanent email address.");
         try
         {
             await svc.RequestAsync(req?.Email ?? "", ips.Resolve(ctx).ToString());

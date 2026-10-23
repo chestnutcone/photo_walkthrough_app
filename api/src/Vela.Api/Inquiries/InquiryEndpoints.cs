@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Vela.Api.Abuse;
 using Vela.Api.Auth;
 using Vela.Api.Common;
 using Vela.Api.Social;
@@ -25,7 +26,7 @@ public static class InquiryEndpoints
                 if (e.RetryAfter is { } wait) ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(wait.TotalSeconds)).ToString();
                 return Common.Results.Fail(e.Status, e.Code, e.Message);
             }
-        }).RequireAuthorization().WithName("sendInquiry");
+        }).RequireAuthorization().RequirePublicFormLimit().WithName("sendInquiry");
         return app;
     }
 
