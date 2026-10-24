@@ -60,7 +60,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B10 Edit profile and settings (1f73962, b11e904, d894c13, fix = HEAD before docs)
 - [x] B11 Search (e29ebe7, fix a80d831)
 - [x] B12 Notifications list (44aaa28, fix a80d831)
-- [ ] B13 Web viewer and deep links
+- [x] B13 Web viewer and deep links (5eb563a, fix d0232c4)
 - [ ] B14 Reporting UI, suspended state, crash reporting, attestation
 - [ ] C1 Bicep and deployment workflow
 - [ ] S1 Security review gate
