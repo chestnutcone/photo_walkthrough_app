@@ -20,11 +20,16 @@ final _keyedSecret = RegExp(
   caseSensitive: false,
 );
 final _digits = RegExp(r'\b\d{6,}\b');
-final _query = RegExp(r'\?[^\s#"]*');
+// A `?` glued to a path/word and followed by query characters starts a query
+// string; it runs to the end of the line or a closing quote/bracket, because
+// raw (unencoded) search terms can contain spaces. "What happened?" is prose
+// and stays. A `#fragment` after a path is dropped too.
+final _query = RegExp(r'''(?<=[\w/.\-%])\?[\w=&%.\-~+][^\n"')>\]]*''');
+final _fragment = RegExp(r'''(?<=[\w/])#[\w\-./%=&]+''');
 
 /// Redacts personal data and credentials from free text.
 String scrubText(String input) {
-  var s = input;
+  var s = input.replaceAll(_query, '').replaceAll(_fragment, '');
   s = s.replaceAllMapped(_bearer, (_) => 'Bearer $secretMask');
   s = s.replaceAll(_jwt, secretMask);
   s = s.replaceAllMapped(_keyedSecret, (m) => '${m[1]}$secretMask');
@@ -33,6 +38,6 @@ String scrubText(String input) {
   return s.replaceAll(_digits, numberMask);
 }
 
-/// Like [scrubText], and drops every `?query` first: for URLs, routes and
-/// navigation targets, where the query holds search text or link parameters.
-String scrubUrl(String input) => scrubText(input.replaceAll(_query, ''));
+/// Same as [scrubText] (which already drops query strings and fragments);
+/// kept as the name for URL-valued fields.
+String scrubUrl(String input) => scrubText(input);

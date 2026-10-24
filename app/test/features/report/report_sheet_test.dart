@@ -249,4 +249,33 @@ void main() {
     final field = tester.widget<TextField>(noteField);
     expect(field.controller!.text.length, 500);
   });
+
+  for (final c in ['target_not_found', 'cannot_report_own']) {
+    testWidgets('${c}_offers_no_retry_only_close', (tester) async {
+      final rig = await pumpReport(
+        tester,
+        respond: () =>
+            jsonResponse(c == 'target_not_found' ? 404 : 400, errEnvelope(c)),
+      );
+      await _send(tester, 'spam');
+      expect(sendButton, findsNothing);
+      expect(find.text('Try again'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('report-close')));
+      await tester.pumpAndSettle();
+      expect(rig.results, [false]);
+    });
+  }
+
+  testWidgets('user_reports_do_not_claim_the_artist_is_hidden', (tester) async {
+    await pumpReport(tester, targetType: 'user');
+    await _send(tester, 'spam');
+    expect(find.textContaining('hidden'), findsNothing);
+    expect(find.textContaining("We'll review"), findsOneWidget);
+  });
+
+  testWidgets('work_reports_say_the_item_is_hidden', (tester) async {
+    await pumpReport(tester, targetType: 'work');
+    await _send(tester, 'spam');
+    expect(find.textContaining('hidden'), findsOneWidget);
+  });
 }

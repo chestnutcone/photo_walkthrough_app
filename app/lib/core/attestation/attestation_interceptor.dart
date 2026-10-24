@@ -21,6 +21,9 @@ class AttestationInterceptor extends Interceptor {
       if (token != null && token.isNotEmpty) {
         options.headers['X-Attestation'] = token;
         options.headers['X-Platform'] = AppConfig.platformHeader;
+      } else {
+        // A retry copies the first attempt's headers; that token is spent.
+        options.headers.remove('X-Attestation');
       }
     }
     handler.next(options);

@@ -63,4 +63,13 @@ void main() {
     await pumpStory(t);
     expect(_menu, findsOneWidget);
   });
+
+  testWidgets('more_and_close_buttons_have_44pt_tap_targets', (t) async {
+    await pumpStory(t, signedIn: true);
+    for (final k in [_menu, find.byKey(const ValueKey('close'))]) {
+      final size = t.getSize(k);
+      expect(size.width, greaterThanOrEqualTo(44));
+      expect(size.height, greaterThanOrEqualTo(44));
+    }
+  });
 }

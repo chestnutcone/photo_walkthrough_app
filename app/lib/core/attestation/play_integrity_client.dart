@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:app_attest/app_attest.dart';
@@ -16,6 +17,7 @@ class PlayIntegrityAttestationClient implements AttestationClient {
     required this.cloudProjectNumber,
     PrepareFn? prepare,
     RequestFn? request,
+    this.timeout = attestationTimeout,
   }) : _prepare =
            prepare ??
            ((n) => AppAttest.preparePlayIntegrityTokenProvider(
@@ -28,6 +30,7 @@ class PlayIntegrityAttestationClient implements AttestationClient {
 
   /// Google Cloud project number linked to Play Integrity; 0 = not configured.
   final int cloudProjectNumber;
+  final Duration timeout;
   final PrepareFn _prepare;
   final RequestFn _request;
   Future<void>? _prepared;
@@ -36,11 +39,18 @@ class PlayIntegrityAttestationClient implements AttestationClient {
   Future<String?> token(String action) async {
     if (cloudProjectNumber <= 0) return null;
     try {
-      await _ensurePrepared();
-      return await _request(requestHash(action));
+      return await _mint(action).timeout(timeout);
+    } on TimeoutException {
+      _prepared = null; // a hung warm-up must not block every later call
+      return null;
     } on Object {
       return null;
     }
+  }
+
+  Future<String> _mint(String action) async {
+    await _ensurePrepared();
+    return _request(requestHash(action));
   }
 
   /// The warm-up is reusable; only the tokens are single use. A failed warm-up

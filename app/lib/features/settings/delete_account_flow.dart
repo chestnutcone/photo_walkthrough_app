@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/auth/auth_controller.dart'
-    show SessionExpiredException, accountBlockProvider;
+    show AccountBlock, SessionExpiredException, accountBlockProvider;
 import '../../core/auth/local_data.dart';
 import '../../core/theme/form_styles.dart';
 import '../../core/theme/tokens.dart';
@@ -44,7 +44,10 @@ final deleteAccountProvider = Provider<Future<void> Function()>((ref) {
     await ref.read(wipeLocalDataProvider)();
     // A lost response can leave the interceptor's "account deleted" flag set;
     // the user just deleted it on purpose, so show the feed, not the block.
-    ref.read(accountBlockProvider.notifier).set(null);
+    // A real suspension (refresh got 403 account_suspended) stays visible.
+    if (ref.read(accountBlockProvider) != AccountBlock.suspended) {
+      ref.read(accountBlockProvider.notifier).set(null);
+    }
   };
 });
 

@@ -56,3 +56,7 @@ abstract final class AttestationActions {
     };
   }
 }
+
+/// Longest a device attestation call may take before the request goes without
+/// a token (Apple or Play services can stall).
+const Duration attestationTimeout = Duration(seconds: 8);

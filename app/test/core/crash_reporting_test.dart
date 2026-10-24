@@ -137,7 +137,8 @@ void main() {
   test('transactions_are_scrubbed_too', () {
     final hub = Hub(
       SentryOptions(dsn: 'https://k@o0.ingest.sentry.io/1')
-        ..tracesSampleRate = 1.0,
+        ..tracesSampleRate = 1.0
+        ..traceLifecycle = SentryTraceLifecycle.static,
     );
     // ignore: avoid_dynamic_calls
     final dynamic tracer = hub.startTransaction(
@@ -195,6 +196,9 @@ void main() {
     expect(o.attachViewHierarchy, isFalse);
     expect(o.enableUserInteractionBreadcrumbs, isFalse);
     expect(o.captureFailedRequests, isFalse);
+    expect(o.traceLifecycle, SentryTraceLifecycle.static);
+    expect(o.enablePrintBreadcrumbs, isFalse);
+    expect(o.enableUserInteractionTracing, isFalse);
     expect(o.maxRequestBodySize, MaxRequestBodySize.never);
     expect(o.tracesSampleRate, lessThanOrEqualTo(0.1));
     expect(o.beforeSend, isNotNull);
@@ -212,5 +216,88 @@ void main() {
       initializer: (_) async => throw StateError('native init failed'),
     );
     expect(started, isFalse);
+  });
+
+  group('fix round 1', () {
+    SentryException ex(String value, {Mechanism? mechanism}) => SentryException(
+      type: 'HttpException',
+      value: value,
+      mechanism: mechanism,
+    );
+
+    test('query_strings_in_exception_values_and_messages_are_stripped', () {
+      final out = scrubEvent(
+        SentryEvent(
+          message: SentryMessage(
+            'open yourapp://story/w1?replies=1&chapter=2 failed',
+          ),
+          exceptions: [
+            ex(
+              'Connection closed, uri = https://api.example.com/v1/search?q=bob smith',
+            ),
+            ex(
+              'GET https://api.example.com/v1/search?q=bob%20smith#frag-secret failed',
+            ),
+          ],
+        ),
+      )!;
+      final dump = out.toJson().toString();
+      for (final leaked in [
+        'bob',
+        'smith',
+        'replies=1',
+        'chapter=2',
+        'frag-secret',
+      ]) {
+        expect(dump, isNot(contains(leaked)), reason: leaked);
+      }
+      expect(dump, contains('https://api.example.com/v1/search'));
+      expect(dump, contains('yourapp://story/w1'));
+    });
+
+    test('prose_question_marks_survive', () {
+      expect(scrubText('What happened? Nothing.'), 'What happened? Nothing.');
+    });
+
+    test('error_event_transaction_mechanism_data_and_type_are_scrubbed', () {
+      final out = scrubEvent(
+        SentryEvent(
+          transaction: '/search?q=jane@example.com',
+          exceptions: [
+            SentryException(
+              type: 'Err jane@example.com',
+              value: 'x',
+              mechanism: Mechanism(
+                type: 'generic',
+                data: {'note': 'my private bio'},
+              ),
+            ),
+          ],
+        ),
+      )!;
+      final dump = out.toJson().toString();
+      expect(out.transaction, '/search');
+      expect(dump, isNot(contains('my private bio')));
+      expect(dump, isNot(contains('jane@example.com')));
+    });
+
+    test('format_exception_source_excerpts_are_redacted', () {
+      final out = scrubEvent(
+        SentryEvent(
+          exceptions: [
+            ex(
+              'Unexpected character (at character 3)\n{"bio":"my private bio"}\n   ^',
+            ),
+            ex('x' * 500),
+          ],
+        ),
+      )!;
+      expect(out.toJson().toString(), isNot(contains('my private bio')));
+      expect(
+        out.exceptions!.first.value,
+        'Unexpected character (at character 3)',
+      );
+      expect(out.exceptions!.last.value!.length, lessThanOrEqualTo(200));
+    });
   });
 }

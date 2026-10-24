@@ -128,7 +128,9 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
       Text('Thanks for letting us know', style: VelaText.serif26),
       const SizedBox(height: 10),
       Text(
-        "We'll review it. Until then it's hidden for you.",
+        widget.targetType == 'user'
+            ? "We'll review it."
+            : "We'll review it. Until then it's hidden for you.",
         style: VelaText.sans14.copyWith(color: VelaColors.secondary),
       ),
       const SizedBox(height: 22),
@@ -179,18 +181,26 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
           ),
         ),
       const SizedBox(height: 16),
-      FilledButton(
-        key: const ValueKey('report-send'),
-        style: velaFilledButtonStyle(),
-        onPressed: _reason == null || _sending ? null : _send,
-        child: Text(
-          _sending
-              ? 'Sending...'
-              : _error == null
-              ? 'Send report'
-              : 'Try again',
+      if (_error case final e? when isTerminalReportError(e))
+        OutlinedButton(
+          key: const ValueKey('report-close'),
+          style: velaOutlinedButtonStyle(),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        )
+      else
+        FilledButton(
+          key: const ValueKey('report-send'),
+          style: velaFilledButtonStyle(),
+          onPressed: _reason == null || _sending ? null : _send,
+          child: Text(
+            _sending
+                ? 'Sending...'
+                : _error == null
+                ? 'Send report'
+                : 'Try again',
+          ),
         ),
-      ),
     ],
   );
 

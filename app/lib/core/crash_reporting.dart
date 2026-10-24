@@ -45,9 +45,17 @@ void configureSentry(SentryFlutterOptions o, String dsn) {
     // ignore: experimental_member_use
     ..attachViewHierarchy = false
     ..enableUserInteractionBreadcrumbs = false
+    ..enableUserInteractionTracing = false
+    ..enablePrintBreadcrumbs = false
+    // Streamed spans (the v10 default) bypass beforeSendTransaction; the
+    // classic lifecycle keeps every trace behind scrubTransaction.
+    ..traceLifecycle = SentryTraceLifecycle.static
     ..captureFailedRequests = false
     ..maxRequestBodySize = MaxRequestBodySize.never
     ..tracesSampleRate = _tracesSampleRate
+    // The SDK keeps an event whose callback throws, so these callbacks must
+    // catch internally and return null (drop); `failClosed` does. Never pass
+    // a bare throwing function here.
     ..beforeSend = ((event, hint) => scrubEvent(event))
     ..beforeSendTransaction = ((tx, hint) => scrubTransaction(tx))
     ..beforeBreadcrumb = ((crumb, hint) => scrubBreadcrumb(crumb));

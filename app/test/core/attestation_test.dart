@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -263,6 +264,96 @@ void main() {
       isA<NoAttestationClient>(),
     );
   });
+
+  group('fix round 1', () {
+    test('play_integrity_times_out_to_null', () async {
+      final client = PlayIntegrityAttestationClient(
+        cloudProjectNumber: 5,
+        timeout: const Duration(milliseconds: 30),
+        prepare: (_) => Completer<void>().future,
+        request: (_) => Completer<String>().future,
+      );
+      expect(await client.token('sso'), isNull);
+    });
+
+    test(
+      'play_integrity_request_timeout_is_null_and_next_call_recovers',
+      () async {
+        var hang = true;
+        final client = PlayIntegrityAttestationClient(
+          cloudProjectNumber: 5,
+          timeout: const Duration(milliseconds: 30),
+          prepare: (_) async {},
+          request: (_) =>
+              hang ? Completer<String>().future : Future.value('jwe'),
+        );
+        expect(await client.token('sso'), isNull);
+        hang = false;
+        expect(await client.token('sso'), 'jwe');
+      },
+    );
+
+    test('app_attest_times_out_to_null', () async {
+      final hungKey = AppAttestClient(
+        enabled: true,
+        timeout: const Duration(milliseconds: 30),
+        generateKey: () => Completer<String>().future,
+        attestKey: (a, b) async => '',
+      );
+      expect(await hungKey.token('sso'), isNull);
+      final hungAttest = AppAttestClient(
+        enabled: true,
+        timeout: const Duration(milliseconds: 30),
+        generateKey: () async => 'k',
+        attestKey: (a, b) => Completer<String>().future,
+      );
+      expect(await hungAttest.token('sso'), isNull);
+    });
+
+    test('a_retry_that_mints_null_removes_the_stale_header', () async {
+      var calls = 0;
+      final client = _SequenceClient(['used-token', null]);
+      final session = Session(
+        accessToken: 'A',
+        refreshToken: 'R',
+        accessExpiresAt: DateTime.utc(2030),
+      ).encode();
+      final adapter = FakeAdapter((o) {
+        if (o.path == '/v1/auth/refresh') {
+          return jsonResponse(200, tokenPair('A2', 'R2'));
+        }
+        calls++;
+        return o.headers['Authorization'] == 'Bearer A2'
+            ? jsonResponse(200, okEnvelope({}))
+            : jsonResponse(401, errEnvelope('unauthorized'));
+      });
+      final c = ProviderContainer(
+        overrides: [
+          sessionStorageProvider.overrideWithValue(FakeSessionStorage(session)),
+          httpClientAdapterProvider.overrideWithValue(adapter),
+          attestationClientProvider.overrideWithValue(client),
+        ],
+      );
+      addTearDown(c.dispose);
+
+      await c.read(dioProvider).post<dynamic>('/v1/works', data: {});
+
+      final works = adapter.requests
+          .where((r) => r.path == '/v1/works')
+          .toList();
+      expect(calls, 2);
+      expect(works.first.headers['X-Attestation'], 'used-token');
+      expect(works.last.headers.containsKey('X-Attestation'), isFalse);
+    });
+  });
+}
+
+class _SequenceClient implements AttestationClient {
+  _SequenceClient(this.values);
+  final List<String?> values;
+  @override
+  Future<String?> token(String action) async =>
+      values.isEmpty ? null : values.removeAt(0);
 }
 
 class _ThrowingClient implements AttestationClient {

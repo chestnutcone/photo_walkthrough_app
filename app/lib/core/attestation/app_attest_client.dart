@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:app_attest/app_attest.dart';
@@ -18,6 +19,7 @@ class AppAttestClient implements AttestationClient {
     DateTime Function()? clock,
     Future<String> Function()? generateKey,
     AttestKeyFn? attestKey,
+    this.timeout = attestationTimeout,
   }) : _clock = clock ?? DateTime.now,
        _generateKey = generateKey ?? AppAttest.generateKey,
        _attestKey =
@@ -29,6 +31,7 @@ class AppAttestClient implements AttestationClient {
 
   /// False until the App Attest capability and the dart-define are set up.
   final bool enabled;
+  final Duration timeout;
   final DateTime Function() _clock;
   final Future<String> Function() _generateKey;
   final AttestKeyFn _attestKey;
@@ -37,14 +40,19 @@ class AppAttestClient implements AttestationClient {
   Future<String?> token(String action) async {
     if (!enabled) return null;
     try {
-      final seconds = _clock().toUtc().millisecondsSinceEpoch ~/ 1000;
-      final challenge = '$action|$seconds';
-      final keyId = await _generateKey();
-      final attestation = await _attestKey(keyId, challenge);
-      return '${_b64url(utf8.encode(challenge))}.${_b64url(base64.decode(attestation))}';
+      return await _mint(action).timeout(timeout);
     } on Object {
-      return null;
+      return null; // includes TimeoutException
     }
+  }
+
+  Future<String> _mint(String action) async {
+    final seconds = _clock().toUtc().millisecondsSinceEpoch ~/ 1000;
+    final challenge = '$action|$seconds';
+    final keyId = await _generateKey();
+    final attestation = await _attestKey(keyId, challenge);
+    return '${_b64url(utf8.encode(challenge))}.'
+        '${_b64url(base64.decode(attestation))}';
   }
 
   static String _b64url(List<int> bytes) =>

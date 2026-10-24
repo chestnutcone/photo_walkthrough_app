@@ -14,3 +14,7 @@ String reportErrorMessage(ApiException e) {
     _ => 'Something went wrong. Try again.',
   };
 }
+
+/// Errors where sending the same report again cannot succeed.
+bool isTerminalReportError(ApiException e) =>
+    e.code == 'target_not_found' || e.code == 'cannot_report_own';

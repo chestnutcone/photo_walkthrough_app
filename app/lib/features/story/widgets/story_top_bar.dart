@@ -16,6 +16,9 @@ const _avatarColors = [
 
 /// Coloured circle with the artist's initial (avatar images are not part of
 /// the story chrome).
+/// Minimum tap target; the visuals stay 36pt inside it.
+const double _minTap = 44;
+
 class ArtistAvatar extends StatelessWidget {
   const ArtistAvatar({
     super.key,
@@ -81,6 +84,7 @@ class StoryTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasTarget = onClose != null || onReport != null;
     final showSegments = mode == StoryMode.story && work.chapters.isNotEmpty;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -97,25 +101,30 @@ class StoryTopBar extends StatelessWidget {
               onJump: onJump,
             ),
           ),
-        Row(
-          children: [
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _ArtistButton(work: work, onTap: onArtist),
+        // The 44pt tap targets make the row 8pt taller than the 36pt visuals;
+        // lift it 4pt so the visuals stay where the handoff puts them.
+        Transform.translate(
+          offset: Offset(0, hasTarget ? -(_minTap - 36) / 2 : 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _ArtistButton(work: work, onTap: onArtist),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            _ModePill(mode: mode, onMode: onMode),
-            if (onReport case final report?) ...[
               const SizedBox(width: 10),
-              _MoreMenu(onReport: report),
+              _ModePill(mode: mode, onMode: onMode),
+              if (onReport case final report?) ...[
+                const SizedBox(width: 10),
+                _MoreMenu(onReport: report),
+              ],
+              if (onClose case final close?) ...[
+                const SizedBox(width: 10),
+                _CloseButton(onTap: close),
+              ],
             ],
-            if (onClose case final close?) ...[
-              const SizedBox(width: 10),
-              _CloseButton(onTap: close),
-            ],
-          ],
+          ),
         ),
       ],
     );
@@ -258,11 +267,11 @@ class _MoreMenu extends StatelessWidget {
     key: const ValueKey('story-menu'),
     tooltip: 'More',
     color: VelaColors.sheet,
-    // Same 36pt as the close button, so the row keeps its height.
+    // 44pt target around a 36pt icon, like the close button.
     padding: EdgeInsets.zero,
     style: IconButton.styleFrom(
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      minimumSize: const Size(36, 36),
+      minimumSize: const Size(_minTap, _minTap),
       padding: EdgeInsets.zero,
     ),
     icon: const Icon(Icons.more_horiz, color: VelaColors.ink, size: 22),
@@ -292,17 +301,22 @@ class _CloseButton extends StatelessWidget {
       key: const ValueKey('close'),
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            color: const Color(0x990F0E0D),
-            child: Text(
-              '×',
-              style: VelaText.sans15.copyWith(fontSize: 20, height: 1),
+      child: SizedBox.square(
+        dimension: _minTap,
+        child: Center(
+          child: ClipOval(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                color: const Color(0x990F0E0D),
+                child: Text(
+                  '×',
+                  style: VelaText.sans15.copyWith(fontSize: 20, height: 1),
+                ),
+              ),
             ),
           ),
         ),

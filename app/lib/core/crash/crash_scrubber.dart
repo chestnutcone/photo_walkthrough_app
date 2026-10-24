@@ -38,10 +38,7 @@ SentryEvent? scrubEvent(SentryEvent event) => failClosed(event, (e) {
       template: message.template == null ? null : scrubText(message.template!),
     );
   }
-  for (final x in e.exceptions ?? const <SentryException>[]) {
-    final v = x.value;
-    if (v != null) x.value = scrubText(v);
-  }
+  e.exceptions?.forEach(_scrubException);
   e.breadcrumbs = _scrubCrumbs(e.breadcrumbs);
   return e;
 });
@@ -66,8 +63,31 @@ SentryTransaction? scrubTransaction(SentryTransaction tx) =>
 Breadcrumb? scrubBreadcrumb(Breadcrumb? crumb) =>
     failClosed(crumb, _scrubCrumb);
 
+/// Parse errors (FormatException) append the offending source text on the
+/// lines after the message, so only the first line survives, capped.
+const _maxExceptionValue = 200;
+
+void _scrubException(SentryException x) {
+  final v = x.value;
+  if (v != null) {
+    final firstLine = v.split('\n').first;
+    final scrubbed = scrubText(firstLine);
+    x.value = scrubbed.length > _maxExceptionValue
+        ? scrubbed.substring(0, _maxExceptionValue)
+        : scrubbed;
+  }
+  final type = x.type;
+  if (type != null) x.type = scrubText(type);
+  final mechanism = x.mechanism;
+  if (mechanism != null && mechanism.data.isNotEmpty) {
+    mechanism.data = {for (final k in mechanism.data.keys) k: _removed};
+  }
+}
+
 void _scrubCommon(SentryEvent e) {
   e.user = null;
+  final transaction = e.transaction;
+  if (transaction != null) e.transaction = scrubUrl(transaction);
   e.serverName = null;
   e.request = _scrubRequest(e.request);
   final tags = e.tags;
