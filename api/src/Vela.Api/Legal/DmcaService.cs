@@ -26,9 +26,27 @@ public sealed class DmcaService(
     public const string ReportSource = "dmca";
     public const string ReportReason = "copyright";
 
+    private static readonly HashSet<string> GmailDomains = new(StringComparer.Ordinal) { "gmail.com", "googlemail.com" };
+
+    /// <summary>
+    /// One key per real inbox (S1b-5): lower case, any "+tag" removed, and for Gmail the dots in the local part (which Gmail
+    /// ignores) removed and googlemail.com folded into gmail.com. Used only to count acknowledgements, never to send.
+    /// </summary>
+    public static string Mailbox(string email)
+    {
+        var lower = email.Trim().ToLowerInvariant();
+        var at = lower.LastIndexOf('@');
+        if (at <= 0) return lower;
+        var (local, domain) = (lower[..at], lower[(at + 1)..]);
+        if (local.IndexOf('+') is var plus and > 0) local = local[..plus];
+        if (GmailDomains.Contains(domain)) (local, domain) = (local.Replace(".", ""), "gmail.com");
+        return $"{local}@{domain}";
+    }
+
     public async Task<Guid> SubmitAsync(DmcaRequest req, IPAddress? clientIp)
     {
-        var ip = clientIp?.ToString();
+        // S1b-5: the per-address limit counts an IPv6 /64 as one address, like the in-memory limiters.
+        var ip = clientIp is null ? null : Abuse.IpKey.Of(clientIp);
         var work = DmcaValidator.WorkIdFrom(req.WorkReference) is { } id
             ? await db.Works.AsNoTracking().Where(w => w.Id == id && w.Status != WorkStatus.Draft)
                 .Select(w => new { w.Id, w.ArtistId }).SingleOrDefaultAsync()
@@ -59,6 +77,7 @@ public sealed class DmcaService(
             ClaimantAddress = req.ClaimantAddress, ClaimantPhone = req.ClaimantPhone, WorkReference = req.WorkReference,
             OriginalWorkDescription = req.OriginalWorkDescription, SignatureName = req.SignatureName,
             GoodFaithStatement = true, PerjuryStatement = true, Status = DmcaStatus.Pending, CreatedAt = now, ClientIp = ip,
+            ClaimantMailbox = Mailbox(req.ClaimantEmail),
         };
         db.DmcaNotices.Add(notice);
         if (workId is { } id && !await db.Reports.AnyAsync(r => r.Source == ReportSource && r.TargetType == "work" && r.TargetId == id && r.Status == ReportService.Pending))
@@ -75,8 +94,8 @@ public sealed class DmcaService(
     private async Task<bool> AckAllowedAsync(DmcaNotice notice)
     {
         var since = notice.CreatedAt - Window;
-        var address = notice.ClaimantEmail.ToLower();
-        var recent = await db.DmcaNotices.AsNoTracking().CountAsync(n => n.ClaimantEmail.ToLower() == address && n.CreatedAt > since);
+        var mailbox = notice.ClaimantMailbox;
+        var recent = await db.DmcaNotices.AsNoTracking().CountAsync(n => n.ClaimantMailbox == mailbox && n.CreatedAt > since);
         return recent <= MaxAcksPerEmailPerDay; // this notice is already stored, so it is counted
     }
 

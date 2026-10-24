@@ -190,6 +190,10 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("claimant_email");
 
+                    b.Property<string>("ClaimantMailbox")
+                        .HasColumnType("text")
+                        .HasColumnName("claimant_mailbox");
+
                     b.Property<string>("ClaimantName")
                         .IsRequired()
                         .HasColumnType("text")
@@ -273,6 +277,9 @@ namespace Vela.Api.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_dmca_notices");
+
+                    b.HasIndex("ClaimantMailbox", "CreatedAt")
+                        .HasDatabaseName("ix_dmca_notices_claimant_mailbox_created_at");
 
                     b.HasIndex("ClientIp", "CreatedAt")
                         .HasDatabaseName("ix_dmca_notices_client_ip_created_at");

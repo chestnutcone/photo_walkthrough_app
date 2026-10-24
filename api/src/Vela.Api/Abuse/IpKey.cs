@@ -11,4 +11,7 @@ public static class IpKey
         if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) return ip.ToString();
         return Convert.ToHexStringLower(ip.GetAddressBytes().AsSpan(0, 8)) + "::/64";
     }
+
+    /// <summary>The same key for an address in text form (as the email-code and admin-login paths carry it); other text is kept as is.</summary>
+    public static string Of(string ip) => IPAddress.TryParse(ip, out var parsed) ? Of(parsed) : ip;
 }

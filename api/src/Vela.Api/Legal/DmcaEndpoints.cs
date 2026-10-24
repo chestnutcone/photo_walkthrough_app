@@ -1,3 +1,4 @@
+using Vela.Api.Abuse;
 using System.Text.Json;
 using Vela.Api.Auth;
 using Vela.Api.Common;
@@ -28,7 +29,7 @@ public static class DmcaEndpoints
                 if (e.RetryAfter is { } wait) ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(wait.TotalSeconds)).ToString();
                 return Common.Results.Fail(e.Status, e.Code, e.Message);
             }
-        }).AllowAnonymous().WithName("submitDmcaNotice");
+        }).AllowAnonymous().RequirePublicFormLimit().WithName("submitDmcaNotice"); // S1b-5: on top of its own 5 per address per day
 
         app.MapPost("/v1/works/{id}/counter-notice", async (string id, HttpContext ctx, ICurrentUser me, ICounterNoticeService svc) =>
         {

@@ -58,7 +58,7 @@ public sealed class AdminSite : IDisposable
         var all = new Dictionary<string, string>
         {
             ["Admin:BanPepper"] = Pepper,
-            ["Abuse:RateLimits:anon-read:Permit"] = "100000", ["Abuse:RateLimits:write:Permit"] = "100000", ["Abuse:RateLimits:user-read:Permit"] = "100000",
+            ["Abuse:RateLimits:anon-read:Permit"] = "100000", ["Abuse:RateLimits:write:Permit"] = "100000", ["Abuse:RateLimits:user-read:Permit"] = "100000", ["Abuse:RateLimits:public-form:Permit"] = "100000",
         };
         foreach (var (k, v) in settings ?? []) all[k] = v;
         return all;

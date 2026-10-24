@@ -19,6 +19,7 @@ public class WriteEndpointLimitTests(PostgresFixture pg)
     private static readonly Dictionary<string, string> ExtraPolicy = new()
     {
         ["emailRequest"] = "auth-email", ["createDraft"] = "upload", ["avatarUpload"] = "upload", ["sendInquiry"] = "public-form",
+        ["submitDmcaNotice"] = "public-form", // S1b-5: plus its own 5 per address per day in the database
     };
 
     [Fact]
@@ -29,7 +30,6 @@ public class WriteEndpointLimitTests(PostgresFixture pg)
             .ToDictionary(e => e.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName ?? e.DisplayName ?? "", e => e);
         foreach (var (op, policy) in ExtraPolicy)
             Assert.Equal(policy, endpoints[op].Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName);
-        Assert.Contains("submitDmcaNotice", SecurityContract.Operations.Select(o => o.OperationId)); // limited by the global write policy per IP
     }
 
     [Theory]

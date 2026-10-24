@@ -12,6 +12,8 @@ public class DmcaNotice
     public Guid? OwnerUserId { get; init; }
     public string ClaimantName { get; init; } = "";
     public string ClaimantEmail { get; init; } = "";
+    /// <summary><see cref="Legal.DmcaService.Mailbox"/> of <see cref="ClaimantEmail"/>, indexed, for the acknowledgement cap (S1b-5). Null on older rows.</summary>
+    public string? ClaimantMailbox { get; init; }
     public string ClaimantAddress { get; init; } = "";
     public string? ClaimantPhone { get; init; }
     /// <summary>The submitted URL or text, verbatim.</summary>

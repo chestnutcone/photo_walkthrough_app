@@ -25,7 +25,9 @@ public sealed class EmailCodeService(
     {
         var normalized = Normalize(email) ?? throw new InvalidEmailException();
         var now = clock.GetUtcNow();
-        await EnforceRateLimitsAsync(normalized, ip, now);
+        // S1b-5: stored and compared as the /64 key for IPv6 (the address itself for IPv4).
+        var ipKey = Abuse.IpKey.Of(ip);
+        await EnforceRateLimitsAsync(normalized, ipKey, now);
 
         // A review address never gets mail: it signs in with the fixed code.
         if (settings.IsReviewEmail(normalized)) return;
@@ -35,7 +37,7 @@ public sealed class EmailCodeService(
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.ConsumedAt, now));
         db.EmailCodes.Add(new EmailCode
         {
-            Id = Guid.NewGuid(), Email = normalized, CodeHash = Hash(normalized, code), RequestIp = ip,
+            Id = Guid.NewGuid(), Email = normalized, CodeHash = Hash(normalized, code), RequestIp = ipKey,
             CreatedAt = now, ExpiresAt = now + CodeLifetime,
         });
         await db.SaveChangesAsync();
@@ -54,7 +56,7 @@ public sealed class EmailCodeService(
 
     public async Task<EmailSignInResult> VerifyAsync(string email, string code, string ip)
     {
-        await EnforceVerifyIpLimitAsync(ip);
+        await EnforceVerifyIpLimitAsync(Abuse.IpKey.Of(ip));
         var normalized = Normalize(email) ?? throw new InvalidCodeException();
         if (!await CodeAcceptedAsync(normalized, code ?? "")) throw new InvalidCodeException();
 
@@ -111,6 +113,7 @@ public sealed class EmailCodeService(
         return false;
     }
 
+    /// <summary><paramref name="ip"/> is the <see cref="Abuse.IpKey"/> of the caller.</summary>
     private async Task EnforceVerifyIpLimitAsync(string ip)
     {
         var now = clock.GetUtcNow();

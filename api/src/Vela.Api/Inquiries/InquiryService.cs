@@ -40,7 +40,7 @@ public sealed class InquiryService(
         if (!await artists.IsVisibleAsync(artistId, senderId)) throw ArtistNotFound();
         var workTitle = await WorkTitleAsync(senderId, artistId, req.WorkId);
 
-        var inquiry = await SaveAsync(senderId, artistId, req, clientIp?.ToString());
+        var inquiry = await SaveAsync(senderId, artistId, req, clientIp is null ? null : Abuse.IpKey.Of(clientIp)); // S1b-5: /64 for IPv6
         await NotifyArtistAsync(inquiry, workTitle);
         return new InquiryDto(inquiry.Id, artistId, inquiry.Type, inquiry.WorkId, inquiry.Message, inquiry.CreatedAt);
     }

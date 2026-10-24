@@ -202,6 +202,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
             e.HasIndex(x => new { x.WorkId, x.Status });
             e.HasIndex(x => new { x.OwnerUserId, x.Status });
             e.HasIndex(x => new { x.ClientIp, x.CreatedAt });
+            e.HasIndex(x => new { x.ClaimantMailbox, x.CreatedAt });
             e.HasIndex(x => new { x.CreatedAt, x.Id });
         });
         b.Entity<EvidenceHold>(e =>
