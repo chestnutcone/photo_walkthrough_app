@@ -106,9 +106,11 @@ public sealed class WorkService(
             .SingleOrDefault();
         if (work is null || work.Status != WorkStatus.Draft || work.PublishClaimedUntil != until)
         {
-            // Deleted, expired or taken over meanwhile: our variants must not stay public.
+            // Deleted or expired meanwhile: our variants must not stay public. If another request has taken the draft over (our
+            // claim lapsed), the variants at this prefix may be its own, so they are left to it.
             await tx.RollbackAsync();
-            await DeleteQuietlyAsync(BlobNames.WorkVariantsPrefix(workId));
+            if (work is null || work is { Status: WorkStatus.Draft, PublishClaimedUntil: null })
+                await DeleteQuietlyAsync(BlobNames.WorkVariantsPrefix(workId));
             throw work is null ? WorkException.NotFound() : NotEditable();
         }
         work.Width = made.Width;
