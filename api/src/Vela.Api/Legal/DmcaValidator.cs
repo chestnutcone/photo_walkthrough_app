@@ -53,6 +53,7 @@ public static partial class DmcaValidator
         {
             if (Rune.DecodeFromUtf16(text.AsSpan(i), out var rune, out var used) != OperationStatus.Done) throw Invalid(field, "must be valid text");
             if (Rune.IsControl(rune) && !(multiline && rune.Value == '\n')) throw Invalid(field, "must not contain control characters");
+            if (Common.UnsafeText.IsDisallowed(rune.Value)) throw Invalid(field, "must not contain text-direction control characters");
             i += used;
             count++;
         }

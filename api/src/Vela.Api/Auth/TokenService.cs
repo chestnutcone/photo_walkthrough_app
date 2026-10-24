@@ -44,6 +44,11 @@ public sealed class TokenService(VelaDbContext db, IOptions<JwtOptions> options,
             throw new InvalidRefreshTokenException();
         }
 
+        // One refresh per session at a time. The winner commits its new token before a loser gets past this lock, so the loser's
+        // family revoke (the replay response) always covers it and a replay race cannot leave a live token in a revoked family.
+        await using var tx = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({row.FamilyId.ToString()}, 0))");
+
         // Atomic claim: of concurrent refreshes with the same token only one wins.
         var claimed = await db.RefreshTokens
             .Where(t => t.Id == row.Id && t.RotatedAt == null && t.RevokedAt == null)
@@ -51,9 +56,12 @@ public sealed class TokenService(VelaDbContext db, IOptions<JwtOptions> options,
         if (claimed == 0)
         {
             await RevokeFamilyAsync(row.FamilyId, now);
+            await tx.CommitAsync();
             throw new InvalidRefreshTokenException();
         }
-        return await CreateSessionTokenAsync(row.UserId, row.FamilyId);
+        var pair = await CreateSessionTokenAsync(row.UserId, row.FamilyId);
+        await tx.CommitAsync();
+        return pair;
     }
 
     public async Task RevokeAsync(string refreshToken)

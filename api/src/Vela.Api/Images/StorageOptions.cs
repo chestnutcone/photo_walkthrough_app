@@ -24,6 +24,10 @@ public sealed class StorageOptions
         var evidence = config[$"{Section}:Containers:Evidence"] is { Length: > 0 } e ? e : BlobNames.Evidence;
         var exports = config[$"{Section}:Containers:Exports"] is { Length: > 0 } x2 ? x2 : BlobNames.Exports;
         var originals = config[$"{Section}:Containers:Originals"] is { Length: > 0 } c2 ? c2 : BlobNames.Originals;
+        if (originals is BlobNames.Works or BlobNames.Avatars)
+            throw new InvalidOperationException($"{Section}:Containers:Originals must be a private container of its own, not the public works or avatars container (raw uploads keep GPS data).");
+        if (exports is BlobNames.Works or BlobNames.Avatars || exports == originals)
+            throw new InvalidOperationException($"{Section}:Containers:Exports must be a private container of its own, not a public or originals container.");
         if (evidence is BlobNames.Works or BlobNames.Avatars || evidence == exports || evidence == originals)
             throw new InvalidOperationException($"{Section}:Containers:Evidence must be a private container of its own, not a public, originals or exports container.");
         return new StorageOptions

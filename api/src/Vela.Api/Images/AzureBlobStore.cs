@@ -35,7 +35,20 @@ public sealed class AzureBlobStore : IBlobStore
         var (container, blob) = Split(blobName);
         var lifetime = ttl > MaxUploadTtl ? MaxUploadTtl : ttl;
         var client = _service.GetBlobContainerClient(container).GetBlobClient(blob);
-        return client.GenerateSasUri(BlobSasPermissions.Create | BlobSasPermissions.Write, DateTimeOffset.UtcNow + lifetime);
+        return Sas(client, BlobSasPermissions.Create | BlobSasPermissions.Write, lifetime);
+    }
+
+    /// <summary>One blob, the given permissions only, https only whenever the account endpoint is https (the local emulator is http).</summary>
+    private Uri Sas(BlobClient client, BlobSasPermissions permissions, TimeSpan lifetime)
+    {
+        var builder = new BlobSasBuilder(permissions, DateTimeOffset.UtcNow + lifetime)
+        {
+            BlobContainerName = client.BlobContainerName,
+            BlobName = client.Name,
+            Resource = "b",
+            Protocol = _service.Uri.Scheme == Uri.UriSchemeHttps ? SasProtocol.Https : SasProtocol.HttpsAndHttp,
+        };
+        return client.GenerateSasUri(builder);
     }
 
     public Uri ReadOrigin => new(_service.Uri.GetLeftPart(UriPartial.Authority));
@@ -45,7 +58,7 @@ public sealed class AzureBlobStore : IBlobStore
         var (container, blob) = Split(blobName);
         var lifetime = ttl > MaxUploadTtl ? MaxUploadTtl : ttl;
         var client = _service.GetBlobContainerClient(container).GetBlobClient(blob);
-        return client.GenerateSasUri(BlobSasPermissions.Read, DateTimeOffset.UtcNow + lifetime);
+        return Sas(client, BlobSasPermissions.Read, lifetime);
     }
 
     public async Task WriteAsync(string name, Stream data, string contentType)

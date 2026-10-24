@@ -31,7 +31,7 @@ public sealed class LoginModel(AdminLoginService login, IClientIpResolver ips, T
             Failed = true;
             return Page();
         }
-        await HttpContext.SignInAsync(AdminAuth.Scheme, AdminAuth.CreatePrincipal(who.UserId, who.Email),
+        await HttpContext.SignInAsync(AdminAuth.Scheme, AdminAuth.CreatePrincipal(who.UserId, who.Email, who.Stamp),
             AdminAuth.SessionProperties(clock.GetUtcNow()));
         return Redirect("/admin");
     }

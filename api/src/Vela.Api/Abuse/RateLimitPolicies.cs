@@ -17,10 +17,11 @@ public static class RateLimitPolicies
     public const string Write = "write";
     public const string Upload = "upload";
     public const string PublicForm = "public-form";
+    public const string UserRead = "user-read";
 
     private static readonly TimeSpan Minute = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan Hour = TimeSpan.FromHours(1);
-    private static readonly string[] Unlimited = ["/health", "/admin"];
+    private static readonly string[] Unlimited = ["/health"];
 
     private static readonly Dictionary<string, (int Permit, TimeSpan Window)> Defaults = new()
     {
@@ -29,6 +30,7 @@ public static class RateLimitPolicies
         [Write] = (60, Minute),
         [Upload] = (20, Hour),
         [PublicForm] = (5, Hour),
+        [UserRead] = (600, Minute), // generous: a signed-in scraper is slowed, a person scrolling never notices
     };
 
     public static IServiceCollection AddAbuseRateLimiting(this IServiceCollection services, AbuseOptions abuse) =>
@@ -53,7 +55,7 @@ public static class RateLimitPolicies
             return RateLimitPartition.GetNoLimiter("unlimited");
 
         var read = HttpMethods.IsGet(ctx.Request.Method) || HttpMethods.IsHead(ctx.Request.Method) || HttpMethods.IsOptions(ctx.Request.Method);
-        if (read) return IsSignedIn(ctx) ? RateLimitPartition.GetNoLimiter("signed-in-read") : Partition(AnonRead, "ip:" + IpOf(ctx), abuse);
+        if (read) return IsSignedIn(ctx) ? Partition(UserRead, SubjectOf(ctx), abuse) : Partition(AnonRead, "ip:" + IpOf(ctx), abuse);
         return Partition(Write, SubjectOf(ctx), abuse);
     }
 

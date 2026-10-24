@@ -13,7 +13,8 @@ public class ContentSafetyConfigTests
             b.UseEnvironment(env);
             b.UseSetting("Abuse:RequireAttestation", "false"); // attestation start-up rules are covered in AttestationEndpointTests
             b.UseSetting("ConnectionStrings:Default", "Host=localhost;Database=x;Username=x;Password=x");
-            b.UseSetting("Admin:Enabled", "false"); // these tests boot production-like environments without admin config
+            b.UseSetting("Admin:Enabled", "false");
+            b.UseSetting("Admin:BanPepper", new string('p', 40)); // required even when the pages are off: earlier bans are matched with it
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");
             b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");
             b.UseSetting("Email:Acs:ConnectionString", "endpoint=https://x.communication.azure.com/;accesskey=abc");

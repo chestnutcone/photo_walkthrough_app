@@ -125,6 +125,7 @@ public class AttestationEndpointTests(PostgresFixture pg) : IDisposable
         var d = new Dictionary<string, string>
         {
             ["Admin:Enabled"] = "false",
+            ["Admin:BanPepper"] = new string('p', 40),
             ["Email:Acs:ConnectionString"] = "endpoint=https://x.communication.azure.com/;accesskey=abc",
             ["Email:SenderAddress"] = "noreply@example.test",
             ["Storage:ConnectionString"] = "UseDevelopmentStorage=true",
@@ -203,6 +204,7 @@ public class AttestationEndpointTests(PostgresFixture pg) : IDisposable
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");
             b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");
             b.UseSetting("Admin:Enabled", "false");
+            b.UseSetting("Admin:BanPepper", new string('p', 40)); // required even when the pages are off: earlier bans are matched with it
         });
         f.CreateClient();
         Assert.IsType<FakeAttestationVerifier>(f.Services.GetRequiredService<IAttestationVerifier>());

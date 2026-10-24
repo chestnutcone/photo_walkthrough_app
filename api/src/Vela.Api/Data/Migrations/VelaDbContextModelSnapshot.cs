@@ -1013,6 +1013,10 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("AdminSessionStamp")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admin_session_stamp");
+
                     b.Property<DateTimeOffset?>("AgeConfirmedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("age_confirmed_at");

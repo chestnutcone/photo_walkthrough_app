@@ -13,6 +13,8 @@ public class User
     /// <summary>Set by the sweep that claimed this account for hard deletion; others skip it until it passes.</summary>
     public DateTimeOffset? DeletionLeaseUntil { get; set; }
     public bool IsAdmin { get; set; }
+    /// <summary>Identifies the one live admin cookie session. Set at admin sign-in, cleared at sign-out: a copied cookie stops working then.</summary>
+    public Guid? AdminSessionStamp { get; set; }
     public DateTimeOffset? AgeConfirmedAt { get; set; }
     public DateTimeOffset? TermsAcceptedAt { get; set; }
 }

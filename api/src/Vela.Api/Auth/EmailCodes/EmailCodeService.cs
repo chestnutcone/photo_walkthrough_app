@@ -151,6 +151,9 @@ public sealed class EmailCodeService(
         if (parts.Length != 2 || parts[0].Length == 0) return null;
         var domain = parts[1].TrimEnd('.');
         if (domain.Length == 0 || domain.Any(char.IsWhiteSpace) || domain.Split('.').Any(l => l.Length == 0)) return null;
+        // Internationalised domains must arrive as punycode (xn--...). Raw Unicode would let look-alike separators such as U+3002
+        // or full-width letters slip past the disposable-domain list and per-domain checks, which compare ASCII text.
+        if (domain.Any(c => c > 127)) return null;
         return $"{parts[0]}@{domain}";
     }
 

@@ -35,6 +35,40 @@ void main() {
       throwsStateError,
     );
   });
+  test('release_builds_refuse_a_non_https_api_url', () {
+    for (final url in ['http://api.example.com', 'ftp://x', 'api.example.com', 'HTTP://API.EXAMPLE.COM']) {
+      expect(
+        () => AppConfig.resolveApiBaseUrl(
+          defined: url,
+          platform: TargetPlatform.android,
+          isWeb: false,
+          isRelease: true,
+        ),
+        throwsStateError,
+        reason: url,
+      );
+    }
+    expect(
+      AppConfig.resolveApiBaseUrl(
+        defined: 'https://api.example.com',
+        platform: TargetPlatform.iOS,
+        isWeb: false,
+        isRelease: true,
+      ),
+      'https://api.example.com',
+    );
+  });
+  test('debug_builds_still_accept_http_for_local_development', () {
+    expect(
+      AppConfig.resolveApiBaseUrl(
+        defined: 'http://192.168.1.5:5080',
+        platform: TargetPlatform.android,
+        isWeb: false,
+        isRelease: false,
+      ),
+      'http://192.168.1.5:5080',
+    );
+  });
   test('platform header', () {
     expect(AppConfig.resolvePlatformHeader(TargetPlatform.iOS, false), 'ios');
     expect(

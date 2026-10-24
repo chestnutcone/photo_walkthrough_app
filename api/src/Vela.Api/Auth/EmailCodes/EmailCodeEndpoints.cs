@@ -15,6 +15,9 @@ public static class EmailCodeEndpoints
     {
         services.AddSingleton(EmailCodeSettings.Load(config, env));
         services.AddScoped<IEmailCodeService, EmailCodeService>();
+        services.AddSingleton<AuthDataRetentionJob>();
+        // Tests run the sweep by hand against a controllable clock.
+        if (!env.IsEnvironment("Test")) services.AddHostedService(sp => sp.GetRequiredService<AuthDataRetentionJob>());
         // Literal names on purpose: only Development prints codes and only Test keeps an outbox.
         switch (env.EnvironmentName)
         {

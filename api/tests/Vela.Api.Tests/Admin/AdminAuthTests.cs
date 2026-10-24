@@ -289,7 +289,10 @@ public class AdminAuthTests(PostgresFixture pg) : IAsyncLifetime
         Assert.True(ok.Enabled);
         Assert.Equal(new string('p', 32), ok.BanPepper);
         Assert.True(new ConfigAdminAllowList(Cfg(("Admin:Emails", "A@B.test, c@d.test"))).Contains("a@b.test"));
-        Assert.False(AdminSettings.Load(Cfg(("Admin:Enabled", "false")), prod).Enabled);
+        // A disabled admin area still needs the pepper: bans recorded earlier are matched with it, so a missing or changed one would silently lift them.
+        var disabledNoPepper = Assert.Throws<InvalidOperationException>(() => AdminSettings.Load(Cfg(("Admin:Enabled", "false")), prod));
+        Assert.Contains("Admin:BanPepper", disabledNoPepper.Message);
+        Assert.False(AdminSettings.Load(Cfg(("Admin:Enabled", "false"), ("Admin:BanPepper", new string('p', 32))), prod).Enabled);
         Assert.True(AdminSettings.Load(Cfg(), new FakeEnv("Development")).BanPepper.Length >= 32);
     }
 }

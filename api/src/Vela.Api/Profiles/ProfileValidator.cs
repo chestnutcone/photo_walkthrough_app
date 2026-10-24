@@ -16,6 +16,7 @@ public static partial class ProfileValidator
     {
         var name = (value ?? "").Trim();
         Length("displayName", name, 1, 60);
+        if (name.Any(char.IsControl) || Common.UnsafeText.ContainsDisallowed(name)) throw ProfileException.Validation("displayName", "contains invalid characters.");
         return name;
     }
 
@@ -40,6 +41,7 @@ public static partial class ProfileValidator
         if (v is null) return;
         if (Count(v) > max) throw ProfileException.Validation(field, $"must be at most {max} characters.");
         if (!allowControl && HasControl(v)) throw ProfileException.Validation(field, "contains invalid characters.");
+        if (Common.UnsafeText.ContainsDisallowed(v)) throw ProfileException.Validation(field, "contains invalid characters.");
     }
 
     private static void Length(string field, string v, int min, int max)

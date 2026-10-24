@@ -38,12 +38,12 @@ public sealed class AdminSite : IDisposable
     public RecordingCdnPurger Cdn { get; } = new();
     public string? ConnectionString { get; }
 
-    private AdminSite(PostgresFixture pg, string? cs, Action<IServiceCollection>? extra, bool noAdmins)
+    private AdminSite(PostgresFixture pg, string? cs, Action<IServiceCollection>? extra, bool noAdmins, Dictionary<string, string>? settings = null)
     {
         ConnectionString = cs;
         Allow = new MutableAllowList(noAdmins ? [] : [AdminEmail]);
         var ip = $"10.{Random.Shared.Next(256)}.{Random.Shared.Next(256)}.{Random.Shared.Next(1, 255)}";
-        Host = new ProfileTestHost(pg, new Dictionary<string, string> { ["Admin:BanPepper"] = Pepper }, cs, s =>
+        Host = new ProfileTestHost(pg, Merge(settings), cs, s =>
         {
             s.AddSingleton<IAdminAllowList>(Allow);
             s.AddSingleton<IClientIpResolver>(new FixedIp(ip));
@@ -52,8 +52,21 @@ public sealed class AdminSite : IDisposable
         });
     }
 
-    public static async Task<AdminSite> Create(PostgresFixture pg, bool isolated = false, Action<IServiceCollection>? extra = null, bool noAdmins = false) =>
-        new(pg, isolated ? await pg.CreateIsolatedDatabaseAsync() : null, extra, noAdmins);
+    /// <summary>Admin tests make many requests from one address; the limiter itself is exercised with explicit settings.</summary>
+    private static Dictionary<string, string> Merge(Dictionary<string, string>? settings)
+    {
+        var all = new Dictionary<string, string>
+        {
+            ["Admin:BanPepper"] = Pepper,
+            ["Abuse:RateLimits:anon-read:Permit"] = "100000", ["Abuse:RateLimits:write:Permit"] = "100000", ["Abuse:RateLimits:user-read:Permit"] = "100000",
+        };
+        foreach (var (k, v) in settings ?? []) all[k] = v;
+        return all;
+    }
+
+    public static async Task<AdminSite> Create(PostgresFixture pg, bool isolated = false, Action<IServiceCollection>? extra = null, bool noAdmins = false,
+        Dictionary<string, string>? settings = null) =>
+        new(pg, isolated ? await pg.CreateIsolatedDatabaseAsync() : null, extra, noAdmins, settings);
 
     public Browser NewBrowser() => new(Host.NewClient(), Host);
 
