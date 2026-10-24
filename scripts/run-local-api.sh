@@ -29,6 +29,7 @@ export ASPNETCORE_ENVIRONMENT=Development
 export ConnectionStrings__Default="Host=127.0.0.1;Port=$PG_PORT;Database=vela;Username=vela;Password=vela_dev_only"
 export Database__MigrateOnStartup=true
 export Abuse__RequireAttestation=false
+export Abuse__SignupsPerIpPerDay=100000   # e2e creates many accounts from one IP
 # Image URLs handed to the emulator point at 127.0.0.1:$AZ_PORT; the emulator reaches it via `adb reverse tcp:$AZ_PORT tcp:$AZ_PORT`.
 export Storage__PublicBaseUrl="http://127.0.0.1:$AZ_PORT/devstoreaccount1/"
 export Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:$AZ_PORT/devstoreaccount1;"
