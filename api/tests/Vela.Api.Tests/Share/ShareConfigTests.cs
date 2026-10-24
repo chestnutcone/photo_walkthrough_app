@@ -20,6 +20,8 @@ public class ShareConfigTests
             b.UseSetting("ContentSafety:Endpoint", "https://cs.example.test/");
             b.UseSetting("ContentSafety:Key", "k");
             b.UseSetting("Branding:Domain", "brandy.example.test");
+            b.UseSetting("Admin:Emails", "admin@example.test");
+            b.UseSetting("Admin:BanPepper", "integration-test-ban-pepper-0123456789-abcdef");
             foreach (var (k, v) in extra) b.UseSetting(k, v);
         });
 
@@ -45,5 +47,24 @@ public class ShareConfigTests
         using var f = Production(("Web:ViewerUrl", "https://viewer.example.test"), ("Branding:Domain", value));
         var ex = Assert.Throws<InvalidOperationException>(() => f.CreateClient());
         Assert.Contains("Branding:Domain", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("https://brandy.example.test")]
+    [InlineData("https://BRANDY.example.test/base")]
+    [InlineData("https://brandy.example.test:8443")]
+    public void Startup_outside_development_rejects_a_viewer_on_the_share_page_host(string viewer)
+    {
+        using var f = Production(("Web:ViewerUrl", viewer));
+        var ex = Assert.Throws<InvalidOperationException>(() => f.CreateClient());
+        Assert.Contains("Web:ViewerUrl", ex.Message);
+        Assert.Contains("Branding:Domain", ex.Message);
+    }
+
+    [Fact]
+    public void Startup_accepts_a_viewer_on_another_host()
+    {
+        using var f = Production(("Web:ViewerUrl", "https://view.brandy.example.test"));
+        using var client = f.CreateClient();
     }
 }

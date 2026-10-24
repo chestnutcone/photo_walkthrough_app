@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vela_app/features/web/web_viewer_config.dart';
 
@@ -38,6 +38,33 @@ void main() {
     }
   });
 
+  testWidgets('web_viewer_sends_no_credentials_even_with_a_session_in_memory', (
+    t,
+  ) async {
+    final h = await pumpWeb(t, storedSession: true);
+    await t.tap(find.text('Begin →'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Reply'));
+    await t.pumpAndSettle();
+    expect(h.adapter.count('/v1/works/w1'), 1);
+    expect(h.adapter.requests, isNotEmpty);
+    for (final r in h.adapter.requests) {
+      expect(
+        r.headers.keys.map((k) => k.toLowerCase()),
+        isNot(contains('authorization')),
+        reason: r.path,
+      );
+    }
+  });
+
+  testWidgets('shared_link_path_from_the_platform_route_opens_the_story', (
+    t,
+  ) async {
+    await pumpWeb(t, platformRoute: '/s/w1');
+    expect(find.text('Salt and Rope'), findsWidgets);
+    expect(find.text(_unavailable), findsNothing);
+  });
+
   testWidgets('replies_are_visible_but_no_composer', (t) async {
     await pumpWeb(t);
     await t.tap(find.text('Begin →'));
@@ -56,10 +83,20 @@ void main() {
     expect(find.byKey(const ValueKey('store-google-play')), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('open-in-app')));
     await t.pumpAndSettle();
-    expect(h.launched.single.toString(), 'vela://open/s/w1');
+    // The test platform is Android: a phone prefers the universal link.
+    expect(h.launched.single.toString(), 'https://vela.example/s/w1');
     await t.tap(find.byKey(const ValueKey('store-app-store')));
     await t.pumpAndSettle();
     expect(h.launched.last.toString(), 'https://apps.apple.com/app/id1');
+  });
+
+  testWidgets('open_in_app_uses_the_custom_scheme_off_phones', (t) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final h = await pumpWeb(t);
+    await t.tap(find.byKey(const ValueKey('open-in-app')));
+    await t.pumpAndSettle();
+    debugDefaultTargetPlatformOverride = null;
+    expect(h.launched.single.toString(), 'vela://open/s/w1');
   });
 
   testWidgets('open_in_app_store_buttons_hidden_when_urls_unset', (t) async {

@@ -26,15 +26,28 @@ public static class ShareServiceCollectionExtensions
         var branding = config.GetSection("Branding").Get<BrandingOptions>() ?? new BrandingOptions();
         if (!lenient) RequireHost(branding.Domain);
 
-        services.AddSingleton(new WebOptions(LoadViewerUrl(config["Web:ViewerUrl"], branding.Domain, lenient)));
+        var web = new WebOptions(LoadViewerUrl(config["Web:ViewerUrl"], branding.Domain, lenient));
+        if (!lenient) RequireSeparateHost(web.ViewerUrl, branding.Domain);
+        services.AddSingleton(web);
+        // The app ids default to the branding bundle id so the association files match the app build.
         services.AddSingleton(new LinksOptions(
-            Value(config, "Links:AppleTeamId"), Value(config, "Links:BundleId"), Value(config, "Links:AndroidPackage"), Fingerprints(config)));
+            Value(config, "Links:AppleTeamId"), ValueOr(config, "Links:BundleId", branding.BundleId),
+            ValueOr(config, "Links:AndroidPackage", branding.BundleId), Fingerprints(config)));
         services.AddSingleton(new LegalOptions(
             Value(config, "Legal:DmcaAgentName"), Value(config, "Legal:DmcaAgentEmail"), Value(config, "Legal:DmcaAgentAddress")));
         return services;
     }
 
     private static string Value(IConfiguration c, string key) => c[key]?.Trim() ?? "";
+
+    private static string ValueOr(IConfiguration c, string key, string fallback) => Value(c, key) is { Length: > 0 } v ? v : fallback;
+
+    /// <summary>The share page and the viewer both answer at <c>/s/{id}</c>; on one host the "View story" button would link to the page it is on.</summary>
+    private static void RequireSeparateHost(string viewerUrl, string brandingDomain)
+    {
+        if (string.Equals(new Uri(viewerUrl).Host, brandingDomain.Trim(), StringComparison.OrdinalIgnoreCase))
+            throw Invalid("must be on a different host than Branding:Domain (the share pages), or \"View story\" would link back to the share page");
+    }
 
     /// <summary>An array (<c>Links:Sha256Fingerprints:0</c>) or one comma-separated value (environment variables).</summary>
     private static List<string> Fingerprints(IConfiguration c)

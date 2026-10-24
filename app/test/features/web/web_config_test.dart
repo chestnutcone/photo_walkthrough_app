@@ -24,6 +24,15 @@ void main() {
     );
   });
 
+  test('open_in_app_prefers_https_on_phones_and_scheme_elsewhere', () {
+    const c = WebViewerConfig(linksDomain: 'links.example');
+    expect(
+      c.openInAppUri('w1', mobile: true).toString(),
+      'https://links.example/s/w1',
+    );
+    expect(c.openInAppUri('w1', mobile: false).toString(), 'vela://open/s/w1');
+  });
+
   test('work_ids_are_encoded_in_the_deep_link', () {
     expect(
       const WebViewerConfig().deepLinkFor('a/b c').toString(),

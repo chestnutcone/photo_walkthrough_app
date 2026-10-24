@@ -60,23 +60,27 @@ public class WellKnownTests(PostgresFixture pg)
         Assert.Equal(HttpStatusCode.NotFound, (await client.Fetch("/.well-known/assetlinks.json")).Status);
     }
 
-    [Theory]
-    [InlineData("Links:AppleTeamId", "ABCDE12345")]
-    [InlineData("Links:BundleId", "com.example.brandy")]
-    public async Task Partly_configured_apple_file_is_404(string key, string value)
+    [Fact]
+    public async Task Apple_file_needs_the_team_id_and_defaults_the_bundle_id_to_branding()
     {
-        using var host = Host((key, value));
+        using var noTeam = Host(("Links:BundleId", "com.example.brandy"));
+        using var teamOnly = Host(("Links:AppleTeamId", "ABCDE12345"));
 
-        Assert.Equal(HttpStatusCode.NotFound, (await host.Anonymous().Fetch("/.well-known/apple-app-site-association")).Status);
+        Assert.Equal(HttpStatusCode.NotFound, (await noTeam.Anonymous().Fetch("/.well-known/apple-app-site-association")).Status);
+        var aasa = await teamOnly.Anonymous().Fetch("/.well-known/apple-app-site-association");
+        Assert.Equal(HttpStatusCode.OK, aasa.Status);
+        Assert.Contains("ABCDE12345.dev.vela.app", aasa.Body);
     }
 
     [Fact]
-    public async Task Assetlinks_without_fingerprints_or_package_is_404()
+    public async Task Assetlinks_needs_fingerprints_and_defaults_the_package_to_branding()
     {
         using var noFp = Host(("Links:AndroidPackage", "com.example.brandy"));
-        using var noPkg = Host(("Links:Sha256Fingerprints:0", "AA:BB"));
+        using var fpOnly = Host(("Links:Sha256Fingerprints:0", "AA:BB"));
 
         Assert.Equal(HttpStatusCode.NotFound, (await noFp.Anonymous().Fetch("/.well-known/assetlinks.json")).Status);
-        Assert.Equal(HttpStatusCode.NotFound, (await noPkg.Anonymous().Fetch("/.well-known/assetlinks.json")).Status);
+        var links = await fpOnly.Anonymous().Fetch("/.well-known/assetlinks.json");
+        Assert.Equal(HttpStatusCode.OK, links.Status);
+        Assert.Equal("dev.vela.app", JsonDocument.Parse(links.Body).RootElement[0].GetProperty("target").GetProperty("package_name").GetString());
     }
 }

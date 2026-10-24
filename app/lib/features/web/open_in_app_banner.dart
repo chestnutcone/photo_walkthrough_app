@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,6 +16,11 @@ class OpenInAppBanner extends ConsumerWidget {
   final String workId;
 
   static const double height = 44;
+
+  /// On the web this reports the phone's OS for mobile browsers.
+  static bool get _isMobile =>
+      defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.android;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,7 +46,8 @@ class OpenInAppBanner extends ConsumerWidget {
                 key: const ValueKey('open-in-app'),
                 label: 'Open in app',
                 filled: true,
-                onTap: () => launch(config.deepLinkFor(workId)),
+                onTap: () =>
+                    launch(config.openInAppUri(workId, mobile: _isMobile)),
               ),
               if (config.appStoreUri case final uri?)
                 _BannerButton(

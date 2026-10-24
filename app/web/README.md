@@ -17,6 +17,12 @@ never signs in and sends no `Authorization` header.
 
 ## Routing
 
+`main_web.dart` installs the path URL strategy (`usePathUrlStrategy()`), so
+`https://viewer/s/{id}` is the router location instead of `/#/s/{id}`.
+`index.html` keeps `<base href="$FLUTTER_BASE_HREF">`; `flutter build web`
+fills it with `/` (override with `--base-href` only when serving from a
+sub-path, and then SPA fallback must serve index.html there too).
+
 The API's share page (`/s/{id}`, preview tags, no script, no redirect) links
 its "View story" button to `{Web:ViewerUrl}/s/{id}`. `Web:ViewerUrl` must be
 the origin that serves this build, and it must NOT be the host that serves
@@ -61,3 +67,25 @@ Notes:
 
 The icons in `icons/` and `favicon.png` are Flutter placeholders until the
 final name and icon exist.
+
+## Rename checklist (the name "Vela" is a code name)
+
+Static files cannot read `Branding`; change these by hand on rename, together
+with `app/lib/core/branding.dart` and `api/.../BrandingOptions.cs`:
+
+- `web/index.html`: `<title>` and `<meta name="description">`
+  (Flutter overwrites the title at runtime from `Branding.appName`).
+- `web/manifest.json`: `name`, `short_name`, `description`.
+- `Branding.urlScheme` plus the `vela` scheme in `android/.../AndroidManifest.xml`
+  and `ios/Runner/Info.plist`.
+- `ios/Runner/Runner.entitlements` (`applinks:` domain) and the Android
+  `linksDomain` Gradle property; both must equal `--dart-define=LINKS_DOMAIN`.
+- Android `applicationId` (`build.gradle.kts`) and the iOS
+  `PRODUCT_BUNDLE_IDENTIFIER`s; `test/features/web/bundle_id_test.dart`
+  fails if they drift from `Branding.bundleId`.
+
+## Device check still needed
+
+`vela://open/s/{id}` (desktop and fallback "Open in app") and the https
+universal link on a real iOS and Android phone with the app installed: both
+must land on the story.

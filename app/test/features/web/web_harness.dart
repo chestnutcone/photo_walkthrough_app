@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vela_app/core/api/api_providers.dart';
+import 'package:vela_app/core/auth/auth_controller.dart';
+import 'package:vela_app/core/auth/session_store.dart';
 import 'package:vela_app/features/onboarding/legal_links.dart';
 import 'package:vela_app/features/story/story_settings.dart';
 import 'package:vela_app/features/web/web_viewer_app.dart';
@@ -31,6 +33,17 @@ Map<String, Object?> replyJson(String id, String body) => {
   'createdAt': '2026-10-03T10:00:00Z',
 };
 
+/// A signed-in session already in memory. The web viewer must still send no
+/// credentials, so only its Dio (without the bearer interceptor) protects.
+class _SeededSession extends SessionNotifier {
+  @override
+  Future<Session?> build() async => Session(
+    accessToken: 'SECRET',
+    refreshToken: 'R',
+    accessExpiresAt: DateTime.utc(2030),
+  );
+}
+
 class WebHarness {
   WebHarness(this.adapter, this.launched);
   final FakeAdapter adapter;
@@ -42,14 +55,24 @@ class WebHarness {
 Future<WebHarness> pumpWeb(
   WidgetTester tester, {
   String location = '/s/w1',
+  String? platformRoute,
   int workStatus = 200,
   String errorCode = 'not_found',
   WebViewerConfig config = const WebViewerConfig(),
   List<Map<String, Object?>>? replies,
+  bool storedSession = false,
 }) async {
   tester.view.physicalSize = phone;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
+  // What the engine reports as the initial route: the browser path under the
+  // path URL strategy.
+  if (platformRoute != null) {
+    tester.binding.platformDispatcher.defaultRouteNameTestValue = platformRoute;
+    addTearDown(
+      tester.binding.platformDispatcher.clearDefaultRouteNameTestValue,
+    );
+  }
   final adapter = FakeAdapter((o) {
     if (o.path == '/v1/works/w1') {
       return workStatus == 200
@@ -70,6 +93,7 @@ Future<WebHarness> pumpWeb(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        if (storedSession) sessionProvider.overrideWith(_SeededSession.new),
         ...webViewerOverrides(),
         httpClientAdapterProvider.overrideWithValue(adapter),
         webViewerConfigProvider.overrideWithValue(config),
@@ -82,7 +106,9 @@ Future<WebHarness> pumpWeb(
           return true;
         }),
       ],
-      child: WebViewerApp(initialLocation: location),
+      child: platformRoute != null
+          ? const WebViewerApp()
+          : WebViewerApp(initialLocation: location),
     ),
   );
   await tester.pumpAndSettle();
