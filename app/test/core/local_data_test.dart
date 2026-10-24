@@ -77,4 +77,39 @@ void main() {
     expect(ran, isEmpty);
     expect(storage.value, isNull);
   });
+
+  test('sign_out_runs_only_the_cleaners_marked_for_it', () async {
+    final storage = FakeSessionStorage(session);
+    final c = make(storage);
+    final ran = <String>[];
+    final reg = c.read(localDataRegistryProvider);
+    reg.register('device', () async => ran.add('device'));
+    reg.register('scoped', () async => ran.add('scoped'), onSignOut: true);
+    await c.read(sessionProvider.future);
+    await c.read(signOutProvider)();
+    expect(ran, ['scoped']);
+    expect(storage.value, isNull);
+  });
+
+  test('delete_account_runs_every_cleaner_including_session_scoped', () async {
+    final c = make(FakeSessionStorage(session));
+    final ran = <String>[];
+    final reg = c.read(localDataRegistryProvider);
+    reg.register('device', () async => ran.add('device'));
+    reg.register('scoped', () async => ran.add('scoped'), onSignOut: true);
+    await c.read(sessionProvider.future);
+    await c.read(wipeLocalDataProvider)();
+    expect(ran, ['device', 'scoped']);
+  });
+
+  test('a_failing_sign_out_cleaner_does_not_block_sign_out', () async {
+    final storage = FakeSessionStorage(session);
+    final c = make(storage);
+    c
+        .read(localDataRegistryProvider)
+        .register('boom', () async => throw StateError('x'), onSignOut: true);
+    await c.read(sessionProvider.future);
+    await c.read(signOutProvider)();
+    expect(storage.value, isNull);
+  });
 }

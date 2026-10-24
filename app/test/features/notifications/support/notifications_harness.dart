@@ -7,6 +7,7 @@ import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/core/auth/session_store.dart';
 import 'package:vela_app/core/require_sign_in.dart';
 import 'package:vela_app/core/theme/app_theme.dart';
+import 'package:vela_app/features/notifications/notifications_controller.dart';
 import 'package:vela_app/features/notifications/notifications_screen.dart';
 import 'package:vela_app/features/notifications/unread_count_provider.dart';
 import 'package:vela_app/features/story/story_settings.dart';
@@ -81,6 +82,7 @@ Future<NotificationsHarness> pumpNotifications(
     ProviderScope(
       overrides: [
         apiProvider.overrideWithValue(fake),
+        notificationsFetcherProvider.overrideWithValue(fake.fetchList),
         sessionStorageProvider.overrideWithValue(storage),
         clockProvider.overrideWithValue(() => DateTime.utc(2026, 10, 22, 12)),
         storyImageProviderFactoryProvider.overrideWithValue(

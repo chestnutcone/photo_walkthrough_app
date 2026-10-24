@@ -23,6 +23,7 @@ class NotificationsState {
     this.error,
     this.moreError,
     this.refreshError,
+    this.skippedRows = 0,
   });
 
   const NotificationsState.loading() : this(isLoading: true);
@@ -46,6 +47,9 @@ class NotificationsState {
   /// A refresh failed; [items] are kept.
   final ApiException? refreshError;
 
+  /// Rows in the pages so far that could not be read and were left out.
+  final int skippedRows;
+
   bool get canLoadMore =>
       nextCursor != null &&
       !isLoading &&
@@ -61,6 +65,7 @@ class NotificationsState {
     bool? loadingMore,
     Object? moreError = _keep,
     Object? refreshError = _keep,
+    int? skippedRows,
   }) => NotificationsState(
     items: items ?? this.items,
     nextCursor: identical(nextCursor, _keep)
@@ -76,10 +81,33 @@ class NotificationsState {
     refreshError: identical(refreshError, _keep)
         ? this.refreshError
         : refreshError as ApiException?,
+    skippedRows: skippedRows ?? this.skippedRows,
   );
 }
 
-typedef _Page = ({List<NotificationItem> items, String? next});
+typedef _Page = ({List<NotificationItem> items, String? next, int skipped});
+
+/// Fetches one raw page of `GET /v1/notifications`. A seam: tests replace it
+/// with a fake that ignores the cancel token.
+typedef NotificationsFetcher = Future<Object?> Function(
+  String? cursor,
+  CancelToken token,
+);
+
+/// The app reads this endpoint itself (not through the generated client,
+/// whose closed `type` enum would fail a whole page over one type this
+/// version does not know) and parses every row tolerantly.
+final notificationsFetcherProvider = Provider<NotificationsFetcher>((ref) {
+  return (cursor, token) async =>
+      (await ref
+              .read(dioProvider)
+              .get<Object>(
+                '/v1/notifications',
+                queryParameters: {'cursor': ?cursor},
+                cancelToken: token,
+              ))
+          .data;
+});
 
 /// The signed-in viewer's notifications, newest first. Per user: everything
 /// resets when the session epoch changes.
@@ -139,6 +167,7 @@ class NotificationsController extends Notifier<NotificationsState> {
       state = NotificationsState(
         items: _applyPending(page.items),
         nextCursor: page.next,
+        skippedRows: page.skipped,
       );
     } on ApiException catch (e) {
       if (!_isCurrent(generation)) return;
@@ -165,6 +194,7 @@ class NotificationsController extends Notifier<NotificationsState> {
       state = NotificationsState(
         items: _applyPending(page.items),
         nextCursor: page.next,
+        skippedRows: page.skipped,
       );
     } on ApiException catch (e) {
       if (!_isCurrent(generation)) return;
@@ -190,6 +220,7 @@ class NotificationsController extends Notifier<NotificationsState> {
         ],
         nextCursor: page.next,
         loadingMore: false,
+        skippedRows: state.skippedRows + page.skipped,
       );
     } on ApiException catch (e) {
       if (!_isCurrent(generation)) return;
@@ -256,53 +287,43 @@ class NotificationsController extends Notifier<NotificationsState> {
             _pendingRead.contains(i.id) ? i.copyWith(read: true) : i,
         ];
 
-  /// Typed client first; if the response cannot be parsed (a type this app
-  /// version does not know), the same response is read tolerantly.
+  /// One page, parsed tolerantly: an unknown row type is generic text, an
+  /// unreadable row is skipped (counted, never logged with content), and a
+  /// body that is not a list is an error rather than an empty inbox.
   Future<_Page> _fetch(String? cursor, CancelToken token) async {
-    try {
-      final env = (await apiGuard(
-        () => ref
-            .read(apiProvider)
-            .getNotificationsApi()
-            .listNotifications(cursor: cursor, cancelToken: token),
-      )).data;
-      final data = unwrapEnvelope(
-        success: env?.success ?? false,
-        data: env?.data,
-        error: env?.error,
-      );
-      return (
-        items: [for (final n in data) NotificationItem.fromApi(n)],
-        next: env?.page?.nextCursor,
-      );
-    } on ApiException catch (e) {
-      if (e.code != 'unknown_error' || e.statusCode != 200) rethrow;
-      return _fetchLenient(cursor, token);
-    }
-  }
-
-  Future<_Page> _fetchLenient(String? cursor, CancelToken token) async {
-    final response = await apiGuard(
-      () => ref
-          .read(dioProvider)
-          .get<Object>(
-            '/v1/notifications',
-            queryParameters: {'cursor': ?cursor},
-            cancelToken: token,
-          ),
+    final body = await apiGuard(
+      () => ref.read(notificationsFetcherProvider)(cursor, token),
     );
-    final body = response.data;
-    if (body is! Map || body['success'] != true) {
-      throw const ApiException(
-        code: 'empty_response',
-        message: 'Response had no data',
+    if (body is! Map) throw _malformed;
+    if (body['success'] != true || body['error'] != null) {
+      final error = body['error'];
+      throw ApiException(
+        code: error is Map && error['code'] is String
+            ? error['code'] as String
+            : 'unknown_error',
+        message: error is Map && error['message'] is String
+            ? error['message'] as String
+            : '',
       );
+    }
+    final data = body['data'];
+    if (data is! List) throw _malformed;
+    final parsed = parseNotificationRows(data);
+    if (parsed.skipped > 0) {
+      // Count only: row content can be personal.
+      debugPrint('notifications: skipped ${parsed.skipped} unreadable rows');
     }
     final page = body['page'];
     final next = page is Map ? page['nextCursor'] : null;
     return (
-      items: parseNotificationList(body['data']),
+      items: parsed.items,
       next: next is String ? next : null,
+      skipped: parsed.skipped,
     );
   }
 }
+
+const _malformed = ApiException(
+  code: 'malformed_response',
+  message: 'Response was not a notification list',
+);

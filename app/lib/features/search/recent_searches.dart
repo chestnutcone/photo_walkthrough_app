@@ -18,7 +18,7 @@ const String _prefsKey = 'vela.recent_searches';
 /// [maxRecentSearches]. Text outside the searchable range is never stored.
 @visibleForTesting
 List<String> addRecent(List<String> list, String query) {
-  final q = query.trim();
+  final q = cleanQuery(query);
   if (!isSearchableQuery(q)) return list;
   final key = q.toLowerCase();
   return [
@@ -67,10 +67,11 @@ final recentSearchesStoreProvider = Provider<RecentSearchesStore>(
 /// never logged or sent to telemetry or crash reports, and nothing here
 /// prints it.
 ///
-/// Policy (ruling): these are device data, not account data, so plain
-/// sign-out leaves them alone; deleting the account erases them through the
-/// local-data registry. The registry holds the cleaner only once this
-/// provider has been built, so the app root keeps it alive from startup.
+/// Policy (ruling): a second account on a shared device must not see the
+/// previous one's queries, so both plain sign-out and account deletion erase
+/// them, through the local-data registry (registered `onSignOut`). The
+/// registry holds the cleaner only once this provider has been built, so the
+/// app root keeps it alive from startup.
 final recentSearchesProvider = NotifierProvider<RecentSearches, List<String>>(
   RecentSearches.new,
 );
@@ -81,7 +82,12 @@ class RecentSearches extends Notifier<List<String>> {
   @override
   List<String> build() {
     final store = ref.read(recentSearchesStoreProvider);
-    registerLocalDataCleaner(ref, _localDataName, () => _wipe(store));
+    registerLocalDataCleaner(
+      ref,
+      _localDataName,
+      () => _wipe(store),
+      onSignOut: true,
+    );
     _loading = _load(store);
     return const [];
   }

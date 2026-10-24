@@ -73,7 +73,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
   void _open(NotificationItem item) {
     unawaited(_ctl.markRead(item));
     final location = item.location;
-    if (location != null) context.push(location);
+    if (location != null) {
+      context.push(location);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This notification no longer has a page')),
+      );
+    }
   }
 
   void _back() => context.canPop() ? context.pop() : context.go('/');

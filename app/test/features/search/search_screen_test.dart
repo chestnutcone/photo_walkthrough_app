@@ -1,3 +1,4 @@
+import 'package:flutter/semantics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -315,7 +316,6 @@ void main() {
     final handle = tester.ensureSemantics();
     expect(find.bySemanticsLabel('Artist Artist a1'), findsOneWidget);
     expect(find.bySemanticsLabel('Follow Artist a1'), findsOneWidget);
-    expect(find.bySemanticsLabel('Search artists and stories'), findsOneWidget);
     handle.dispose();
   });
 
@@ -337,4 +337,54 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('the_search_field_is_a_real_editable_text_node', (tester) async {
+    final handle = tester.ensureSemantics();
+    await pumpSearch(tester);
+    await tester.enterText(_key('search-field'), 'salt');
+    await tester.pump();
+    final node = tester.getSemantics(
+      find.descendant(
+        of: _key('search-field'),
+        matching: find.byType(EditableText),
+      ),
+    );
+    final data = node.getSemanticsData();
+    expect(data.hasAction(SemanticsAction.setText), isTrue);
+    expect(data.value, 'salt');
+    expect(data.label, contains('Search artists and stories'));
+    handle.dispose();
+  });
+
+  testWidgets('guests_get_a_follow_pill_even_though_isFollowing_is_null', (
+    tester,
+  ) async {
+    final api = FakeSearchApi()..following = null;
+    final h = await pumpSearch(tester, api: api);
+    expect(_key('search-follow-s1'), findsOneWidget); // suggested
+    await typeQuery(tester, 'salt');
+    h.api.searchCalls.single.reply(artists: ['a1']);
+    await tester.pump();
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: _key('search-follow-a1'),
+        matching: find.text('Follow'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a_signed_in_viewers_own_account_has_no_follow_pill', (
+    tester,
+  ) async {
+    final api = FakeSearchApi()..following = null;
+    final h = await pumpSearch(tester, api: api, signedIn: true);
+    await typeQuery(tester, 'salt');
+    h.api.searchCalls.single.reply(artists: ['a1']);
+    await tester.pump();
+    await tester.pump();
+    expect(_key('search-artist-a1'), findsOneWidget);
+    expect(_key('search-follow-a1'), findsNothing);
+  });
 }

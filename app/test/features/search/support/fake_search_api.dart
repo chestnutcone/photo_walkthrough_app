@@ -27,7 +27,8 @@ Map<String, Object?> searchProfile(
 /// One `search` call. The fake ignores the cancel token on purpose, so a test
 /// can complete a request the controller already abandoned.
 class SearchCall {
-  SearchCall(this.q, this.type, this.cursor, this.cancelToken);
+  SearchCall(this.q, this.type, this.cursor, this.cancelToken, this.following);
+  final bool? following;
   final String q;
   final String? type;
   final String? cursor;
@@ -42,7 +43,9 @@ class SearchCall {
     SearchResultsListEnvelope(
       success: true,
       data: SearchResults.fromJson({
-        'artists': [for (final id in artists) searchProfile(id)],
+        'artists': [
+          for (final id in artists) searchProfile(id, isFollowing: following),
+        ],
         'stories': [for (final id in stories) feedWork(id)],
       }),
       error: null,
@@ -70,12 +73,17 @@ class SearchCall {
 }
 
 class SuggestedCall {
+  SuggestedCall(this.following);
+  final bool? following;
   final Completer<ProfileListEnvelope> _done = Completer();
 
   void reply(List<String> ids) => _done.complete(
     ProfileListEnvelope(
       success: true,
-      data: [for (final id in ids) Profile.fromJson(searchProfile(id))],
+      data: [
+        for (final id in ids)
+          Profile.fromJson(searchProfile(id, isFollowing: following)),
+      ],
       error: null,
       page: Page(nextCursor: null),
     ),
@@ -97,6 +105,9 @@ class FakeSearchApi implements VelaApiClient {
   final searchCalls = <SearchCall>[];
   final suggestedCalls = <SuggestedCall>[];
   final followCalls = <FollowCall>[];
+
+  /// `isFollowing` the server reports; null is what a guest gets.
+  bool? following = false;
 
   /// When true, suggested artists answer at once with a1, a2.
   bool autoSuggested = true;
@@ -131,7 +142,7 @@ class _FakeSearch implements SearchApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final call = SearchCall(q, type, cursor, cancelToken);
+    final call = SearchCall(q, type, cursor, cancelToken, api.following);
     api.searchCalls.add(call);
     api.auto?.call(call);
     final data = await call._done.future;
@@ -157,7 +168,7 @@ class _FakeArtists implements ArtistsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final call = SuggestedCall();
+    final call = SuggestedCall(api.following);
     api.suggestedCalls.add(call);
     if (api.autoSuggested) call.reply(['s1', 's2']);
     return Response(

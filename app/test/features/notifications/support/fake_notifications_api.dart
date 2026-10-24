@@ -30,22 +30,24 @@ Map<String, Object?> notifJson(
   'ids': ?ids,
 };
 
-/// One `listNotifications` call; the fake ignores the cancel token.
+/// One list request. The fake ignores the cancel token on purpose, so a
+/// test can complete a request the controller already abandoned.
 class ListCall {
   ListCall(this.cursor, this.cancelToken);
   final String? cursor;
   final CancelToken? cancelToken;
-  final Completer<NotificationListEnvelope> _done = Completer();
+  final Completer<Object?> _done = Completer();
 
   void reply(List<Map<String, Object?>> items, {String? next}) =>
-      _done.complete(
-        NotificationListEnvelope(
-          success: true,
-          data: [for (final j in items) Notification.fromJson(j)],
-          error: null,
-          page: Page(nextCursor: next),
-        ),
-      );
+      _done.complete({
+        'success': true,
+        'data': items,
+        'error': null,
+        'page': {'nextCursor': next},
+      });
+
+  /// Any raw 200 body, for malformed responses.
+  void replyRaw(Object? body) => _done.complete(body);
 
   void fail() => _done.completeError(
     DioException.connectionError(requestOptions: RequestOptions(), reason: 'x'),
@@ -88,8 +90,12 @@ class FakeNotificationsApi implements VelaApiClient {
   /// What `unreadCount` answers; tests change it to model the server.
   int unread = 0;
 
-  /// When set, every list call is answered at once.
-  List<Map<String, Object?>> Function(String? cursor)? auto;
+  /// Plug into `notificationsFetcherProvider`.
+  Future<Object?> fetchList(String? cursor, CancelToken token) {
+    final call = ListCall(cursor, token);
+    listCalls.add(call);
+    return call._done.future;
+  }
 
   @override
   NotificationsApi getNotificationsApi() => _Fake(this);
@@ -101,27 +107,6 @@ class FakeNotificationsApi implements VelaApiClient {
 class _Fake implements NotificationsApi {
   _Fake(this.api);
   final FakeNotificationsApi api;
-
-  @override
-  Future<Response<NotificationListEnvelope>> listNotifications({
-    String? cursor,
-    int? limit = 20,
-    CancelToken? cancelToken,
-    Map<String, dynamic>? headers,
-    Map<String, dynamic>? extra,
-    ValidateStatus? validateStatus,
-    ProgressCallback? onSendProgress,
-    ProgressCallback? onReceiveProgress,
-  }) async {
-    final call = ListCall(cursor, cancelToken);
-    api.listCalls.add(call);
-    final auto = api.auto;
-    if (auto != null) call.reply(auto(cursor));
-    return Response(
-      requestOptions: RequestOptions(),
-      data: await call._done.future,
-    );
-  }
 
   @override
   Future<Response<Envelope>> markRead({

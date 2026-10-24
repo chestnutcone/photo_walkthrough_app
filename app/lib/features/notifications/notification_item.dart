@@ -55,19 +55,6 @@ class NotificationItem {
   final String? workTitle;
   final int? chapterIndex;
 
-  factory NotificationItem.fromApi(api.Notification n) => NotificationItem(
-    id: n.id,
-    ids: _idsOf(n.id, n.ids),
-    kind: NotificationKind.fromWire(n.type.value),
-    actor: n.actor,
-    createdAt: n.createdAt,
-    read: n.read,
-    count: n.count ?? 1,
-    workId: n.workId,
-    workTitle: n.workTitle,
-    chapterIndex: n.chapterIndex,
-  );
-
   /// Parses one raw JSON row; null when it lacks what a row needs (id,
   /// actor, date). An unknown `type` is fine.
   static NotificationItem? tryFromJson(Object? json) {
@@ -157,11 +144,25 @@ class NotificationItem {
 List<String> _idsOf(String id, List<String>? ids) =>
     List.unmodifiable(ids == null || ids.isEmpty ? [id] : ids);
 
-/// Rows of a raw `data` array that the app can use, in order.
-List<NotificationItem> parseNotificationList(Object? data) => [
-  if (data is List)
-    for (final row in data) ?NotificationItem.tryFromJson(row),
-];
+/// Rows of a raw `data` array that the app can use, in order, and how many
+/// it had to skip.
+({List<NotificationItem> items, int skipped}) parseNotificationRows(
+  Object? data,
+) {
+  final items = <NotificationItem>[];
+  var skipped = 0;
+  if (data is List) {
+    for (final row in data) {
+      final item = NotificationItem.tryFromJson(row);
+      if (item == null) {
+        skipped++;
+      } else {
+        items.add(item);
+      }
+    }
+  }
+  return (items: items, skipped: skipped);
+}
 
 /// "now", "5m", "3h", "2d", "2w", "1y": how long ago, compactly.
 String relativeTime(DateTime then, DateTime now) {

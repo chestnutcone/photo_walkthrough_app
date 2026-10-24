@@ -9,3 +9,12 @@ const Duration searchDebounce = Duration(milliseconds: 300);
 /// [text] is already trimmed.
 bool isSearchableQuery(String text) =>
     text.length >= minSearchLength && text.length <= maxSearchLength;
+
+final RegExp _controlChars = RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]');
+
+/// [text] without control characters (the server rejects NUL; the rest are
+/// never meant). Tabs and line breaks stay: they separate words.
+String stripControlChars(String text) => text.replaceAll(_controlChars, '');
+
+/// What is sent: control characters removed, then trimmed.
+String cleanQuery(String text) => stripControlChars(text).trim();

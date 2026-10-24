@@ -57,6 +57,8 @@ void main() {
     expect([for (final i in s.items) i.id], ['n1', 'n2']);
     expect(s.items[1].text, 'Ines a1 has an update for you');
     expect(s.nextCursor, 'c2');
+    expect(s.skippedRows, 1);
+    expect(adapter.requests, hasLength(1)); // one request per page
     expect(s.error, isNull);
   });
 

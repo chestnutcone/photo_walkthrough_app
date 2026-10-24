@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/core/auth/local_data.dart';
 import 'package:vela_app/core/auth/session_store.dart';
+import 'package:vela_app/features/auth/sign_out.dart';
 import 'package:vela_app/features/search/recent_searches.dart';
 
 import '../../core/support/fakes.dart';
@@ -14,6 +15,9 @@ ProviderContainer _make(MemoryRecentsStore store) {
     overrides: [
       recentSearchesStoreProvider.overrideWithValue(store),
       sessionStorageProvider.overrideWithValue(FakeSessionStorage()),
+      httpClientAdapterProvider.overrideWithValue(
+        FakeAdapter((_) => jsonResponse(200, okEnvelope(null))),
+      ),
     ],
   );
   addTearDown(c.dispose);
@@ -36,6 +40,11 @@ void main() {
       expect(addRecent(const ['salt'], ' a '), ['salt']);
       expect(addRecent(const ['salt'], ''), ['salt']);
       expect(addRecent(const [], 'ab'), ['ab']);
+    });
+
+    test('addRecent_strips_control_characters', () {
+      expect(addRecent(const [], 'sa\u0000lt'), ['salt']);
+      expect(addRecent(const [], '\u0000\u0000'), isEmpty);
     });
 
     test('addRecent_never_stores_text_over_the_search_limit', () {
@@ -109,9 +118,19 @@ void main() {
       expect(c.read(recentSearchesProvider), isEmpty);
     });
 
-    test('sign_out_leaves_recent_searches_alone', () async {
-      // Policy: recent searches are device data, cleared on account deletion
-      // only (documented in recent_searches.dart).
+    test('sign_out_also_clears_recent_searches', () async {
+      // Policy: a shared device must not show the previous account's
+      // queries to the next one (documented in recent_searches.dart).
+      final store = MemoryRecentsStore(['salt']);
+      final c = _make(store);
+      await _settle();
+      await c.read(sessionProvider.future);
+      await c.read(signOutProvider)();
+      expect(store.saved, isEmpty);
+      expect(c.read(recentSearchesProvider), isEmpty);
+    });
+
+    test('a_plain_session_change_leaves_recent_searches_alone', () async {
       final store = MemoryRecentsStore(['salt']);
       final c = _make(store);
       await _settle();

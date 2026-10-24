@@ -113,6 +113,26 @@ void main() {
     expect(rig.artistIds, ['a1']);
   });
 
+  _run('control_characters_are_stripped_before_sending', (async, rig) {
+    rig.ctl.setInput('sa\u0000l\u0007t\u007f');
+    async.elapse(_debounce);
+    expect(rig.api.searchCalls.single.q, 'salt');
+  });
+
+  _run('a_query_of_only_control_characters_is_not_sent', (async, rig) {
+    rig.ctl.setInput('\u0000\u0000\u0001');
+    async.elapse(_debounce);
+    rig.ctl.submit();
+    expect(rig.api.searchCalls, isEmpty);
+    expect(rig.state.query, isNull);
+  });
+
+  _run('words_split_by_tabs_and_newlines_stay_split', (async, rig) {
+    rig.ctl.setInput('lisbon\tsalt');
+    async.elapse(_debounce);
+    expect(rig.api.searchCalls.single.q, 'lisbon\tsalt');
+  });
+
   _run('text_over_80_characters_is_not_sent', (async, rig) {
     rig.ctl.setInput('x' * 81);
     async.elapse(_debounce);

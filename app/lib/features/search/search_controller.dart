@@ -121,13 +121,13 @@ final searchControllerProvider =
 /// Search state machine. Privacy: the query is never logged, printed or
 /// handed to telemetry here.
 ///
-/// Stale answers are dropped by two counters, not by cancellation (a
-/// transport may ignore it): [_round] changes whenever the query or viewer
-/// changes, and [_requests] counts requests per tab.
+/// Stale answers are dropped by a counter, not by cancellation (a transport
+/// may ignore it): [_round] changes whenever the query or viewer changes.
+/// Within one round a tab never has two requests running (a tab loads only
+/// when empty, retries only after an error, pages only when idle).
 class SearchResultsController extends Notifier<SearchState> {
   Timer? _debounce;
   int _round = 0;
-  final _requests = {for (final t in SearchTab.values) t: 0};
   final _tokens = <SearchTab, CancelToken>{};
 
   @override
@@ -153,7 +153,7 @@ class SearchResultsController extends Notifier<SearchState> {
   /// The text box changed. Searches [searchDebounce] after the last change.
   void setInput(String text) {
     _debounce?.cancel();
-    final q = text.trim();
+    final q = cleanQuery(text);
     if (!isSearchableQuery(q)) {
       _round++;
       _cancelAll();
@@ -176,7 +176,7 @@ class SearchResultsController extends Notifier<SearchState> {
   /// Keyboard "search": searches now and remembers the text.
   void submit() {
     _debounce?.cancel();
-    final q = state.input.trim();
+    final q = cleanQuery(state.input);
     if (!isSearchableQuery(q)) return;
     if (q != state.query) _commit(q);
     rememberQuery();
@@ -231,11 +231,9 @@ class SearchResultsController extends Notifier<SearchState> {
     final q = state.query;
     if (q == null) return;
     final round = _round;
-    final id = _requests[tab]! + 1;
-    _requests[tab] = id;
     _tokens[tab]?.cancel();
     final token = _tokens[tab] = CancelToken();
-    bool current() => ref.mounted && _round == round && _requests[tab] == id;
+    bool current() => ref.mounted && _round == round;
 
     state = state.withSlice(
       tab,

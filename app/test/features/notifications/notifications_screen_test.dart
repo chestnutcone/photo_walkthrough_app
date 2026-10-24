@@ -9,9 +9,30 @@ import 'support/notifications_harness.dart';
 
 Finder _key(String k) => find.byKey(ValueKey(k));
 
+Future<void> _background(WidgetTester tester) async {
+  for (final st in [
+    AppLifecycleState.inactive,
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(st);
+  }
+  await tester.pump();
+}
+
+void _comeBack(WidgetTester tester) {
+  for (final st in [
+    AppLifecycleState.hidden,
+    AppLifecycleState.inactive,
+    AppLifecycleState.resumed,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(st);
+  }
+}
+
 Future<void> _resume(WidgetTester tester) async {
-  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  await _background(tester);
+  _comeBack(tester);
   await tester.pump();
   await tester.pump();
 }
@@ -71,7 +92,10 @@ void main() {
     final h = await pumpNotifications(tester);
     await answerList(tester, h.api, [notifJson('n1')]);
     expect(h.api.listCalls, hasLength(1));
-    await _resume(tester);
+    await _background(tester);
+    expect(h.api.listCalls, hasLength(1)); // going away is not coming back
+    _comeBack(tester);
+    await tester.pump();
     expect(h.api.listCalls, hasLength(2));
     await answerList(tester, h.api, [notifJson('n9')], call: 1);
     expect(find.text('Ines a1 replied on Salt and Rope'), findsOneWidget);
@@ -244,9 +268,30 @@ void main() {
     tester,
   ) async {
     final h = await pumpNotifications(tester);
-    await answerList(tester, h.api, [notifJson('n1', type: 'new_story')]);
-    // A type the app does not know yet arrives through the lenient parser.
+    await answerList(tester, h.api, [
+      notifJson('n1', type: 'mystery', workId: null),
+    ]);
     expect(tester.takeException(), isNull);
+    expect(find.text('Ines a1 has an update for you'), findsOneWidget);
+    await tester.tap(_key('notification-n1'));
+    await tester.pump();
+    expect(h.api.markCalls.single.ids, ['n1']);
+    expect(find.text('route:/artist/ha1'), findsOneWidget);
+  });
+
+  testWidgets('a_notification_with_no_page_says_so_and_is_still_marked_read', (
+    tester,
+  ) async {
+    final h = await pumpNotifications(tester);
+    await answerList(tester, h.api, [notifJson('n1', workId: null)]);
+    await tester.tap(_key('notification-n1'));
+    await tester.pump();
+    expect(h.api.markCalls.single.ids, ['n1']);
+    expect(find.text('This notification no longer has a page'), findsOneWidget);
+    expect(find.text('route:feed'), findsNothing);
+    expect(_key('notification-n1'), findsOneWidget);
+    h.api.markCalls.single.succeed();
+    await tester.pumpAndSettle();
   });
 
   testWidgets('rows_are_44_points_labelled_and_say_when_unread', (

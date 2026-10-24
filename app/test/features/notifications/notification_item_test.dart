@@ -60,7 +60,7 @@ void main() {
 
   group('lenient parsing', () {
     test('skips_rows_that_are_not_usable_and_keeps_the_rest', () {
-      final items = parseNotificationList([
+      final parsed = parseNotificationRows([
         notifJson('ok'),
         notifJson('weird', type: 'mystery'),
         {
@@ -77,7 +77,8 @@ void main() {
           'createdAt': 'x',
         },
       ]);
-      expect([for (final i in items) i.id], ['ok', 'weird']);
+      expect([for (final i in parsed.items) i.id], ['ok', 'weird']);
+      expect(parsed.skipped, 4);
     });
 
     test('hostile_text_is_kept_verbatim', () {

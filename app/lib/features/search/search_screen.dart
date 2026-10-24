@@ -108,7 +108,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final suggested = ref.watch(suggestedArtistsProvider).value ?? const [];
     final hint = state.tooLong
         ? 'Keep it under $maxSearchLength characters'
-        : state.input.trim().isNotEmpty
+        : cleanQuery(state.input).isNotEmpty
         ? 'Type at least $minSearchLength characters'
         : null;
     return ListView(
@@ -285,27 +285,24 @@ class _SearchBar extends StatelessWidget {
           onTap: onBack,
         ),
         Expanded(
-          child: Semantics(
-            textField: true,
-            label: 'Search artists and stories',
-            child: ExcludeSemantics(
-              child: TextField(
-                key: const ValueKey('search-field'),
-                controller: controller,
-                autofocus: true,
-                textInputAction: TextInputAction.search,
-                onChanged: onChanged,
-                onSubmitted: onSubmit,
-                style: VelaText.sans15,
-                cursorColor: VelaColors.accent,
-                decoration: InputDecoration(
-                  hintText: 'Search artists and stories',
-                  hintStyle: VelaText.sans15.copyWith(color: VelaColors.faint),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
+          child: TextField(
+            key: const ValueKey('search-field'),
+            controller: controller,
+            autofocus: true,
+            textInputAction: TextInputAction.search,
+            onChanged: onChanged,
+            onSubmitted: onSubmit,
+            style: VelaText.sans15,
+            cursorColor: VelaColors.accent,
+            decoration: InputDecoration(
+              // The label is the field's accessible name; it reads as the
+              // hint while empty and is hidden once there is text.
+              labelText: 'Search artists and stories',
+              floatingLabelBehavior: FloatingLabelBehavior.never,
+              labelStyle: VelaText.sans15.copyWith(color: VelaColors.faint),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
         ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vela_app/core/api/api_providers.dart';
@@ -19,6 +20,7 @@ class _Rig {
     container = ProviderContainer(
       overrides: [
         apiProvider.overrideWithValue(api),
+        notificationsFetcherProvider.overrideWithValue(api.fetchList),
         sessionStorageProvider.overrideWithValue(
           FakeSessionStorage(signedIn ? _session : null),
         ),
@@ -48,6 +50,7 @@ Future<_Rig> _loaded(List<Map<String, Object?>> items, {String? next}) async {
 }
 
 void main() {
+  malformed();
   test('opening_loads_the_first_page', () async {
     final rig = _Rig();
     expect(rig.state.isLoading, isTrue);
@@ -310,5 +313,54 @@ void main() {
     rig.container.dispose();
     call.reply([notifJson('n1')]);
     await _tick();
+  });
+}
+
+void malformed() {
+  test('a_malformed_200_body_is_an_error_not_an_empty_list', () async {
+    for (final body in <Object?>[
+      null,
+      'html',
+      {'success': true, 'data': null, 'error': null, 'page': null},
+      {
+        'success': true,
+        'data': {'not': 'a list'},
+      },
+      {
+        'success': false,
+        'data': null,
+        'error': {'code': 'x', 'message': 'm'},
+      },
+    ]) {
+      final rig = _Rig();
+      await _tick();
+      rig.api.listCalls.single.replyRaw(body);
+      await _tick();
+      expect(rig.state.error, isNotNull, reason: '$body');
+      expect(rig.state.items, isEmpty);
+      rig.container.dispose();
+    }
+  });
+
+  test('skipped_rows_are_counted_and_logged_by_count_only', () async {
+    final logs = <String>[];
+    final old = debugPrint;
+    debugPrint = (m, {wrapWidth}) => logs.add(m ?? '');
+    try {
+      final rig = _Rig();
+      await _tick();
+      rig.api.listCalls.single.reply([
+        notifJson('ok', title: 'secret-title'),
+        {'id': 'broken', 'secret': 'secret-title'},
+      ]);
+      await _tick();
+      expect(rig.ids, ['ok']);
+      expect(rig.state.skippedRows, 1);
+      expect(logs.join(), contains('1'));
+      expect(logs.where((l) => l.contains('secret')), isEmpty);
+      rig.container.dispose();
+    } finally {
+      debugPrint = old;
+    }
   });
 }
