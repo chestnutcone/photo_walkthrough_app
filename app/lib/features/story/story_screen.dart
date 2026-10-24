@@ -434,9 +434,14 @@ class _StoryViewState extends ConsumerState<_StoryView> {
       top: _zoneTop,
       width: width * _zoneSplit,
       height: _zoneHeight,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: Semantics(
+        button: true,
+        label: 'Previous chapter',
         onTap: _ctl.prev,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _ctl.prev,
+        ),
       ),
     ),
     Positioned(
@@ -444,9 +449,14 @@ class _StoryViewState extends ConsumerState<_StoryView> {
       top: _zoneTop,
       width: width * (1 - _zoneSplit),
       height: _zoneHeight,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: Semantics(
+        button: true,
+        label: 'Next chapter',
         onTap: _ctl.next,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _ctl.next,
+        ),
       ),
     ),
   ];

@@ -90,7 +90,12 @@ class _DeleteState extends ConsumerState<DeleteAccountDialog> {
     });
     try {
       await ref.read(deleteAccountProvider)();
-      if (mounted) Navigator.of(context).pop();
+      // Wiping the session makes the router replace the settings page under
+      // this dialog; only pop while the dialog is still the current route, or
+      // the pop would remove the feed page instead.
+      if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+        Navigator.of(context).pop();
+      }
     } on Object catch (e) {
       // Any failure ends the busy state; the dialog never gets stuck.
       if (!mounted) return;

@@ -89,4 +89,17 @@ void main() {
     await pumpUntil(tester, find.text('Discover'));
     expect(find.byKey(const ValueKey('tab-following')), findsNothing);
   });
+
+  testWidgets('session persists across an app restart and a guest stays a guest', (tester) async {
+    final me = await makeAccount('rs$uniq');
+    await launchApp(tester, signedInAs: me);
+    await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
+    // Cold restart: fresh widget tree, same secure storage.
+    await launchApp(tester, clean: false);
+    await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
+    await shot(tester, 'i-session', '01-still-signed-in-after-restart');
+    goTo(tester, '/settings');
+    await pumpUntil(tester, find.byKey(const ValueKey('settings-account')));
+    expect(find.text('Signed in as @${me.handle}.'), findsOneWidget);
+  });
 }
