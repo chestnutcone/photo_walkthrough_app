@@ -6,10 +6,12 @@ import '../features/auth/onboarding_flag.dart';
 import 'auth/auth_controller.dart';
 import '../features/create/create_screen.dart';
 import '../features/feed/feed_screen.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../features/onboarding/demo_story.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
 import '../features/search/search_screen.dart';
+import '../features/story/story_deeplink.dart';
 import '../features/story/story_screen.dart';
 import '../features/profile_edit/edit_profile_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -79,7 +81,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (_, _) => const FeedScreen()),
       GoRoute(
         path: '/story/:id',
-        builder: (_, s) => StoryScreen(workId: s.pathParameters['id']!),
+        builder: (_, s) {
+          final link = StoryDeepLink.fromQuery(s.uri.queryParameters);
+          return StoryScreen(
+            workId: s.pathParameters['id']!,
+            initialChapter: link.chapter,
+            openReplies: link.openReplies,
+          );
+        },
       ),
       GoRoute(
         path: '/artist/:handle',
@@ -93,7 +102,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
       GoRoute(
         path: '/notifications',
-        builder: (_, _) => const PlaceholderScreen('notifications'),
+        builder: (_, _) => const NotificationsScreen(),
       ),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(

@@ -18,6 +18,9 @@ import '../../../core/support/fakes.dart';
 
 const phone = Size(390, 844);
 
+/// 1x1 transparent PNG, for tests that build their own app.
+Uint8List get transparentPng => _png;
+
 /// 1x1 transparent PNG.
 final Uint8List _png = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -94,6 +97,8 @@ Future<StoryHarness> pumpStory(
   int followStatus = 200,
   StoryImageProviderFactory? imageFactory,
   bool networkError = false,
+  int? initialChapter,
+  bool openReplies = false,
 }) async {
   tester.view.physicalSize = phone;
   tester.view.devicePixelRatio = 1;
@@ -132,8 +137,12 @@ Future<StoryHarness> pumpStory(
       GoRoute(path: '/', builder: (_, _) => const Text('route:feed')),
       GoRoute(
         path: '/story/:id',
-        builder: (_, s) =>
-            StoryScreen(workId: s.pathParameters['id']!, readOnly: readOnly),
+        builder: (_, s) => StoryScreen(
+          workId: s.pathParameters['id']!,
+          readOnly: readOnly,
+          initialChapter: initialChapter,
+          openReplies: openReplies,
+        ),
       ),
       GoRoute(
         path: '/artist/:handle',

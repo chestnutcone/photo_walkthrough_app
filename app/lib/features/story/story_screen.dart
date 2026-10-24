@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,10 +32,23 @@ const double _zoneSplit = 0.3;
 /// The story viewer. [readOnly] (the web viewer) hides actions that need a
 /// signed-in account: follow, print inquiry.
 class StoryScreen extends ConsumerWidget {
-  const StoryScreen({super.key, required this.workId, this.readOnly = false});
+  const StoryScreen({
+    super.key,
+    required this.workId,
+    this.readOnly = false,
+    this.initialChapter,
+    this.openReplies = false,
+  });
 
   final String workId;
   final bool readOnly;
+
+  /// Deep link: start on this chapter (0-based). Ignored when the story has
+  /// no such chapter.
+  final int? initialChapter;
+
+  /// Deep link: also open that chapter's replies.
+  final bool openReplies;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -42,7 +57,13 @@ class StoryScreen extends ConsumerWidget {
       data: (w) {
         final notice = ownerStatusNotice(w);
         if (notice != null) return _StatusScaffold(child: _Message(notice));
-        return _StoryView(key: ValueKey(w.id), work: w, readOnly: readOnly);
+        return _StoryView(
+          key: ValueKey(w.id),
+          work: w,
+          readOnly: readOnly,
+          initialChapter: initialChapter,
+          openReplies: openReplies,
+        );
       },
       loading: () => const _StatusScaffold(
         child: CircularProgressIndicator(color: VelaColors.accent),
@@ -115,10 +136,18 @@ void _leave(BuildContext context, {String fallback = '/'}) {
 }
 
 class _StoryView extends ConsumerStatefulWidget {
-  const _StoryView({super.key, required this.work, required this.readOnly});
+  const _StoryView({
+    super.key,
+    required this.work,
+    required this.readOnly,
+    required this.initialChapter,
+    required this.openReplies,
+  });
 
   final Work work;
   final bool readOnly;
+  final int? initialChapter;
+  final bool openReplies;
 
   @override
   ConsumerState<_StoryView> createState() => _StoryViewState();
@@ -137,6 +166,20 @@ class _StoryViewState extends ConsumerState<_StoryView> {
   double _cardTop = double.infinity;
 
   Work get _work => widget.work;
+
+  @override
+  void initState() {
+    super.initState();
+    final chapter = widget.initialChapter;
+    if (chapter != null && chapter < _work.chapters.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _ctl.selectPin(chapter);
+        if (widget.openReplies) unawaited(_toggleReplies(chapter));
+      });
+    }
+  }
+
   StoryKey get _key =>
       StoryKey(workId: _work.id, chapterCount: _work.chapters.length);
   StoryController get _ctl => ref.read(storyControllerProvider(_key).notifier);

@@ -10,6 +10,7 @@ import 'package:vela_app/core/require_sign_in.dart';
 import 'package:vela_app/core/router.dart';
 import 'package:vela_app/features/create/create_screen.dart';
 import 'package:vela_app/features/feed/feed_screen.dart';
+import 'package:vela_app/features/notifications/notifications_screen.dart';
 import 'package:vela_app/features/search/search_screen.dart';
 import 'package:vela_app/features/onboarding/onboarding_screen.dart';
 
@@ -98,6 +99,8 @@ void main() {
         expect(find.byType(SettingsScreen), findsOneWidget);
       } else if (path == '/profile/edit') {
         expect(find.byType(EditProfileScreen), findsOneWidget);
+      } else if (path == '/notifications') {
+        expect(find.byType(NotificationsScreen), findsOneWidget);
       } else {
         expect(find.text('route:${path.substring(1)}'), findsOneWidget);
       }
