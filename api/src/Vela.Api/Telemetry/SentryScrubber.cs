@@ -11,7 +11,9 @@ public static class SentryScrubber
     private static readonly HashSet<string> DroppedHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
         "Authorization", "Cookie", "Set-Cookie", "Proxy-Authorization", "X-Forwarded-For", "X-Real-IP", "CF-Connecting-IP", "True-Client-IP",
-        "X-Vela-Attestation", "X-Api-Key",
+        // The real attestation header (S1b-12: this list used to name "X-Vela-Attestation", which nothing sends). Tokens are
+        // replayable for minutes (S1b-8), so they must never reach Sentry.
+        Vela.Api.Abuse.AttestationMiddleware.TokenHeader, "X-Api-Key",
     };
 
     public static void Configure(SentryAspNetCoreOptions o, IConfiguration config, string environment)

@@ -300,4 +300,26 @@ void main() {
       expect(out.exceptions!.last.value!.length, lessThanOrEqualTo(200));
     });
   });
+
+  test('attestation_and_platform_headers_never_survive_scrubbing_S1b_12', () {
+    const token = 'ATTEST-TOKEN-SECRET';
+    final out = scrubEvent(
+      SentryEvent(
+        request: SentryRequest(
+          url: 'https://api.example.com/v1/works',
+          method: 'POST',
+          headers: {'X-Attestation': token, 'X-Platform': 'ios'},
+        ),
+        breadcrumbs: [
+          Breadcrumb(
+            category: 'http',
+            type: 'http',
+            data: {'url': 'https://api.example.com/v1/works', 'X-Attestation': token},
+          ),
+        ],
+      ),
+    )!;
+    expect(out.request!.headers, isEmpty);
+    expect(out.toJson().toString(), isNot(contains(token)));
+  });
 }

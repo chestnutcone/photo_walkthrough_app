@@ -155,6 +155,28 @@ public class TelemetryTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
+    public void Sentry_drops_the_real_attestation_header_s1b_12()
+    {
+        var evt = new SentryEvent(new InvalidOperationException("x"))
+        {
+            Request = new SentryRequest
+            {
+                Headers =
+                {
+                    [Vela.Api.Abuse.AttestationMiddleware.TokenHeader] = "ATTEST-TOKEN-SECRET", ["x-attestation"] = "ATTEST-TOKEN-SECRET",
+                    [Vela.Api.Abuse.AttestationMiddleware.PlatformHeader] = "ios", ["Accept"] = "application/json",
+                },
+            },
+        };
+
+        var scrubbed = SentryScrubber.Apply(evt)!;
+
+        Assert.Equal("X-Attestation", Vela.Api.Abuse.AttestationMiddleware.TokenHeader);
+        Assert.DoesNotContain(scrubbed.Request.Headers, h => h.Value.Contains("ATTEST-TOKEN-SECRET"));
+        Assert.Equal("application/json", scrubbed.Request.Headers["Accept"]);
+    }
+
+    [Fact]
     public void Sentry_options_disable_pii_and_install_the_scrubber()
     {
         var options = new Sentry.AspNetCore.SentryAspNetCoreOptions();
