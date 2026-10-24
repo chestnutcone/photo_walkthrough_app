@@ -45,6 +45,8 @@ public static class WorkValidator
         }
         if (value.Length < min || value.Length > max || (required && string.IsNullOrWhiteSpace(value)))
             throw WorkException.Validation(field, min > 0 ? $"must be {min}-{max} characters." : $"allows at most {max} characters.");
+        if (Common.UnsafeText.ContainsDisallowed(value))
+            throw WorkException.Validation(field, "contains characters that are not allowed.");
         if (value.Any(ch => char.IsControl(ch) && ch is not ('\n' or '\r')))
             throw WorkException.Validation(field, "contains characters that are not allowed.");
     }

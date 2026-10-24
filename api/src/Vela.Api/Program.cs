@@ -24,6 +24,7 @@ using Vela.Api.Admin;
 using Vela.Api.Telemetry;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(k => k.AddServerHeader = false); // no server banner
 builder.Services.AddVelaTelemetry(builder.Configuration);
 builder.WebHost.UseVelaSentry(builder.Configuration, builder.Environment.EnvironmentName);
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
@@ -59,6 +60,8 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             OnChallenge = ctx =>
             {
                 ctx.HandleResponse();
+                // RFC 6750: a 401 from a bearer-protected resource names the scheme.
+                if (ctx.AuthenticateFailure is not UserStateAuthException) ctx.Response.Headers.WWWAuthenticate = "Bearer";
                 var result = ctx.AuthenticateFailure is UserStateAuthException { State: UserState.Suspended }
                     ? Results.Fail(StatusCodes.Status403Forbidden, "account_suspended", "This account is suspended.")
                     : ctx.AuthenticateFailure is UserStateAuthException { State: UserState.Deleted }
@@ -74,7 +77,8 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             IssuerSigningKey = jwt.SecurityKey,
             ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
             ClockSkew = TimeSpan.Zero,
-            LifetimeValidator = (_, expires, _, _) => expires is { } e && e > clock.GetUtcNow().UtcDateTime,
+            LifetimeValidator = (notBefore, expires, _, _) =>
+                expires is { } e && e > clock.GetUtcNow().UtcDateTime && (notBefore is not { } nb || nb <= clock.GetUtcNow().UtcDateTime),
         };
     });
 builder.Services.AddAuthorization();
@@ -91,6 +95,7 @@ builder.Services.AddWorks();
 builder.Services.AddSearch();
 builder.Services.AddContentSafety(builder.Configuration, builder.Environment);
 builder.Services.AddShare(builder.Configuration, builder.Environment);
+builder.Services.AddViewerCors();
 builder.Services.AddLegal();
 builder.Services.AddAccount(builder.Environment);
 builder.Services.AddCdnPurging(builder.Configuration, builder.Environment);
@@ -108,7 +113,9 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 if (app.Services.GetRequiredService<EmailCodeSettings>().ReviewMode && !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Test"))
     app.Logger.LogWarning("Review mode is ON: a fixed sign-in code is accepted for allow-listed review accounts. Turn Auth:ReviewMode off after app review.");
 Vela.Api.Account.CdnPurgingExtensions.WarnIfNotConfigured(app.Services.GetRequiredService<Vela.Api.Account.ICdnPurger>(), app.Environment, app.Logger);
+app.UseVelaSecurityHeaders(app.Configuration, app.Environment);
 app.UseVelaExceptionHandling();
+app.UseViewerCors();
 app.UseAdminHeaders();
 app.UseAuthentication();
 app.UseAbuseProtection();

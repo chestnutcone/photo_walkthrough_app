@@ -220,13 +220,16 @@ public class AdminPageTests(PostgresFixture pg) : IAsyncLifetime
             ($"/admin/users/{owner.Id}?handler=Reinstate", F(("reason", "x"))),
             ("/admin/logout", F()),
         };
+        // Signing in is itself audited (admin_login), so compare against the rows that exist before the forged posts.
+        var auditBefore = (await _s.Audit()).Select(a => a.Id).ToHashSet();
+        Assert.Contains(await _s.Audit(), a => a.Action == "admin_login");
         foreach (var (url, form) in posts)
             Assert.Equal(HttpStatusCode.BadRequest, (await _b.Post(url, form, withToken: false)).Status);
 
         Assert.Equal("pending", (await _s.LoadReport(report)).Status);
         Assert.Equal(WorkStatus.Published, (await WorkTestKit.Load(_s.Host, work)).Status);
         Assert.Null((await _s.LoadUser(owner.Id)).SuspendedAt);
-        Assert.Empty(await _s.Audit());
+        Assert.Equal(auditBefore, (await _s.Audit()).Select(a => a.Id).ToHashSet()); // no new rows, none removed (no admin_logout either)
         Assert.True(await _b.IsSignedIn());
     }
 

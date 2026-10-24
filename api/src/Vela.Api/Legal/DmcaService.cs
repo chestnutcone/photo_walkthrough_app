@@ -19,6 +19,8 @@ public sealed class DmcaService(
     VelaDbContext db, TimeProvider clock, IEmailSender email, IOptions<BrandingOptions> branding, ILogger<DmcaService> log) : IDmcaService
 {
     public const int MaxPerIpPerDay = 5;
+    /// <summary>Acknowledgement emails to one claimant address per day. Notices are still stored beyond this; only the mail stops, so the form cannot be used to bomb someone else's inbox.</summary>
+    public const int MaxAcksPerEmailPerDay = 3;
     public static readonly TimeSpan Window = TimeSpan.FromHours(24);
     public const string AckSubject = "DMCA notice received";
     public const string ReportSource = "dmca";
@@ -32,7 +34,7 @@ public sealed class DmcaService(
                 .Select(w => new { w.Id, w.ArtistId }).SingleOrDefaultAsync()
             : null;
         var notice = await SaveAsync(req, ip, work?.Id, work?.ArtistId);
-        await AcknowledgeAsync(notice);
+        if (await AckAllowedAsync(notice)) await AcknowledgeAsync(notice);
         return notice.Id;
     }
 
@@ -68,6 +70,14 @@ public sealed class DmcaService(
         await db.SaveChangesAsync();
         await tx.CommitAsync();
         return notice;
+    }
+
+    private async Task<bool> AckAllowedAsync(DmcaNotice notice)
+    {
+        var since = notice.CreatedAt - Window;
+        var address = notice.ClaimantEmail.ToLower();
+        var recent = await db.DmcaNotices.AsNoTracking().CountAsync(n => n.ClaimantEmail.ToLower() == address && n.CreatedAt > since);
+        return recent <= MaxAcksPerEmailPerDay; // this notice is already stored, so it is counted
     }
 
     /// <summary>Best effort: a fixed subject and a body with only the reference id and generic next steps. Nothing the claimant typed.</summary>

@@ -199,7 +199,8 @@ public class WorkTests(PostgresFixture pg) : IDisposable
     {
         var u = await Artist();
         var id = await Draft(_host, u);
-        const string title = "<script>alert('x')</script> & \"q\" ‮مرحبا 🎨";
+        // Right-to-left text with a direction MARK is accepted; bidi OVERRIDES are refused (Security/HardeningTests).
+        const string title = "<script>alert('x')</script> & \"q\" ‏مرحبا 🎨";
         const string body = "<img src=x onerror=1>\nline two ' OR 1=1 --";
 
         var r = await u.Put($"/v1/works/{id}", Update(title, [Chapter(title: "<b>c</b>", body: body)], intro: "<i>hi</i>"));

@@ -49,4 +49,72 @@ public class HttpJwksProviderTests
         Assert.NotNull(await p.GetKeyAsync("http://t/jwks", "b")); // rotation picked up
         Assert.Equal(2, h.Calls);
     }
+
+    private sealed class FailingHandler : HttpMessageHandler
+    {
+        public int Calls;
+        public bool Fail = true;
+        public string Body = "";
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+        {
+            Calls++;
+            return Fail ? throw new HttpRequestException("provider down") : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Body) });
+        }
+    }
+
+    [Fact]
+    public async Task A_failed_fetch_starts_the_cool_down_so_an_outage_costs_one_attempt_a_minute()
+    {
+        var h = new FailingHandler();
+        var clock = new MutableTimeProvider(DateTimeOffset.UtcNow);
+        var p = new HttpJwksProvider(new HttpClient(h), clock);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => p.GetKeyAsync("http://t/jwks", "a"));
+        Assert.Null(await p.GetKeyAsync("http://t/jwks", "a"));      // within the minute: no new request
+        Assert.Null(await p.GetKeyAsync("http://t/jwks", "a"));
+        Assert.Equal(1, h.Calls);
+
+        clock.Advance(TimeSpan.FromMinutes(2));
+        h.Fail = false; h.Body = Jwks("a");
+        Assert.NotNull(await p.GetKeyAsync("http://t/jwks", "a"));   // recovered
+        Assert.Equal(2, h.Calls);
+    }
+
+    [Fact]
+    public async Task A_duplicate_kid_in_the_key_set_does_not_break_the_lookup()
+    {
+        var p = new HttpJwksProvider(new HttpClient(new Handler(() => Jwks("a", "a", "b"))), new MutableTimeProvider(DateTimeOffset.UtcNow));
+        Assert.NotNull(await p.GetKeyAsync("http://t/jwks", "a"));
+        Assert.NotNull(await p.GetKeyAsync("http://t/jwks", "b"));
+    }
+
+    [Fact]
+    public async Task One_provider_being_slow_does_not_block_the_other()
+    {
+        var release = new TaskCompletionSource();
+        var started = new TaskCompletionSource();
+        var handler = new GateHandler(started, release);
+        var p = new HttpJwksProvider(new HttpClient(handler), new MutableTimeProvider(DateTimeOffset.UtcNow));
+
+        var slow = p.GetKeyAsync("http://slow/jwks", "a");
+        await started.Task;
+        var fast = await p.GetKeyAsync("http://fast/jwks", "a").WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.NotNull(fast);
+
+        release.SetResult();
+        Assert.NotNull(await slow);
+    }
+
+    private sealed class GateHandler(TaskCompletionSource started, TaskCompletionSource release) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+        {
+            if (r.RequestUri!.Host == "slow")
+            {
+                started.TrySetResult();
+                await release.Task;
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Jwks("a")) };
+        }
+    }
 }

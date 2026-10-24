@@ -17,6 +17,7 @@ public static class AdminAuth
     public const string CookieName = "vela_admin";
     public const string AdminClaim = "vela_admin";
     public const string EmailClaim = "vela_email";
+    public const string StampClaim = "vela_stamp";
     public static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(8);
 
     public static CookieSecurePolicy SecurePolicy(IHostEnvironment env) =>
@@ -24,8 +25,8 @@ public static class AdminAuth
 
     public static Guid? UserId(ClaimsPrincipal? p) => Guid.TryParse(p?.FindFirstValue("sub"), out var id) ? id : null;
 
-    public static ClaimsPrincipal CreatePrincipal(Guid userId, string email) =>
-        new(new ClaimsIdentity([new Claim("sub", userId.ToString()), new Claim(EmailClaim, email), new Claim(AdminClaim, "1")],
+    public static ClaimsPrincipal CreatePrincipal(Guid userId, string email, Guid stamp) =>
+        new(new ClaimsIdentity([new Claim("sub", userId.ToString()), new Claim(EmailClaim, email), new Claim(AdminClaim, "1"), new Claim(StampClaim, stamp.ToString())],
             Scheme, "sub", ClaimTypes.Role));
 
     public static AuthenticationProperties SessionProperties(DateTimeOffset now) =>
@@ -54,13 +55,16 @@ public sealed class AdminSessionValidator(VelaDbContext db, IAdminAllowList allo
         var id = AdminAuth.UserId(principal);
         var email = principal?.FindFirstValue(AdminAuth.EmailClaim);
         if (id is null || email is null || principal!.FindFirstValue(AdminAuth.AdminClaim) != "1") return false;
+        if (!Guid.TryParse(principal.FindFirstValue(AdminAuth.StampClaim), out var stamp)) return false;
         if (!allow.Contains(email))
         {
             // Removed from the allow-list: the admin flag goes too, not just this session.
             await db.Users.Where(u => u.Id == id && u.IsAdmin).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, false));
             return false;
         }
+        // The stamp makes the cookie a single live session: signing out (or signing in again) invalidates every copy of the old one.
         return await db.Users.AsNoTracking().AnyAsync(u => u.Id == id && u.IsAdmin && u.DeletedAt == null && u.SuspendedAt == null
+            && u.AdminSessionStamp == stamp
             && db.Identities.Any(i => i.UserId == u.Id && i.Provider == "email" && i.Subject == email));
     }
 }

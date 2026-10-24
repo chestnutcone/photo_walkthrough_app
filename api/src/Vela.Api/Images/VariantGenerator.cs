@@ -2,7 +2,7 @@ using SkiaSharp;
 
 namespace Vela.Api.Images;
 
-public sealed class VariantGenerator(IBlobStore blobs) : IVariantGenerator
+public sealed class VariantGenerator(IBlobStore blobs, ILogger<VariantGenerator>? log = null) : IVariantGenerator
 {
     public const long MaxSourceBytes = 25L * 1024 * 1024;
     public const long MaxPixels = 60_000_000;
@@ -38,7 +38,13 @@ public sealed class VariantGenerator(IBlobStore blobs) : IVariantGenerator
             canvas.DrawImage(image, crop, SKRect.Create(AvatarSize, AvatarSize), Sampling, null);
         var name = $"avatars/{userId}/avatar-256.webp";
         await WriteWebpAsync(name, square);
-        await blobs.DeletePrefixAsync(sourceBlob); // the raw upload is not needed once the avatar exists
+        // The raw upload is not needed once the avatar exists. A failed delete must not turn a finished avatar into an error:
+        // the stale original lives in the private originals container and the storage lifecycle rule removes it.
+        try { await blobs.DeletePrefixAsync(sourceBlob); }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log?.LogWarning("Could not delete a raw avatar upload ({Reason}).", e.GetType().Name);
+        }
         return name;
     }
 

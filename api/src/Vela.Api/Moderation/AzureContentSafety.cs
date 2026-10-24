@@ -31,7 +31,10 @@ public static class ContentSafetyServiceCollectionExtensions
         }
         var endpoint = Require(config, "Endpoint");
         var key = Require(config, "Key");
-        services.AddSingleton<IContentSafety>(new AzureContentSafety(new ContentSafetyClient(new Uri(endpoint), new AzureKeyCredential(key))));
+        // Replies are scanned inside the request, so a slow scanner must fail quickly (and fail open, by design) rather than hold a request
+        // open for the SDK's defaults of three retries with 100-second network timeouts.
+        var options = new ContentSafetyClientOptions { Retry = { MaxRetries = 2, NetworkTimeout = TimeSpan.FromSeconds(10), Mode = Azure.Core.RetryMode.Exponential } };
+        services.AddSingleton<IContentSafety>(new AzureContentSafety(new ContentSafetyClient(new Uri(endpoint), new AzureKeyCredential(key), options)));
         return services;
     }
 

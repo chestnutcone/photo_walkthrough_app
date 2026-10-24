@@ -19,6 +19,7 @@ public static class ReplyText
             if (Rune.DecodeFromUtf16(text.AsSpan(i), out var rune, out var used) != OperationStatus.Done)
                 throw Invalid("body must be valid text.");
             if (Rune.IsControl(rune) && rune.Value != '\n') throw Invalid("body must not contain control characters other than new lines.");
+            if (Common.UnsafeText.IsDisallowed(rune.Value)) throw Invalid("body must not contain text-direction control characters.");
             i += used;
             count++;
         }
