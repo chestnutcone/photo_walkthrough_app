@@ -9,7 +9,7 @@ public static class AbuseServiceExtensions
     {
         var options = AbuseOptions.Load(config, env);
         services.AddSingleton(options);
-        services.AddSingleton<IClientIpResolver>(new ClientIpResolver(options.CloudflareRanges));
+        services.AddSingleton<IClientIpResolver>(new ClientIpResolver(options.CloudflareRanges, options.TrustedProxyHops));
         services.AddSingleton(new DisposableEmailList(options.DisposableEmailDomains));
         services.AddScoped<SignupVelocity>();
         services.AddAbuseRateLimiting(options);

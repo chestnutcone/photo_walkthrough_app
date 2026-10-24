@@ -1,0 +1,35 @@
+# Configuration the API needs in Production. scripts/validate-infra.sh fails if one is missing from
+# infra/modules/containerapp.bicep. Add a line here whenever the API starts requiring a new key.
+ConnectionStrings__Default
+Storage__ConnectionString
+Storage__PublicBaseUrl
+DataProtection__PersistToBlob
+Email__Acs__ConnectionString
+Email__SenderAddress
+Auth__Jwt__SigningKey
+Auth__EmailCode__Pepper
+Auth__Apple__ClientId
+Auth__Google__ClientIds
+Admin__Emails
+Admin__BanPepper
+ContentSafety__Endpoint
+ContentSafety__Key
+Branding__Domain
+Web__ViewerUrl
+Abuse__RequireAttestation
+Abuse__TrustedProxyHops
+Abuse__PlayIntegrity__PackageName
+Abuse__PlayIntegrity__DecryptionKey
+Abuse__PlayIntegrity__VerificationKey
+Abuse__AppAttest__AppId
+Cloudflare__ZoneId
+Cloudflare__ApiToken
+Links__AppleTeamId
+Links__Sha256Fingerprints
+Legal__DmcaAgentName
+Telemetry__AzureMonitorConnectionString
+Telemetry__SentryDsn
+Auth__ReviewMode
+Auth__ReviewCode
+Auth__ReviewEmails
+Database__MigrateOnStartup

@@ -1,3 +1,4 @@
+using Vela.Api.Common;
 using Vela.Api.Abuse;
 using Vela.Api.Branding;
 using Microsoft.EntityFrameworkCore;
@@ -92,12 +93,21 @@ builder.Services.AddContentSafety(builder.Configuration, builder.Environment);
 builder.Services.AddShare(builder.Configuration, builder.Environment);
 builder.Services.AddLegal();
 builder.Services.AddAccount(builder.Environment);
+builder.Services.AddCdnPurging(builder.Configuration, builder.Environment);
 builder.Services.AddAdmin(builder.Configuration, builder.Environment);
 if (!builder.Environment.IsEnvironment("Test")) builder.Services.AddHostedService<Vela.Api.Moderation.PublishPipelineWorker>();
 
+builder.Services.AddVelaDataProtection(builder.Configuration, builder.Environment); // last: its missing-setting error must not mask the earlier settings' own
 var app = builder.Build();
+// Opt-in (infra sets it): EF Core takes a database-wide lock while migrating, so several replicas starting together are safe.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    using var migrationScope = app.Services.CreateScope();
+    migrationScope.ServiceProvider.GetRequiredService<VelaDbContext>().Database.Migrate();
+}
 if (app.Services.GetRequiredService<EmailCodeSettings>().ReviewMode && !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Test"))
     app.Logger.LogWarning("Review mode is ON: a fixed sign-in code is accepted for allow-listed review accounts. Turn Auth:ReviewMode off after app review.");
+Vela.Api.Account.CdnPurgingExtensions.WarnIfNotConfigured(app.Services.GetRequiredService<Vela.Api.Account.ICdnPurger>(), app.Environment, app.Logger);
 app.UseVelaExceptionHandling();
 app.UseAdminHeaders();
 app.UseAuthentication();

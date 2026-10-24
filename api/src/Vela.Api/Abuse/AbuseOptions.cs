@@ -72,6 +72,8 @@ public sealed class AbuseOptions
     public IReadOnlyList<string> CloudflareRanges { get; init; } = Abuse.CloudflareRanges.Default;
     public IReadOnlyList<string> DisposableEmailDomains { get; init; } = [];
     public int SignupsPerIpPerDay { get; init; } = DefaultSignupsPerIpPerDay;
+    /// <summary>Reverse proxies that append to X-Forwarded-For in front of the API (1 behind Azure Container Apps ingress, 0 when exposed directly).</summary>
+    public int TrustedProxyHops { get; init; }
     public IReadOnlyDictionary<string, int> PermitOverrides { get; init; } = new Dictionary<string, int>();
     public PlayIntegrityOptions PlayIntegrity { get; init; } = new();
     public AppAttestOptions AppAttest { get; init; } = new();
@@ -103,6 +105,9 @@ public sealed class AbuseOptions
             if (apple.IsConfigured) apple.Validate();
         }
 
+        var hops = s.GetValue<int?>("TrustedProxyHops") ?? 0;
+        if (hops < 0) throw new InvalidOperationException("Abuse:TrustedProxyHops must be 0 or more.");
+
         var overrides = s.GetSection("RateLimits").GetChildren()
             .Where(c => c.GetValue<int?>("Permit") is > 0)
             .ToDictionary(c => c.Key, c => c.GetValue<int>("Permit"));
@@ -113,6 +118,7 @@ public sealed class AbuseOptions
             DisposableEmailDomains = s.GetSection("DisposableEmailDomains").Get<string[]>() ?? [],
             // Test hosts share one loopback address and create many accounts; the limit itself is exercised with an explicit value.
             SignupsPerIpPerDay = s.GetValue<int?>("SignupsPerIpPerDay") ?? (env.IsEnvironment("Test") ? TestSignupsPerIpPerDay : DefaultSignupsPerIpPerDay),
+            TrustedProxyHops = hops,
             PermitOverrides = overrides,
             PlayIntegrity = play,
             AppAttest = apple,
