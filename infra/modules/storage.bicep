@@ -39,9 +39,12 @@ resource blob 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
   parent: account
   name: 'default'
   properties: {
-    // No soft delete: account deletion and take-downs must remove bytes now, not after a retention window.
-    deleteRetentionPolicy: { enabled: false }
-    containerDeleteRetentionPolicy: { enabled: false }
+    // S1b-15: a bad sweep, a destroyed-evidence attempt or a leaked key must be recoverable, so deleted blobs and containers are
+    // kept for 7 days. GDPR interplay (docs/security/review-findings.md, S1b): bytes removed by account deletion or a take-down
+    // stay recoverable by an operator for up to 7 more days, then are purged by Azure. Soft-deleted blobs are never served
+    // (not by the CDN, not by a SAS URL); only an explicit undelete restores them.
+    deleteRetentionPolicy: { enabled: true, days: 7 }
+    containerDeleteRetentionPolicy: { enabled: true, days: 7 }
     cors: {
       corsRules: [
         {
