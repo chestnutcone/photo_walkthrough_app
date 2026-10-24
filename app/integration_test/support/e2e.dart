@@ -15,7 +15,9 @@ import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vela_app/core/attestation/attestation_client.dart';
 import 'package:vela_app/core/attestation/platform_attestation.dart';
+import 'package:vela_app/features/auth/sso_client.dart';
 import 'package:vela_app/features/create/photo_picker.dart';
+import 'package:vela_app/core/auth/session_store.dart';
 import 'package:vela_app/main.dart';
 
 const apiBase = 'http://10.0.2.2:5080';
@@ -58,15 +60,37 @@ Uint8List testPhoto({int w = 1200, int h = 800, int? exifOrientation}) {
   return Uint8List.fromList(img.encodeJpg(im, quality: 85));
 }
 
+int _launches = 0;
+
+class _TestSso implements SsoClient {
+  const _TestSso(this.subject);
+  final String subject;
+  @override
+  Future<String> idToken(String provider, String nonce) async =>
+      'fake:$subject:$subject@example.com';
+}
+
 /// Launches the real app on a clean install state.
 Future<void> launchApp(
   WidgetTester tester, {
   FakePhotoPicker? picker,
   bool clean = true,
+  Account? signedInAs,
+  String? ssoSubject,
 }) async {
   if (clean) {
     await const FlutterSecureStorage().deleteAll();
     (await SharedPreferences.getInstance()).clear();
+  }
+  if (signedInAs != null) {
+    await const FlutterSecureStorage().write(
+      key: 'vela.session',
+      value: Session(
+        accessToken: signedInAs.token,
+        refreshToken: signedInAs.refresh,
+        accessExpiresAt: DateTime.now().toUtc().add(const Duration(minutes: 14)),
+      ).encode(),
+    );
   }
   await tester.pumpWidget(
     ProviderScope(
@@ -76,6 +100,9 @@ Future<void> launchApp(
           createPlatformAttestationClient(),
         ),
         if (picker != null) photoPickerProvider.overrideWithValue(picker),
+        ssoClientProvider.overrideWithValue(
+          _TestSso(ssoSubject ?? 'ui$runId${_launches++}'),
+        ),
       ],
       child: const VelaApp(),
     ),
@@ -157,8 +184,9 @@ Future<void> shot(WidgetTester tester, String flow, String name) async {
 // ---- plain HTTP API access for second accounts and fixtures ----
 
 class Account {
-  Account(this.token, this.id, this.handle);
+  Account(this.token, this.refresh, this.id, this.handle);
   final String token;
+  final String refresh;
   final String id;
   final String handle;
 }
@@ -220,7 +248,7 @@ Future<Account> makeAccount(String handle, {String? name}) async {
       'followArtistIds': <String>[],
     },
   );
-  return Account(token, me['data']['id'] as String, handle);
+  return Account(token, r['data']['refreshToken'] as String, me['data']['id'] as String, handle);
 }
 
 /// Creates and publishes a story over HTTP, returns the work id.
