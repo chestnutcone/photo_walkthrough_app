@@ -35,6 +35,7 @@ export Storage__PublicBaseUrl="http://127.0.0.1:$AZ_PORT/devstoreaccount1/"
 export Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:$AZ_PORT/devstoreaccount1;"
 export Storage__EnsurePublicRead=true   # works/avatars public-read, like the Azure infra
 export Auth__ReviewMode=false
+export Auth__UserStateCacheSeconds=1   # a ban set directly in the DB is seen within a second
 
 cd "$ROOT/api/src/Vela.Api"
 dotnet build -c Debug --nologo -v q >"$STATE/api-build.log" 2>&1 || { cat "$STATE/api-build.log"; exit 1; }

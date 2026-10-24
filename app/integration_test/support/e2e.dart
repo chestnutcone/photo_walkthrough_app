@@ -1,5 +1,6 @@
 // Shared harness for the on-device end-to-end tests. They run against the real
 // local API (scripts/run-local-api.sh) and the host helper (tools/e2e_host_helper.py).
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -10,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -323,3 +325,9 @@ Future<void> uiSignInGoogle(WidgetTester tester) async {
 }
 
 void log(String m) => debugPrint('E2E: $m');
+
+/// Navigates the running app with its router (deterministic, no feed scrolling).
+void goTo(WidgetTester tester, String location) {
+  final ctx = tester.element(find.byType(Scaffold).first);
+  GoRouter.of(ctx).go(location);
+}
