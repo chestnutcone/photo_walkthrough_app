@@ -90,4 +90,21 @@ void main() {
     await pumpUntil(tester, find.text('Begin →'));
     await shot(tester, 'e-create-rotated', '07-open-published');
   });
+
+  testWidgets('E: a new account reaches create, portfolio and settings from the feed only', (tester) async {
+    final me = await makeAccount('nv$uniq');
+    await launchApp(tester, signedInAs: me);
+    await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
+    await shot(tester, 'e-nav', '01-feed-with-tab-bar');
+    await tapKey(tester, 'tab-bar-create');
+    await pumpUntil(tester, find.byKey(const ValueKey('create-screen')));
+    await shot(tester, 'e-nav', '02-create');
+    await tapKey(tester, 'cancel');
+    await pumpUntil(tester, find.byKey(const ValueKey('tab-bar-portfolio')));
+    await tapKey(tester, 'tab-bar-portfolio');
+    await pumpUntil(tester, find.byKey(const ValueKey('portfolio-settings')));
+    await shot(tester, 'e-nav', '03-own-portfolio');
+    await tapKey(tester, 'portfolio-settings');
+    await pumpUntil(tester, find.byKey(const ValueKey('settings-sign-out')));
+  });
 }

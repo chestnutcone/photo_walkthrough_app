@@ -132,6 +132,7 @@ Future<FeedHarness> pumpFeed(
         builder: (_, s) => Text('route:artist/${s.pathParameters['handle']}'),
       ),
       GoRoute(path: '/search', builder: (_, _) => const Text('route:search')),
+      GoRoute(path: '/create', builder: (_, _) => const Text('route:create')),
       GoRoute(
         path: '/notifications',
         builder: (_, _) => const Text('route:notifications'),

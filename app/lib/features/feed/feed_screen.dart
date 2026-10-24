@@ -7,9 +7,11 @@ import '../../core/api/api_providers.dart';
 import '../../core/require_sign_in.dart';
 import '../../core/theme/tokens.dart';
 import '../notifications/unread_count_provider.dart';
+import '../portfolio/portfolio_data.dart';
 import 'feed_controller.dart';
 import 'feed_header.dart';
 import 'feed_states.dart';
+import 'feed_tab_bar.dart';
 import 'follow_overrides.dart';
 import 'post_card.dart';
 
@@ -69,6 +71,28 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     }
   }
 
+  void _toTop() {
+    if (_scroll.hasClients) {
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  Future<void> _newStory() async {
+    if (!await requireSignIn(context, ref) || !mounted) return;
+    await context.push('/create');
+  }
+
+  Future<void> _openPortfolio() async {
+    if (!await requireSignIn(context, ref) || !mounted) return;
+    final handle = (await ref.read(meProvider.future))?.profile?.handle;
+    if (handle == null || !mounted) return;
+    await context.push('/artist/$handle');
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider);
@@ -106,37 +130,55 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
     return Scaffold(
       backgroundColor: VelaColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          color: VelaColors.accent,
-          backgroundColor: VelaColors.sheet,
-          onRefresh: () => _refresh(tab),
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (n) {
-              if (n.depth == 0) _maybeLoadMore(tab);
-              return false;
-            },
-            child: CustomScrollView(
-              controller: _scroll,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: FeedHeader(
-                    tab: tab,
-                    tabs: signedIn ? FeedTab.values : const [FeedTab.discover],
-                    onTab: _selectTab,
-                    onSearch: () => context.push('/search'),
-                    showBell: signedIn,
-                    unread: unread,
-                    onBell: () => context.push('/notifications'),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: SafeArea(
+              bottom: false,
+              child: RefreshIndicator(
+                color: VelaColors.accent,
+                backgroundColor: VelaColors.sheet,
+                onRefresh: () => _refresh(tab),
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (n) {
+                    if (n.depth == 0) _maybeLoadMore(tab);
+                    return false;
+                  },
+                  child: CustomScrollView(
+                    controller: _scroll,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: FeedHeader(
+                          tab: tab,
+                          tabs: signedIn
+                              ? FeedTab.values
+                              : const [FeedTab.discover],
+                          onTab: _selectTab,
+                          onSearch: () => context.push('/search'),
+                          showBell: signedIn,
+                          unread: unread,
+                          onBell: () => context.push('/notifications'),
+                        ),
+                      ),
+                      ..._body(tab, feed),
+                    ],
                   ),
                 ),
-                ..._body(tab, feed),
-              ],
+              ),
             ),
           ),
-        ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: FeedTabBar(
+              onFeed: _toTop,
+              onCreate: _newStory,
+              onPortfolio: _openPortfolio,
+            ),
+          ),
+        ],
       ),
     );
   }
