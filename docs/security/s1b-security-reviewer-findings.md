@@ -248,3 +248,32 @@ Container Apps' actual X-Forwarded-For hop count. Whether Sentry .NET includes r
 inferred from the scrubber handling them). Cloudflare cache rules on the API host (S1b-13). OOM behaviour on Container Apps itself:
 the PoC measured RSS on WSL, and the 1 GiB limit comes from the Bicep file. iOS keychain accessibility, and token survival across
 uninstall and reinstall.
+
+---
+
+## 7. Disposition (S1b-fix, 2026-10-24)
+
+Every finding has a status. Fixed items name the commit subject and the pinning tests; details in `review-findings.md` section 5.
+
+| ID | Severity | Status | Note |
+|---|---|---|---|
+| S1b-1 | HIGH | Fixed | Header-only pixel check, reduced-size JPEG/WebP decode, 160 MB decode budget, `ImageDecodeGate` (default 2, then 503 `busy`), failed uploads deleted, publish holds no row lock while decoding. `Images/DecodeLimitTests.cs`, `Works/PublishBoundsTests.cs`. R-11 and F-A7-4 corrected |
+| S1b-2 | HIGH | Fixed in part | 409 `under_review` for work and reply deletion under review; account hard delete deferred up to 30 days. `Admin/UnderReviewDeleteTests.cs`, `Account/DeletionDeferralTests.cs`. **Open - owner decision:** ban or cooling-off on re-signup after deleting during review; identity reuse unchanged |
+| S1b-3 | HIGH | Fixed | Sealed original + SHA-256 at publish, used by variants, scan check, admin pages, evidence, restore, export and deletion; upload deleted. `Admin/SealedOriginalTests.cs` |
+| S1b-4 | MEDIUM | Open - deferred | Random variant names conflict with the fixed-name CDN purge fallback (`CloudflareCdnPurger` expands a prefix into thumb/feed/full), the take-down purge list and the evidence copy, and would not hide the URL from the uploader, who reads it from the owner view of the work. The real fix is the reviewer's private staging prefix copied to `works/` after a clean scan; next task |
+| S1b-5 | MEDIUM | Fixed | `IpKey.Of` for every DB per-address limit; `public-form` on the DMCA form; acknowledgements capped per normalised mailbox (indexed column). `Abuse/Ipv6DatabaseLimitTests.cs`. Not done: a global daily acknowledgement cap (Accepted: per-mailbox and per-/64 caps bound it) |
+| S1b-6 | MEDIUM | Open - owner decision | Email-code lockout and admin sign-in hardening (per-email failure budget, admin second factor or IP allow-list) belong with the attestation/nonce design |
+| S1b-7 | MEDIUM | Open - deferred | Upload size check before read, lifecycle rules for stale originals, export size cap: next task (needs a size-declaring upload API) |
+| S1b-8 | MEDIUM | Open - owner decision | Server nonces for attestation; decision before enabling attestation (F-A15-1/2, F-B14-1) |
+| S1b-9 | MEDIUM | Open - deferred | Evidence hashes in the snapshot, WORM policy, separate write-only identity. Blob soft delete now on (S1b-15); the sealed original's SHA-256 is on the work row |
+| S1b-10 | LOW | Open - deferred | Remove the admin branch from the public API reader |
+| S1b-11 | LOW | Open - deferred | Refuse overlapping review and admin addresses at startup |
+| S1b-12 | LOW | Fixed | Sentry drops `X-Attestation` (API); the Flutter scrubber already drops all headers and now has a test. `TelemetryTests.Sentry_drops_the_real_attestation_header_s1b_12`, `app/test/core/crash_reporting_test.dart` |
+| S1b-13 | LOW | Fixed | `no-store` on authenticated and non-GET `/v1` responses, `Vary: Authorization` on all `/v1`. `Security/CacheControlTests.cs` |
+| S1b-14 | LOW | Open - owner decision | SSO server nonce and `jti` store, with S1b-8 |
+| S1b-15 | LOW | Fixed | 7-day blob and container soft delete (`infra/modules/storage.bicep`); GDPR interplay in `docs/deploy.md` and the privacy text. Versioning not enabled (would keep overwritten originals): Open with S1b-9 |
+| S1b-16 | LOW | Open - deferred | Canonicalise emails for bans and signup velocity (the DMCA `Mailbox` helper can be reused); store `Email` only when verified |
+| S1b-17 | LOW | Open - owner decision | Release signing key (release blocker, needs the owner's upload key) |
+| S1b-18 | LOW | Open - deferred | Restrict routes reachable from the `vela` scheme |
+| S1b-19 | LOW | Fixed in part | Sealed originals are always stored as `application/octet-stream` (S1b-3). Read SAS content-type/disposition override: Open - deferred |
+| S1b-20 | LOW | Accepted for now | Footer and verified reply addresses are product wording; Owner to approve text |

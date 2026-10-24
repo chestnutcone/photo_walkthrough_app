@@ -146,3 +146,23 @@ See `docs/security/` for the threat model, checklists and findings.
 - Android release builds: provide a real signing keystore (the Gradle config still signs with the debug key) and build with
   `--obfuscate --split-debug-info`.
 
+
+## Settings and behaviour added by the S1b fixes
+
+- `Images__MaxConcurrentDecodes` (default 2) and `Images__DecodeWaitSeconds` (default 5): image decodes allowed at once per
+  replica, and how long a request waits for a slot before it answers 503 `busy` with `Retry-After`. Each decode can use up to
+  160 MB of native memory, so with the 1 GiB container keep the limit at 2 unless the memory is raised.
+- Migrations `PublishClaim`, `SealedOriginal`, `DeletionDeferral` and `DmcaClaimantMailbox` add nullable columns only; they apply
+  with `Database__MigrateOnStartup` like the others.
+- **Sealed originals (S1b-3).** Works published from now on read only `originals/sealed/{workId}/{random}`; the row keeps its
+  SHA-256. Rows published before this change have `sealed_original_blob = NULL` and fall back to `originals/works/{id}`. Backfill
+  (one-off, only needed if such rows exist in a real environment): for each non-draft work with a NULL sealed name, copy
+  `originals/works/{id}` to a new `originals/sealed/{id}/{guid}` name, record the name and the lower-case hex SHA-256 of the copied
+  bytes, then delete the old blob. Pre-launch there are none, so nothing has to be run.
+- **Deferred account deletion (S1b-2).** `DELETE /v1/me` signs out and hides the account at once as before. When the account has
+  works pending or blocked, open reports against its content, DMCA notices or evidence holds, the hard delete waits until those
+  are resolved, at most 30 days after the request (`users.deletion_deferred_until`; the sweep re-checks hourly) and the response
+  says `deferred_review` with `completesBy`. Counsel to confirm the 30-day figure against the GDPR erasure window.
+- **Blob soft delete (S1b-15).** Deleted blobs and containers are retained for 7 days. Bytes removed by account deletion or a
+  take-down are therefore recoverable by an operator (never served) for up to 7 days before Azure purges them; the privacy policy
+  states this. An operator restoring a soft-deleted blob of a deleted account must delete it again.

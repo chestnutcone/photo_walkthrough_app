@@ -217,10 +217,22 @@ section 6 for R-1 to R-17.
 
 ## 5. S1b: security-reviewer agent findings
 
-_To be filled in by the controller after the `security-reviewer` agent pass over `Auth/`, `Images/`, `Admin/`, `Account/`, `Abuse/`.
-For each finding record: ID (S1b-n), severity, location, description, disposition (Fixed with commit, Accept with reason, Owner, Device),
-and the test that pins the fix._
+Full findings with attacks: `s1b-security-reviewer-findings.md` (its section 7 gives every item a status). Fixed in the S1b-fix
+task; the TDD evidence is in the task report (`.superpowers/sdd/2026-10-22-vela-build/task-S1b-fix-report.md`).
 
 | ID | Severity | Location | Finding | Disposition | Evidence |
 |---|---|---|---|---|---|
-| S1b-1 | | | | | |
+| S1b-1 | High | `Images/VariantGenerator.cs`, `Works/WorkService.cs` | One account could OOM the API with parallel decodes of a small, huge-dimension image; publish held a row lock while decoding; the "semaphore" in R-11/F-A7-4 did not exist | Fixed (`425770c`): header-only 60 MP check, reduced-size JPEG/WebP decode, 160 MB decode budget, `ImageDecodeGate` (`Images:MaxConcurrentDecodes`, default 2, bounded wait, 503 `busy` + Retry-After), failed avatar/draft uploads deleted, publish = short claim, decode outside any lock, short completion. R-11 and F-A7-4 corrected | `Images/DecodeLimitTests.cs` (20000x20000 PNG header refused in ms; peak concurrency equals the limit; busy keeps the upload; failed decode removes it), `Works/PublishBoundsTests.cs` (503 busy over HTTP, no row lock during decode via `FOR UPDATE NOWAIT`, second publish refused, stale claim expires) |
+| S1b-2 | High | `Works/WorkService.cs`, `Social/ReplyService.cs`, `Account/DeletionWorker.cs` | Owners could delete flagged content and its records before review, and delete the account within a minute | Fixed in part (`ee98fae`, `e5aa590`): 409 `under_review` for pending/blocked/report-hidden/held works and removed works with a DMCA notice; for auto- or report-hidden and held replies; account hard delete deferred while reviews are open, at most 30 days (`deferred_review`, `completesBy`). Owner: re-signup cooling-off/ban (not implemented, ledgered) | `Admin/UnderReviewDeleteTests.cs`, `Account/DeletionDeferralTests.cs` (incl. the 30-day cap on the fake clock; DMCA notice and evidence hold survive), app `replies_controller_test.dart` |
+| S1b-3 | High | `Images/AzureBlobStore.cs` SAS, all original readers | The upload SAS could overwrite the original after publish, so review, evidence and restore saw a different image | Fixed (`294edb1`): sealed copy `originals/sealed/{id}/{random}` + SHA-256 on the row at publish; variants, the pipeline's hash check before scanning (mismatch = blocked), admin queue/report (labelled "Sealed original"), evidence hold, restore, export and deletions use it; the upload is deleted after publish and by the sweep. Pre-S1b-3 rows fall back (backfill in `docs/deploy.md`) | `Admin/SealedOriginalTests.cs` |
+| S1b-4 | Medium | `Works/WorkService.cs` | Unscanned variants public at a predictable URL | Open: random names conflict with the fixed-name purge fallback and would not hide the URL from the uploader; the staging-prefix fix is the next task | |
+| S1b-5 | Medium | DB per-address limits, DMCA | Full IPv6 compared; DMCA form without `public-form`; ack cap per exact address | Fixed (`e074369`) | `Abuse/Ipv6DatabaseLimitTests.cs`, `Security/WriteEndpointLimitTests.cs` |
+| S1b-6, S1b-8, S1b-14 | Medium/Low | Auth, attestation | Email-code lockout; replayable attestation and SSO tokens | Owner: decide with the attestation design before enabling attestation | |
+| S1b-7, S1b-9 | Medium | Uploads, evidence | Unbounded upload size; evidence not tamper-evident | Open (next tasks); soft delete now on | |
+| S1b-10, 11, 16, 18 | Low | various | Admin bearer reads; review/admin overlap; email canonicalisation for bans; scheme routes | Open (deferred) | |
+| S1b-12 | Low | `Telemetry/SentryScrubber.cs` | Wrong attestation header name in the Sentry drop list | Fixed (`a75511d`) | `TelemetryTests.Sentry_drops_the_real_attestation_header_s1b_12`, `app/test/core/crash_reporting_test.dart` |
+| S1b-13 | Low | `Common/SecurityHeaders.cs` | No `Cache-Control` on private API responses | Fixed (`07219f2`) | `Security/CacheControlTests.cs` |
+| S1b-15 | Low | `infra/modules/storage.bicep` | Blob soft delete off | Fixed (`44576e3`): 7 days for blobs and containers; GDPR note in `docs/deploy.md` and the privacy text | `scripts/validate-infra.sh` |
+| S1b-17 | Low | Android signing | Release signed with the debug key | Owner (release blocker) | |
+| S1b-19 | Low | SAS content type | Uploader-controlled content type | Fixed in part: sealed copies stored as `application/octet-stream`; read-SAS override Open | |
+| S1b-20 | Low | Inquiries | Relay of attacker text | Accept for now; Owner to approve footer text | |

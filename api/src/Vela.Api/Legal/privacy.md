@@ -18,7 +18,7 @@ Hosting, storage, content safety scanning, email delivery and error reporting ar
 Drafts expire after 24 hours. Account data is kept while the account exists; backups expire within 30 days of deletion. Other periods to be completed.
 
 ## Your rights, including deletion and export (placeholder)
-You can request an export of your data and delete your account, which removes your data. Further rights and request process to be completed.
+You can request an export of your data and delete your account, which removes your data. Your account is hidden at once; if some of your content is still being reviewed by our moderators, the final removal waits for that review, at most 30 days. Deleted files may remain in our storage provider's recovery copies for up to 7 more days before they are destroyed. Further rights and request process to be completed.
 
 ## Evidence-hold exception for illegal content (placeholder)
 Content reported or found to be illegal may be preserved as evidence in restricted storage for at least one year, even after account deletion, and may be disclosed to authorities where required by law.
