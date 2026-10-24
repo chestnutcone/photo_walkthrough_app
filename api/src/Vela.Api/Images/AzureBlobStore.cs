@@ -12,6 +12,7 @@ public sealed class AzureBlobStore : IBlobStore
     private readonly BlobServiceClient _service;
     private readonly string _publicBase;
     private readonly string _originalsContainer;
+    private readonly bool _ensurePublicRead;
     private readonly string _exportsContainer;
     private readonly string _evidenceContainer;
 
@@ -19,6 +20,7 @@ public sealed class AzureBlobStore : IBlobStore
     {
         _service = new BlobServiceClient(options.ConnectionString);
         _publicBase = options.PublicBaseUrl.TrimEnd('/') + "/";
+        _ensurePublicRead = options.EnsurePublicRead;
         _originalsContainer = options.OriginalsContainer;
         _exportsContainer = options.ExportsContainer;
         _evidenceContainer = options.EvidenceContainer;
@@ -28,6 +30,9 @@ public sealed class AzureBlobStore : IBlobStore
     {
         foreach (var name in new[] { BlobNames.Works, BlobNames.Avatars, _originalsContainer, _exportsContainer, _evidenceContainer })
             await _service.GetBlobContainerClient(name).CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: ct);
+        if (_ensurePublicRead)
+            foreach (var name in new[] { BlobNames.Works, BlobNames.Avatars })
+                await _service.GetBlobContainerClient(name).SetAccessPolicyAsync(PublicAccessType.Blob, cancellationToken: ct);
     }
 
     public Uri CreateUploadUrl(string blobName, TimeSpan ttl)
