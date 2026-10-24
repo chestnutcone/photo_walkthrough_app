@@ -14,6 +14,9 @@ param storageSizeGB int = 32
 @minValue(7)
 @maxValue(35)
 param backupRetentionDays int = 7
+@description('Explicit outbound IPs of the Container App (az containerapp show --query properties.outboundIpAddresses). Pair with allowAzureServices=false to drop the any-Azure-IP rule.')
+param appOutboundIps array = []
+param allowAzureServices bool = true
 
 resource server 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   name: name
@@ -24,7 +27,7 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
     administratorLogin: administratorLogin
     administratorLoginPassword: empty(administratorPassword) ? null : administratorPassword
     authConfig: { activeDirectoryAuth: 'Disabled', passwordAuth: 'Enabled' }
-    storage: { storageSizeGB: storageSizeGB, autoGrow: 'Disabled' }
+    storage: { storageSizeGB: storageSizeGB, autoGrow: 'Enabled' }
     backup: { backupRetentionDays: backupRetentionDays, geoRedundantBackup: 'Disabled' }
     highAvailability: { mode: 'Disabled' }
     network: { publicNetworkAccess: 'Enabled' }
@@ -59,11 +62,17 @@ resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-0
 
 // Container Apps on the consumption plan have no fixed outbound address, so the cheapest allow rule is "Azure services".
 // The server is still reachable only with the admin password over TLS; move to a delegated subnet if that is not enough.
-resource allowAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = {
+resource allowAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = if (allowAzureServices) {
   parent: server
   name: 'AllowAllAzureServicesAndResourcesWithinAzureIps'
   properties: { startIpAddress: '0.0.0.0', endIpAddress: '0.0.0.0' }
 }
+
+resource appRules 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = [for (ip, i) in appOutboundIps: {
+  parent: server
+  name: 'app-outbound-${i}'
+  properties: { startIpAddress: ip, endIpAddress: ip }
+}]
 
 resource vault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName

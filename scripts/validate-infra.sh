@@ -4,6 +4,7 @@
 #   1. a Bicep build fails, or lint reports an error,
 #   2. a parameter file holds a literal value under a password/secret/key-like name,
 #   3. a secret-like Bicep parameter is missing @secure(),
+#   3b. prod + deployApp has no Cloudflare allow-list, or the budget start date is not fixed,
 #   4. a setting listed in infra/required-settings.txt is not wired into infra/modules/containerapp.bicep.
 # Usage: scripts/validate-infra.sh
 set -euo pipefail
@@ -96,6 +97,23 @@ for path in sorted(glob.glob(sys.argv[1] + "/**/*.bicep", recursive=True)):
         before = "\n".join(lines[max(0, i - 4):i])
         if "@secure()" not in before:
             bad.append(f"{path}:{i + 1}: param '{m.group(1)}' looks secret but is not @secure()")
+if bad:
+    for b in bad: print("FAIL: " + b, file=sys.stderr)
+    sys.exit(1)
+PY
+
+# --- 3b. prod must restrict the origin to Cloudflare once the app is deployed ---
+python3 -I - "$INFRA" <<'PY' || fail=1
+import glob, json, sys
+bad = []
+for path in sorted(glob.glob(sys.argv[1] + "/parameters*.json")):
+    p = (json.load(open(path)).get("parameters") or {})
+    val = lambda k, d=None: (p.get(k) or {}).get("value", d)
+    if val("environment") == "prod" and val("deployApp", False) and not val("cloudflareIpv4Ranges"):
+        bad.append(f"{path}: prod with deployApp=true needs a non-empty cloudflareIpv4Ranges (origin must only accept Cloudflare)")
+    start = val("budgetStartDate")
+    if start is None or not __import__("re").fullmatch(r"\d{4}-\d{2}-01", str(start)):
+        bad.append(f"{path}: budgetStartDate must be set to the first of a month (yyyy-MM-01)")
 if bad:
     for b in bad: print("FAIL: " + b, file=sys.stderr)
     sys.exit(1)

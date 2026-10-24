@@ -31,7 +31,7 @@ public class CloudflareCdnPurgerTests
     private static HttpResponseMessage Ok() => Json(HttpStatusCode.OK, """{"success":true,"errors":[],"result":{"id":"x"}}""");
 
     private static CloudflareCdnPurger Purger(FakeHandler h) =>
-        new(new HttpClient(h), new CloudflareOptions("zone123", "tok-abc", "https://vela.example"), NullLogger<CloudflareCdnPurger>.Instance);
+        new(new HttpClient(h), new CloudflareOptions("zone123", "tok-abc", "https://vela.example", "img.vela.example"), NullLogger<CloudflareCdnPurger>.Instance);
 
     [Fact]
     public async Task Posts_files_to_the_zone_with_a_bearer_token()
@@ -178,5 +178,88 @@ public class CloudflareCdnPurgerTests
         using var lf = LoggerFactory.Create(b => b.AddProvider(logs));
         CdnPurgingExtensions.WarnIfNotConfigured(new NoOpCdnPurger(NullLogger<NoOpCdnPurger>.Instance), new Env(env), lf.CreateLogger("t"));
         Assert.Empty(logs.Lines);
+    }
+}
+
+public class CloudflareCdnPurgerFallbackTests
+{
+    private sealed class Handler(Func<string, HttpResponseMessage> respond) : HttpMessageHandler
+    {
+        public List<string> Bodies { get; } = [];
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+        {
+            var body = await r.Content!.ReadAsStringAsync(ct);
+            Bodies.Add(body);
+            return respond(body);
+        }
+    }
+
+    private static HttpResponseMessage Json(HttpStatusCode c, string j) => new(c) { Content = new StringContent(j, Encoding.UTF8, "application/json") };
+    private const string Ok = """{"success":true,"errors":[]}""";
+
+    private static CloudflareCdnPurger Purger(Handler h, string host = "img.vela.example") =>
+        new(new HttpClient(h), new CloudflareOptions("z", "tok", "https://vela.example", host), NullLogger<CloudflareCdnPurger>.Instance);
+
+    [Fact]
+    public async Task A_rejected_work_prefix_falls_back_to_the_variant_files()
+    {
+        var h = new Handler(b => b.Contains("prefixes") ? Json(HttpStatusCode.BadRequest, """{"success":false,"errors":[]}""") : Json(HttpStatusCode.OK, Ok));
+        await Purger(h).PurgeAsync(["https://img.vela.example/works/abc/"]);
+
+        var files = h.Bodies.Where(b => b.Contains("\"files\"")).SelectMany(b => JsonDocument.Parse(b).RootElement.GetProperty("files").EnumerateArray().Select(e => e.GetString())).ToList();
+        Assert.Equal(["https://img.vela.example/works/abc/thumb.webp", "https://img.vela.example/works/abc/feed.webp", "https://img.vela.example/works/abc/full.webp"], files);
+    }
+
+    [Fact]
+    public async Task A_rejected_avatar_prefix_falls_back_to_the_avatar_variant_files()
+    {
+        var h = new Handler(b => b.Contains("prefixes") ? Json(HttpStatusCode.Forbidden, "{}") : Json(HttpStatusCode.OK, Ok));
+        await Purger(h).PurgeAsync(["https://img.vela.example/avatars/u1/"]);
+
+        var files = h.Bodies.Where(b => b.Contains("\"files\"")).SelectMany(b => JsonDocument.Parse(b).RootElement.GetProperty("files").EnumerateArray().Select(e => e.GetString())).ToList();
+        Assert.NotEmpty(files);
+        Assert.All(files, f => Assert.StartsWith("https://img.vela.example/avatars/u1/", f));
+    }
+
+    [Fact]
+    public async Task Server_errors_on_a_prefix_still_throw_for_retry()
+    {
+        var h = new Handler(_ => Json(HttpStatusCode.BadGateway, ""));
+        await Assert.ThrowsAsync<HttpRequestException>(() => Purger(h).PurgeAsync(["https://img.vela.example/works/abc/"]));
+    }
+
+    [Fact]
+    public async Task A_failing_fallback_still_throws()
+    {
+        var h = new Handler(_ => Json(HttpStatusCode.BadRequest, "{}"));
+        await Assert.ThrowsAsync<HttpRequestException>(() => Purger(h).PurgeAsync(["https://img.vela.example/works/abc/"]));
+    }
+
+    [Fact]
+    public async Task Urls_outside_the_zone_are_skipped_without_a_request()
+    {
+        var h = new Handler(_ => Json(HttpStatusCode.OK, Ok));
+        await Purger(h).PurgeAsync(["https://acct.blob.core.windows.net/works/abc/", "https://acct.blob.core.windows.net/works/abc/full.webp"]);
+        Assert.Empty(h.Bodies);
+    }
+
+    [Fact]
+    public async Task Only_the_in_zone_entries_are_sent()
+    {
+        var h = new Handler(_ => Json(HttpStatusCode.OK, Ok));
+        await Purger(h).PurgeAsync(["https://acct.blob.core.windows.net/x.webp", "/s/abc"]);
+        var body = Assert.Single(h.Bodies);
+        Assert.Contains("https://vela.example/s/abc", body);
+        Assert.DoesNotContain("blob.core", body);
+    }
+
+    [Fact]
+    public async Task An_empty_image_host_skips_image_urls_and_still_purges_share_pages()
+    {
+        var h = new Handler(_ => Json(HttpStatusCode.OK, Ok));
+        await Purger(h, host: "").PurgeAsync(["https://img.vela.example/works/abc/full.webp", "/s/abc"]);
+        var body = Assert.Single(h.Bodies);
+        Assert.DoesNotContain("img.vela.example", body);
+        Assert.Contains("/s/abc", body);
     }
 }

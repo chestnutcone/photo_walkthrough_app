@@ -7,7 +7,7 @@ Templates: `infra/main.bicep` (+ `infra/modules`). Check locally with `scripts/v
 
 | Resource | Cost note |
 |---|---|
-| Container Apps environment + API app | Consumption, `minReplicas` 0 (scale to zero), max 2 |
+| Container Apps environment + API app | Consumption, max 2; `minReplicas` defaults to 1 in prod and 0 elsewhere |
 | PostgreSQL Flexible Server | Burstable `Standard_B1ms`, 32 GB, 7-day point-in-time restore, TLS 1.2+, `pg_trgm` allow-listed |
 | Storage account (LRS) | `works`, `avatars` public read (via Cloudflare); `originals`, `exports`, `evidence`, `dataprotection` private |
 | Key Vault | holds every secret; read by a user-assigned identity |
@@ -24,19 +24,36 @@ Decisions worth knowing:
 - Lifecycle rule deletes `exports` after 7 days. Nothing else is aged out: blob names in `originals` do not show whether an
   upload was published, so orphan originals (SAS issued, then account deleted) need an app-level sweep (known gap, see below).
   `evidence` is never touched.
-- Scale to zero means the API's background workers (draft cleanup, account deletion, export, take-down reconcile, evidence
-  retention) only run while a replica is up. They catch up on the next request. Set `minReplicas` to 1 (about a few dollars a
-  month at 0.5 vCPU) once real users arrive or if take-downs must finish promptly.
-- Postgres firewall allows "Azure services" (Container Apps has no fixed egress without a VNet). Protection is the password + TLS.
+- The API's background workers (draft cleanup, account deletion, export, take-down reconcile, evidence retention) only run
+  while a replica is up, so prod keeps one replica (`minReplicas` default -1 = 1 in prod, 0 otherwise). Dev may scale to zero;
+  its workers catch up on the next request.
+- Startup check: outside Development and Test the API reads the access level of `originals`, `exports`, `evidence` and
+  `dataprotection` and refuses to start if any is not private, or if `works`/`avatars` use Container level (listing). This is the
+  runtime guard for the one-account design (the account must allow public blob access). A storage outage only logs a warning.
+- Postgres firewall allows "Azure services" at launch (reachable from any Azure tenant; protection is a long random password +
+  TLS). Hardening without a VNet: after pass 2 put the app's `az containerapp show --query properties.outboundIpAddresses` into
+  `appOutboundIps` and set `allowAzureServices=false` (re-check after any environment change). Follow-up: a VNet-integrated
+  Container Apps environment with a delegated Postgres subnet.
+- Least privilege gap: the app connects as the server admin and `MigrateOnStartup` runs DDL as that account. Follow-up: a
+  separate runtime role with DML only, with migrations run by a bundle under the admin account.
+- Postgres storage auto-grows (never goes read-only when full); set an Azure Monitor alert on storage percent.
 
 ## One-time owner steps
 
 1. **Azure**: subscription, `az login`. Create an app registration with a federated credential for this repo
-   (environment `azure-infra`), give it Contributor and User Access Administrator on the subscription (role assignments are in
-   the template). Set repo variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`; add required reviewers to
+   (environment `azure-infra`, restrict it to the main branch). Do not grant subscription-wide User Access Administrator.
+   Create the resource group once yourself (`az group create -n rg-vela-<env> -l eastus2`), then give the app Contributor on that
+   group plus a role-assignment permission scoped to the same group (`Role Based Access Control Administrator`, with a condition
+   limiting it to the Key Vault Secrets User, Storage Blob Data Contributor and Storage Blob Delegator roles). The template's
+   subscription-scope deployment still needs rights to write the resource group itself: run pass 1 yourself, or add
+   `Microsoft.Resources/subscriptions/resourceGroups/write` through a small custom role. Set repo variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`; add required reviewers to
    the `azure-infra` environment.
 2. **Parameters**: edit `infra/parameters.dev.json` (domains, emails, budget). Never put a secret in it; the validator fails if
-   you do. Add `cloudflareIpv4Ranges` from <https://www.cloudflare.com/ips-v4> once Cloudflare is in front (blocks direct-to-origin access).
+   you do. Set `cloudflareIpv4Ranges` from <https://www.cloudflare.com/ips-v4> **before pass 2** in prod: `validate-infra.sh` fails
+   prod with `deployApp=true` and an empty list, which would leave the origin open. Refresh the list whenever Cloudflare changes
+   it (compare `curl -s https://www.cloudflare.com/ips-v4` with the parameter quarterly and before each release); a stale list
+   blocks new Cloudflare ranges and causes an outage. `budgetStartDate` is a fixed first-of-month date; never change it after
+   the first deployment.
 3. **Pass 1** (everything except the app), from your shell so the DB password never touches a file or the workflow:
    `az deployment sub create -l eastus2 -f infra/main.bicep -p infra/parameters.dev.json -p postgresAdminPassword="$(openssl rand -base64 32)"`
    (keep that password somewhere safe: only the connection string in Key Vault holds it). Later deploys omit it; it is kept.
@@ -64,6 +81,10 @@ Decisions worth knowing:
 
 ## Database migrations
 
+The startup probe allows about 10 minutes (120 x 5 s) because migrations run before the server listens. For a release with a
+long migration (large index or backfill), build a migration bundle (`dotnet ef migrations bundle`), run it as a separate step
+under the admin account, then deploy the new revision.
+
 The container sets `Database__MigrateOnStartup=true`: each starting replica runs `Database.Migrate()`. EF Core takes a
 database-wide lock, so replicas starting together cannot corrupt the schema; the loser waits, then finds nothing to apply.
 Rules for migrations so this stays safe: additive first (add column/table, deploy code, drop later), no long locks, and never
@@ -81,7 +102,9 @@ setting to `false` and run an `dotnet ef migrations bundle` from a machine allow
    blob host; set `imageHost=img.<domain>` so `Storage:PublicBaseUrl` points at it. Cache rule: cache everything, edge TTL 1 month
    (purge-on-delete is wired). Only `works` and `avatars` are anonymously readable.
 4. Viewer host (`viewerHost` or the SWA default hostname) must differ from `brandingDomain`; the API refuses to start otherwise.
-5. Create the API token and zone id for purging (`cloudflare-api-token`, `cloudflareZoneId`). Purge by prefix is used for
+5. `imageHost` must be set (and be on the zone) when `cloudflareZoneId` is: purge URLs outside the zone are skipped and logged by
+   count rather than failing deletions forever. Prefix purge is tried first; if Cloudflare rejects it (4xx, plan or token), the
+   known variant files (thumb/feed/full, avatar-256) are purged instead. Create the API token and zone id for purging (`cloudflare-api-token`, `cloudflareZoneId`). Purge by prefix is used for
    deleted users and works; if the API logs purge failures, check the token's zone scope.
 6. Client IPs: the ingress sets `X-Forwarded-For`; `Abuse__TrustedProxyHops=1` makes the API treat its last entry as the
    connecting address and trust `CF-Connecting-IP` only if that address is a Cloudflare edge. `cloudflareIpv4Ranges` restricts
@@ -96,6 +119,9 @@ setting to `false` and run an `dotnet ef migrations bundle` from a machine allow
 
 ## Known gaps (owner or later work)
 
+- Origin protection follow-up: the IP allow-list lets any Cloudflare tenant reach the origin. Add Authenticated Origin Pulls
+  (mTLS) or a secret-header Origin Rule that the API checks.
+- GitHub Actions are pinned to tags, not commit SHAs (ledgered).
 - NCMEC reporting is unconfigured in production (needs an ESP account); illegal-content reports stay queued.
 - Orphan `originals` blobs from SAS URLs used after deletion have no sweep yet.
 - Data Protection keys are stored unencrypted in the private `dataprotection` container (account key protects them); add a Key Vault

@@ -80,6 +80,46 @@ public class ClientIpBehindIngressTests
         Assert.Equal("203.0.113.9", Resolver(1).Resolve(ctx).ToString());
     }
 
+    [Theory]
+    [InlineData("2001:db8::5, 2606:4700::1", "2001:db8::5")]            // IPv6 client behind an IPv6 Cloudflare edge
+    [InlineData("203.0.113.9, ::ffff:104.16.0.9", "203.0.113.9")]       // IPv4-mapped edge address is recognised
+    [InlineData("203.0.113.9,104.16.0.9", "203.0.113.9")]               // no spaces
+    [InlineData("203.0.113.9 ,   104.16.0.9  ", "203.0.113.9")]         // padded entries
+    public void Edge_forms_are_understood(string xff, string expected)
+    {
+        Assert.Equal(expected, Resolver(1).Resolve(Ctx(xff, cf: expected)).ToString());
+    }
+
+    [Theory]
+    [InlineData("203.0.113.9, garbage")]       // malformed connecting entry
+    [InlineData("203.0.113.9, 1.2")]           // shorthand address
+    [InlineData("203.0.113.9, ")]              // empty last entry
+    [InlineData("203.0.113.9,,")]              // trailing commas
+    [InlineData("203.0.113.9, 104.16.0.9:443")] // port is not an address
+    public void Malformed_connecting_entries_fall_back_to_the_tcp_peer(string xff)
+    {
+        Assert.Equal(Ingress, Resolver(1).Resolve(Ctx(xff, cf: "203.0.113.9")).ToString());
+    }
+
+    [Fact]
+    public void A_malformed_entry_before_the_trusted_one_is_never_read()
+    {
+        Assert.Equal("198.51.100.7", Resolver(1).Resolve(Ctx("garbage, 198.51.100.7")).ToString());
+    }
+
+    [Fact]
+    public void Extra_entries_beyond_the_hops_do_not_change_the_result()
+    {
+        var long_ = string.Join(", ", Enumerable.Range(1, 50).Select(i => $"192.0.2.{i}")) + ", 198.51.100.7";
+        Assert.Equal("198.51.100.7", Resolver(1).Resolve(Ctx(long_)).ToString());
+    }
+
+    [Fact]
+    public void Zero_entries_with_hops_two_fall_back()
+    {
+        Assert.Equal(Ingress, Resolver(2).Resolve(Ctx(null, cf: "203.0.113.9")).ToString());
+    }
+
     [Fact]
     public void Negative_hops_are_rejected()
     {

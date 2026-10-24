@@ -171,7 +171,7 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
           resources: { cpu: json('0.5'), memory: '1Gi' }
           env: concat(settings, optionalSettings)
           probes: [
-            { type: 'Startup', httpGet: { path: '/health', port: 8080 }, periodSeconds: 5, failureThreshold: 30 }
+            { type: 'Startup', httpGet: { path: '/health', port: 8080 }, periodSeconds: 5, failureThreshold: 120 } // 10 min: migrations run before the server listens
             { type: 'Liveness', httpGet: { path: '/health', port: 8080 }, periodSeconds: 30 }
           ]
         }

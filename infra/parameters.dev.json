@@ -6,6 +6,7 @@
     "location": { "value": "eastus2" },
     "postgresAdminLogin": { "value": "velaadmin" },
     "monthlyBudget": { "value": 40 },
+    "budgetStartDate": { "value": "2026-10-01" },
     "budgetAlertEmails": { "value": ["owner@vela.example"] },
     "brandingDomain": { "value": "vela.example" },
     "imageHost": { "value": "" },

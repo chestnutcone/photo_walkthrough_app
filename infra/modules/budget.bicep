@@ -6,8 +6,8 @@ param name string
 @description('Planned monthly spend in USD.')
 param monthlyBudget int
 param contactEmails array
-@description('First day of the month the budget starts; must be the first of a month.')
-param startDate string = '${utcNow('yyyy-MM')}-01'
+@description('First day of a month (yyyy-MM-01). Keep it fixed: changing it on an existing budget makes the deployment fail.')
+param startDate string
 
 resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
   name: name

@@ -12,6 +12,10 @@ on:
         type: choice
         options: [what-if, deploy]
         default: what-if
+      budget-start-date:
+        description: "Optional override, first of a month (yyyy-MM-01). Normally leave empty: the parameter file holds the fixed value."
+        type: string
+        default: ""
       parameters-file:
         description: "Parameter file under infra/"
         type: string
@@ -42,6 +46,7 @@ jobs:
       contents: read
     env:
       PARAMETERS_FILE: infra/${{ inputs.parameters-file }}
+      BUDGET_START: ${{ inputs.budget-start-date }}
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -54,7 +59,7 @@ jobs:
           az deployment sub what-if \
             --location "${{ vars.AZURE_LOCATION || 'eastus2' }}" \
             --template-file infra/main.bicep \
-            --parameters "$PARAMETERS_FILE"
+            --parameters "$PARAMETERS_FILE" ${BUDGET_START:+budgetStartDate="$BUDGET_START"}
       - name: Deploy
         if: inputs.action == 'deploy'
         run: |
@@ -63,4 +68,4 @@ jobs:
             --name "vela-${{ github.run_id }}" \
             --location "${{ vars.AZURE_LOCATION || 'eastus2' }}" \
             --template-file infra/main.bicep \
-            --parameters "$PARAMETERS_FILE"
+            --parameters "$PARAMETERS_FILE" ${BUDGET_START:+budgetStartDate="$BUDGET_START"}

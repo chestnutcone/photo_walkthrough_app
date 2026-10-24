@@ -9,6 +9,14 @@ public static class StorageServiceCollectionExtensions
         services.AddSingleton(new AzureBlobStore(options));
         services.AddSingleton<IBlobStore>(sp => sp.GetRequiredService<AzureBlobStore>());
         if (env.EnvironmentName != "Test") services.AddHostedService<BlobContainerInitializer>();
+        if (!(env.IsDevelopment() || env.IsEnvironment("Test")))
+        {
+            // Missing containers pass (they are created private); existing ones must have the expected access level.
+            var dataProtection = config["DataProtection:Container"] is { Length: > 0 } c ? c : Common.DataProtectionSetup.DefaultContainer;
+            services.AddHostedService(sp => new ContainerAccessGuard(
+                new AzureContainerAccessReader(new Azure.Storage.Blobs.BlobServiceClient(options.ConnectionString)), options, dataProtection,
+                sp.GetRequiredService<ILogger<ContainerAccessGuard>>()));
+        }
         services.AddScoped<IVariantGenerator, VariantGenerator>();
         services.AddSingleton<DraftCleanupJob>();
         services.AddHostedService(sp => sp.GetRequiredService<DraftCleanupJob>());

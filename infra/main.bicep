@@ -16,6 +16,8 @@ param postgresAdminPassword string = ''
 @description('Planned monthly spend in USD. The budget alert fires at 2x this.')
 param monthlyBudget int
 param budgetAlertEmails array
+@description('Fixed budget start, the first day of a month (yyyy-MM-01). Never change it after the first deployment.')
+param budgetStartDate string
 
 @description('Domain of the share pages and API, proxied by Cloudflare, e.g. vela.example. Must differ from the viewer host.')
 param brandingDomain string
@@ -29,12 +31,16 @@ param emailSenderLocalPart string = 'donotreply'
 @description('Set true after the sending domain shows Verified in the portal.')
 param linkEmailDomain bool = false
 
+@description('Container App outbound IPs for the Postgres firewall. Fill in after pass 2, then set allowAzureServices=false.')
+param appOutboundIps array = []
+param allowAzureServices bool = true
 param deployApp bool = false
 @description('Full image reference, e.g. ghcr.io/owner/vela-api:1.0.0. Required when deployApp is true.')
 param apiImage string = ''
 param registryServer string = 'ghcr.io'
 param registryUsername string = ''
-param minReplicas int = 0
+@description('Replicas kept running. -1 = 1 in prod, 0 elsewhere. The API\'s background workers (take-down reconcile, account deletion, exports, evidence retention, draft cleanup) only run while a replica is up, so prod must not scale to zero.')
+param minReplicas int = -1
 param maxReplicas int = 2
 @description('Cloudflare IPv4 ranges allowed to reach the API origin (https://www.cloudflare.com/ips-v4). Empty disables the restriction.')
 param cloudflareIpv4Ranges array = []
@@ -57,6 +63,7 @@ param reviewMode bool = false
 param reviewEmails array = []
 param sentryEnabled bool = true
 
+var effectiveMinReplicas = minReplicas >= 0 ? minReplicas : (environment == 'prod' ? 1 : 0)
 var prefix = 'vela-${environment}'
 var suffix = take(uniqueString(subscription().subscriptionId, prefix), 6)
 var staticWebLocations = ['westus2', 'centralus', 'eastus2', 'westeurope', 'eastasia']
@@ -120,6 +127,8 @@ module postgres 'modules/postgres.bicep' = {
     keyVaultName: vault.outputs.name
     administratorLogin: postgresAdminLogin
     administratorPassword: postgresAdminPassword
+    appOutboundIps: appOutboundIps
+    allowAzureServices: allowAzureServices
   }
 }
 
@@ -137,7 +146,7 @@ module email 'modules/acs-email.bicep' = {
 module budget 'modules/budget.bicep' = {
   scope: rg
   name: 'budget'
-  params: { name: 'budget-${prefix}', monthlyBudget: monthlyBudget, contactEmails: budgetAlertEmails }
+  params: { name: 'budget-${prefix}', monthlyBudget: monthlyBudget, startDate: budgetStartDate, contactEmails: budgetAlertEmails }
 }
 
 var publicBaseUrl = empty(imageHost) ? storage.outputs.blobEndpoint : 'https://${imageHost}/'
@@ -155,7 +164,7 @@ module app 'modules/containerapp.bicep' = if (deployApp) {
     apiImage: apiImage
     registryServer: registryServer
     registryUsername: registryUsername
-    minReplicas: minReplicas
+    minReplicas: effectiveMinReplicas
     maxReplicas: maxReplicas
     ipAllowList: cloudflareIpv4Ranges
     brandingDomain: brandingDomain
