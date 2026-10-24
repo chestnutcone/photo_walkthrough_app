@@ -23,7 +23,14 @@ abstract final class AppConfig {
     required bool isWeb,
     required bool isRelease,
   }) {
-    if (defined.isNotEmpty) return defined;
+    // A release build talks only to https: tokens and photos must never cross the network in clear text, and a mistyped
+    // define should fail at start-up, not silently on the first request.
+    if (defined.isNotEmpty) {
+      if (isRelease && !defined.toLowerCase().startsWith('https://')) {
+        throw StateError('API_BASE_URL must start with https:// in release builds');
+      }
+      return defined;
+    }
     if (isRelease) {
       throw StateError(
         'API_BASE_URL dart-define is required in release builds',
