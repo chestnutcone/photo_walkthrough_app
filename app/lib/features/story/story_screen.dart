@@ -13,6 +13,7 @@ import 'follow_action.dart';
 import 'inquiry_sheet_hook.dart';
 import 'motion.dart';
 import 'photo_layout.dart';
+import '../report/report_sheet_hook.dart';
 import 'replies_sheet_hook.dart';
 import 'story_controller.dart';
 import 'story_data.dart';
@@ -467,8 +468,20 @@ class _StoryViewState extends ConsumerState<_StoryView> {
         onArtist: widget.standalone
             ? null
             : () => context.push('/artist/${_work.author.handle}'),
+        // Your own story cannot be reported; the web viewer has no accounts.
+        onReport: widget.standalone || _work.isOwner ? null : _report,
       ),
     );
+  }
+
+  Future<void> _report() async {
+    final filed = await ref.read(reportSheetHook)(
+      context,
+      targetType: 'work',
+      targetId: _work.id,
+    );
+    // The reported story is hidden pending review: leave it.
+    if (filed && mounted) _close();
   }
 
   void _close() {

@@ -85,4 +85,19 @@ abstract final class AppConfig {
   /// the matching button.
   static const String appStoreUrl = String.fromEnvironment('APP_STORE_URL');
   static const String playStoreUrl = String.fromEnvironment('PLAY_STORE_URL');
+
+  /// Google Cloud project number linked to Play Integrity (Android app
+  /// attestation). 0 until the owner sets it; tokens are then skipped.
+  static const int playCloudProjectNumber = int.fromEnvironment(
+    'PLAY_CLOUD_PROJECT_NUMBER',
+  );
+
+  /// Turn on iOS App Attest once the capability and the server's
+  /// `Abuse:AppAttest` settings exist (`--dart-define=APP_ATTEST_ENABLED=true`).
+  static const bool appAttestEnabled = bool.fromEnvironment(
+    'APP_ATTEST_ENABLED',
+  );
+
+  /// Sentry DSN for crash reports. Empty disables crash reporting.
+  static const String sentryDsn = String.fromEnvironment('SENTRY_DSN');
 }

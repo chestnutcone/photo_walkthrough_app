@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vela_api_client/vela_api_client.dart';
 
+import '../attestation/attestation_client.dart';
+import '../attestation/attestation_interceptor.dart';
 import '../auth/auth_controller.dart';
 import '../config.dart';
 import 'auth_interceptor.dart';
@@ -32,6 +34,9 @@ final refreshDioProvider = Provider<Dio>(_newDio);
 
 final dioProvider = Provider<Dio>((ref) {
   final dio = _newDio(ref);
+  dio.interceptors.add(
+    AttestationInterceptor(ref.watch(attestationClientProvider)),
+  );
   dio.interceptors.add(
     AuthInterceptor(
       dio: dio,

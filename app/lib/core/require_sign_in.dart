@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/sign_in_sheet.dart';
 import 'auth/auth_controller.dart';
+import 'auth/session_store.dart';
 
 /// Opens the sign-in sheet and reports whether sign-in succeeded. The default
 /// is the real sheet; tests override it.
@@ -20,9 +21,21 @@ final signInSheetLauncherProvider = Provider<SignInSheetLauncher>(
 /// onboarding by the router redirect at that moment, so the calling screen
 /// may already be gone: callers check `context.mounted` and do not resume
 /// their action until the user comes back from onboarding.
-Future<bool> requireSignIn(BuildContext context, WidgetRef ref) async {
-  final session = await ref.read(sessionProvider.future);
-  if (session != null) return true;
+Future<bool> requireSignIn(BuildContext context, WidgetRef ref) =>
+    requireSignInWith(
+      context,
+      session: () => ref.read(sessionProvider.future),
+      launcher: () => ref.read(signInSheetLauncherProvider),
+    );
+
+/// [requireSignIn] for code that holds a provider `Ref` instead of a
+/// `WidgetRef` (hooks built in providers).
+Future<bool> requireSignInWith(
+  BuildContext context, {
+  required Future<Session?> Function() session,
+  required SignInSheetLauncher Function() launcher,
+}) async {
+  if (await session() != null) return true;
   if (!context.mounted) return false;
-  return ref.read(signInSheetLauncherProvider)(context);
+  return launcher()(context);
 }

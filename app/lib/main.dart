@@ -1,13 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/attestation/attestation_client.dart';
+import 'core/attestation/platform_attestation.dart';
 import 'core/branding.dart';
+import 'core/crash_reporting.dart';
 import 'core/router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/notifications/unread_count_provider.dart';
 import 'features/search/recent_searches.dart';
 
-void main() => runApp(const ProviderScope(child: VelaApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Off unless SENTRY_DSN is set. Hooks FlutterError.onError and
+  // PlatformDispatcher.onError itself and scrubs every report.
+  await initCrashReporting();
+  runApp(
+    ProviderScope(
+      overrides: [
+        attestationClientProvider.overrideWithValue(
+          createPlatformAttestationClient(),
+        ),
+      ],
+      child: const VelaApp(),
+    ),
+  );
+}
 
 class VelaApp extends ConsumerStatefulWidget {
   const VelaApp({super.key});

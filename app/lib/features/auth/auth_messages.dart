@@ -43,7 +43,8 @@ String signInErrorMessage(ApiException e) => switch (e.code) {
   'account_suspended' => 'This account is suspended.',
   'account_deleted' => 'This account has been deleted.',
   'attestation_required' ||
-  'attestation_failed' => "This device couldn't be verified.",
+  'attestation_failed' ||
+  'invalid_attestation' => "This device couldn't be verified.",
   'network_error' => "Can't reach the server. Check your connection.",
   _ => 'Something went wrong. Try again.',
 };

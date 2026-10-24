@@ -61,6 +61,7 @@ class StoryTopBar extends StatelessWidget {
     required this.onMode,
     required this.onClose,
     required this.onArtist,
+    this.onReport,
   });
 
   final Work work;
@@ -74,6 +75,9 @@ class StoryTopBar extends StatelessWidget {
 
   /// Null makes the artist name inert.
   final VoidCallback? onArtist;
+
+  /// Null hides the More menu (own stories, the web viewer).
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +107,10 @@ class StoryTopBar extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             _ModePill(mode: mode, onMode: onMode),
+            if (onReport case final report?) ...[
+              const SizedBox(width: 10),
+              _MoreMenu(onReport: report),
+            ],
             if (onClose case final close?) ...[
               const SizedBox(width: 10),
               _CloseButton(onTap: close),
@@ -235,6 +243,37 @@ class _ModeItem extends StatelessWidget {
         ),
       ),
     ),
+  );
+}
+
+enum _MoreAction { report }
+
+class _MoreMenu extends StatelessWidget {
+  const _MoreMenu({required this.onReport});
+
+  final VoidCallback onReport;
+
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<_MoreAction>(
+    key: const ValueKey('story-menu'),
+    tooltip: 'More',
+    color: VelaColors.sheet,
+    // Same 36pt as the close button, so the row keeps its height.
+    padding: EdgeInsets.zero,
+    style: IconButton.styleFrom(
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      minimumSize: const Size(36, 36),
+      padding: EdgeInsets.zero,
+    ),
+    icon: const Icon(Icons.more_horiz, color: VelaColors.ink, size: 22),
+    onSelected: (_) => onReport(),
+    itemBuilder: (_) => const [
+      PopupMenuItem<_MoreAction>(
+        key: ValueKey('story-menu-report'),
+        value: _MoreAction.report,
+        child: Text('Report story'),
+      ),
+    ],
   );
 }
 

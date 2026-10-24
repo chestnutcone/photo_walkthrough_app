@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/onboarding_flag.dart';
+import '../features/auth/suspended_screen.dart';
 import 'auth/auth_controller.dart';
 import '../features/create/create_screen.dart';
 import '../features/feed/feed_screen.dart';
@@ -45,8 +46,15 @@ String? resolveRedirect({
   required bool isSignedIn,
   required bool sessionLoading,
   required bool needsOnboarding,
+  AccountBlock? accountBlock,
 }) {
   location = _normalize(location);
+  // The server ended this account: nothing else is reachable until the user
+  // leaves the suspended screen (which clears the block).
+  if (accountBlock != null) {
+    return location == suspendedPath ? null : suspendedPath;
+  }
+  if (location == suspendedPath) return '/';
   if (sessionLoading) return null;
   if (!isSignedIn) {
     return _isGated(location) || _isOnboarding(location) ? '/' : null;
@@ -63,6 +71,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   void bump(Object? _, Object? _) => refresh.value++;
   ref.listen(sessionProvider, bump);
   ref.listen(needsOnboardingProvider, bump);
+  ref.listen<AccountBlock?>(accountBlockProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   final router = GoRouter(
@@ -74,6 +83,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         isSignedIn: session.value != null,
         sessionLoading: session.isLoading && !session.hasValue,
         needsOnboarding: ref.read(needsOnboardingProvider),
+        accountBlock: ref.read(accountBlockProvider),
       );
     },
     errorBuilder: (context, state) => const NotFoundScreen(),
@@ -107,6 +117,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const NotificationsScreen(),
       ),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+      GoRoute(path: suspendedPath, builder: (_, _) => const SuspendedScreen()),
       GoRoute(
         path: '/onboarding',
         builder: (_, _) => const OnboardingScreen(),

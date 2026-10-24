@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/api/api_providers.dart';
-import '../../core/auth/auth_controller.dart' show SessionExpiredException;
+import '../../core/auth/auth_controller.dart'
+    show SessionExpiredException, accountBlockProvider;
 import '../../core/auth/local_data.dart';
 import '../../core/theme/form_styles.dart';
 import '../../core/theme/tokens.dart';
@@ -41,6 +42,9 @@ final deleteAccountProvider = Provider<Future<void> Function()>((ref) {
       // Refresh failed because the account no longer exists.
     }
     await ref.read(wipeLocalDataProvider)();
+    // A lost response can leave the interceptor's "account deleted" flag set;
+    // the user just deleted it on purpose, so show the feed, not the block.
+    ref.read(accountBlockProvider.notifier).set(null);
   };
 });
 
