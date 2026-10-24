@@ -26,7 +26,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] M3 API features done (A7-A13)
 - [x] M4 Admin and safety done (A14-A16)
 - [x] M5 App core done (B1-B5)
-- [ ] M6 App features done (B6-B14)
+- [x] M6 App features done (B6-B14)
 - [ ] M7 Infra and security done (C1, S1)
 
 ## Task checklist (mark `[x]` when merged and tests pass; `[~]` when in progress)
@@ -61,11 +61,12 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B11 Search (e29ebe7, fix a80d831)
 - [x] B12 Notifications list (44aaa28, fix a80d831)
 - [x] B13 Web viewer and deep links (5eb563a, fix d0232c4)
-- [ ] B14 Reporting UI, suspended state, crash reporting, attestation
+- [x] B14 Reporting UI, suspended state, crash reporting, attestation (f55a587, fix eb449e2)
 - [ ] C1 Bicep and deployment workflow
 - [ ] S1 Security review gate
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-23 M6 reached: B6-B14 complete. 773 app tests pass, web build ok. Pushed.
 - 2026-10-23 M5 reached: B1-B5 complete. 214 app tests pass. Pushed.
 - 2026-10-23 M4 reached: A14b, A15, A16 complete (fix commits d1cf76b, b8b648a, 13b2e1d). 926+ API tests pass. Pushed.
 - 2026-10-23 A15 complete (4be2c1c, 534a1b2, fix b8b648a). 905 API tests pass. Not yet pushed.
