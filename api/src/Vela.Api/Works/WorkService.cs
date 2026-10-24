@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Vela.Api.Admin;
 using Vela.Api.Data;
 using Vela.Api.Data.Entities;
 using Vela.Api.Images;
@@ -6,7 +7,7 @@ using Vela.Api.Images;
 namespace Vela.Api.Works;
 
 public sealed class WorkService(
-    VelaDbContext db, WorkReader reader, IBlobStore blobs, IVariantGenerator variants, WorkOriginals originals, TimeProvider clock,
+    VelaDbContext db, WorkReader reader, IBlobStore blobs, IVariantGenerator variants, WorkOriginals originals, UnderReview review, TimeProvider clock,
     ILogger<WorkService>? log = null) : IWorkService
 {
     public Task<WorkDto?> GetAsync(Guid workId, Guid? viewerId) => reader.GetAsync(workId, viewerId);
@@ -138,13 +139,21 @@ public sealed class WorkService(
         }
     }
 
+    /// <summary>
+    /// Under the row lock, so a scan or report cannot change the work between the check and the delete. Content under review
+    /// (S1b-2) is refused with 409 <c>under_review</c> and nothing changes. Blobs go before the row: a failure rolls back and
+    /// leaves the row, so a retry cleans up instead of orphaning files.
+    /// </summary>
     public async Task DeleteAsync(Guid userId, Guid workId)
     {
-        var owner = await db.Works.AsNoTracking().Where(w => w.Id == workId).Select(w => (Guid?)w.ArtistId).FirstOrDefaultAsync();
-        if (owner != userId) throw WorkException.NotFound();
-        // Blobs first: a failure leaves the row, so a retry cleans up instead of orphaning files.
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var work = await LockOwnedAsync(userId, workId);
+        if (await review.WorkAsync(work))
+            throw new WorkException(StatusCodes.Status409Conflict, UnderReview.Code,
+                "This story is being reviewed by our moderators and can't be deleted until the review is finished.");
         foreach (var prefix in BlobNames.WorkPrefixes(workId)) await blobs.DeletePrefixAsync(prefix);
         await db.Works.Where(w => w.Id == workId && w.ArtistId == userId).ExecuteDeleteAsync();
+        await tx.CommitAsync();
     }
 
     /// <summary>Loads the caller's own work under a row lock; anything else is reported as not found.</summary>

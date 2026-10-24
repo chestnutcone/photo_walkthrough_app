@@ -1029,6 +1029,10 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
+                    b.Property<DateTimeOffset?>("DeletionDeferredUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deletion_deferred_until");
+
                     b.Property<DateTimeOffset?>("DeletionFailedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deletion_failed_at");

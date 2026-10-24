@@ -14,6 +14,8 @@ public sealed class DeletionWorker(IServiceScopeFactory scopes, TimeProvider clo
     public const int BatchSize = 5;
     public static readonly TimeSpan Backoff = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan Lease = TimeSpan.FromMinutes(10);
+    /// <summary>How often a deferred account (content under review, S1b-2) is looked at again; never later than its 30-day cap.</summary>
+    public static readonly TimeSpan DeferredRecheck = TimeSpan.FromHours(1);
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -39,6 +41,7 @@ public sealed class DeletionWorker(IServiceScopeFactory scopes, TimeProvider clo
             try
             {
                 await using var scope = scopes.CreateAsyncScope();
+                if (await DeferAsync(scope.ServiceProvider, id, now)) continue;
                 await scope.ServiceProvider.GetRequiredService<DeletionJob>().RunAsync(id, ct);
                 done++;
             }
@@ -49,6 +52,20 @@ public sealed class DeletionWorker(IServiceScopeFactory scopes, TimeProvider clo
             }
         }
         return done;
+    }
+
+    /// <summary>
+    /// S1b-2: while the account still has content under review (and its 30-day cap has not passed) the hard delete waits. The lease
+    /// is reused as the "not before" mark, so the account is claimed again after <see cref="DeferredRecheck"/> or at the cap.
+    /// </summary>
+    private async Task<bool> DeferAsync(IServiceProvider sp, Guid id, DateTimeOffset now)
+    {
+        var db = sp.GetRequiredService<VelaDbContext>();
+        var status = await DeletionDeferral.EvaluateAsync(db, sp.GetRequiredService<Admin.UnderReview>(), id, now, log);
+        if (status.CompletesBy is not { } cap) return false;
+        var next = now + DeferredRecheck < cap ? now + DeferredRecheck : cap;
+        await db.Users.Where(u => u.Id == id).ExecuteUpdateAsync(s => s.SetProperty(u => u.DeletionLeaseUntil, next));
+        return true;
     }
 
     private async Task<List<Guid>> ClaimAsync(DateTimeOffset now, CancellationToken ct)

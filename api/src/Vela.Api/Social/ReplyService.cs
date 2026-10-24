@@ -1,3 +1,4 @@
+using Vela.Api.Admin;
 using Vela.Api.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Common;
@@ -20,13 +21,15 @@ public interface IReplyService
 
 public sealed class ReplyService(
     VelaDbContext db, TimeProvider clock, WorkReader works, IVisibility visibility, IContentSafety safety,
-    ReportService reports, IDomainEventBus bus, ArtistPresenter presenter, ILogger<ReplyService> log) : IReplyService
+    ReportService reports, IDomainEventBus bus, ArtistPresenter presenter, UnderReview review, ILogger<ReplyService> log) : IReplyService
 {
     public const int BlockSeverity = 4;
 
     public static SafetyException WorkNotFound() => new(StatusCodes.Status404NotFound, "work_not_found", "No such story.");
     public static SafetyException ChapterNotFound() => new(StatusCodes.Status404NotFound, "chapter_not_found", "No such chapter.");
     public static SafetyException ReplyNotFound() => new(StatusCodes.Status404NotFound, "reply_not_found", "No such reply.");
+    public static SafetyException UnderReviewReply() => new(StatusCodes.Status409Conflict, UnderReview.Code,
+        "This reply is being reviewed by our moderators and can't be deleted until the review is finished.");
 
     public async Task<PagedResult<ReplyDto>> ListAsync(Guid? viewerId, Guid workId, int chapterIndex, string? cursor, int limit)
     {
@@ -75,10 +78,15 @@ public sealed class ReplyService(
     public async Task DeleteAsync(Guid userId, Guid replyId)
     {
         var target = await db.Replies.AsNoTracking().Where(r => r.Id == replyId)
-            .Select(r => new { r.AuthorId, OwnerId = db.Works.Where(w => w.Id == r.WorkId).Select(w => w.ArtistId).First() })
+            .Select(r => new { Reply = r, OwnerId = db.Works.Where(w => w.Id == r.WorkId).Select(w => w.ArtistId).First() })
             .FirstOrDefaultAsync();
-        if (target is null || (target.AuthorId != userId && target.OwnerId != userId)) throw ReplyNotFound();
-        await db.Replies.Where(r => r.Id == replyId).ExecuteDeleteAsync();
+        if (target is null || (target.Reply.AuthorId != userId && target.OwnerId != userId)) throw ReplyNotFound();
+        // S1b-2: a reply waiting for moderation stays until an admin decides. The delete re-checks the hidden state, so a hide
+        // that lands between the check and the delete still wins.
+        if (await review.ReplyAsync(target.Reply)) throw UnderReviewReply();
+        var deleted = await db.Replies.Where(r => r.Id == replyId
+            && !(r.Hidden && (r.HiddenBy == HiddenBy.Auto || r.HiddenBy == HiddenBy.Report))).ExecuteDeleteAsync();
+        if (deleted == 0 && await db.Replies.AnyAsync(r => r.Id == replyId)) throw UnderReviewReply();
     }
 
     /// <summary>Fail-open: when the scanner is unavailable the reply is kept visible and queued for review.</summary>

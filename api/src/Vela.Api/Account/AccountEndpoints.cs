@@ -21,10 +21,7 @@ public static class AccountEndpoints
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapDelete("/v1/me", async (ICurrentUser me, IAccountDeletionService svc) =>
-        {
-            await svc.RequestAsync(me.UserId!.Value);
-            return Common.Results.Ok<object?>(null);
-        }).RequireAuthorization().WithName("deleteAccount");
+            Common.Results.Ok(await svc.RequestAsync(me.UserId!.Value))).RequireAuthorization().WithName("deleteAccount");
 
         app.MapPost("/v1/me/export", (HttpContext ctx, ICurrentUser me, IExportService svc) =>
             Run(ctx, async () =>

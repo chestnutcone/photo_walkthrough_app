@@ -12,6 +12,11 @@ public class User
     public DateTimeOffset? DeletionFailedAt { get; set; }
     /// <summary>Set by the sweep that claimed this account for hard deletion; others skip it until it passes.</summary>
     public DateTimeOffset? DeletionLeaseUntil { get; set; }
+    /// <summary>
+    /// Set when the hard delete is waiting for content under review (S1b-2): the latest moment it will run, 30 days after
+    /// <see cref="DeletedAt"/>. It runs earlier once the reviews are resolved.
+    /// </summary>
+    public DateTimeOffset? DeletionDeferredUntil { get; set; }
     public bool IsAdmin { get; set; }
     /// <summary>Identifies the one live admin cookie session. Set at admin sign-in, cleared at sign-out: a copied cookie stops working then.</summary>
     public Guid? AdminSessionStamp { get; set; }

@@ -45,7 +45,7 @@ public class DeletionTests(PostgresFixture pg) : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, r.Status);
         Assert.True(r.Body.GetProperty("success").GetBoolean());
-        Assert.Equal(JsonValueKind.Null, r.Body.GetProperty("data").ValueKind);
+        Assert.Equal("scheduled", r.Body.GetProperty("data").GetProperty("state").GetString()); // S1b-2: nothing under review
         var refreshed = await client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken = refresh });
         Assert.Equal(HttpStatusCode.Unauthorized, refreshed.StatusCode);
         var again = await client.PostAsJsonAsync("/v1/auth/sso", new { provider = "fake", idToken = $"fake:{sub}", nonce = "n" });

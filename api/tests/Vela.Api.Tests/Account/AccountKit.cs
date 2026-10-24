@@ -146,8 +146,12 @@ public static class AccountKit
     private static Inquiry Inquiry(Guid sender, Guid artist, Guid? work, string msg, string email, DateTimeOffset at) =>
         new() { Id = Guid.NewGuid(), SenderId = sender, ArtistId = artist, Type = "Commission", SenderEmail = email, WorkId = work, Message = msg, ClientIp = "203.0.113.9", CreatedAt = at };
 
+    /// <summary>
+    /// Seeded reports are already reviewed: an open report against an account's content defers its hard delete (S1b-2, covered by
+    /// DeletionDeferralTests), and these tests are about the delete itself. Reviewed reports are deleted with the content all the same.
+    /// </summary>
     private static Report Report(string source, Guid? reporter, string type, Guid target, string? note, DateTimeOffset at) =>
-        new() { Id = Guid.NewGuid(), Source = source, Reason = "spam", TargetType = type, TargetId = target, Note = note, ReporterId = reporter, CreatedAt = at };
+        new() { Id = Guid.NewGuid(), Source = source, Reason = "spam", Status = "reviewed", TargetType = type, TargetId = target, Note = note, ReporterId = reporter, CreatedAt = at };
 
     private static EmailCode Code(string email, DateTimeOffset at) =>
         new() { Id = Guid.NewGuid(), Email = email, CodeHash = "h", CreatedAt = at, ExpiresAt = at.AddMinutes(10), RequestIp = "203.0.113.7" };

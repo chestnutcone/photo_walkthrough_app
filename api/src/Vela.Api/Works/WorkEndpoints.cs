@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Vela.Api.Admin;
 using Vela.Api.Abuse;
 using Vela.Api.Auth;
 using Vela.Api.Common;
@@ -18,7 +19,7 @@ public static class WorkEndpoints
 
     public static IServiceCollection AddWorks(this IServiceCollection services) =>
         services.AddScoped<IQuotaService, QuotaService>()
-            .AddScoped<WorkReader>().AddScoped<WorkOriginals>().AddScoped<IWorkService, WorkService>()
+            .AddScoped<WorkReader>().AddScoped<WorkOriginals>().AddScoped<UnderReview>().AddScoped<IWorkService, WorkService>()
             .AddScoped<IDomainEventBus, DomainEventBus>()
             .AddSingleton<PublishPipeline>();
 
