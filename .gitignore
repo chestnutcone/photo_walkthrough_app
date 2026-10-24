@@ -29,3 +29,6 @@ google-services.json
 GoogleService-Info.plist
 local.settings.json
 *.publishsettings
+
+# Local E2E state (scripts/run-local-api.sh)
+.local/
