@@ -3,7 +3,7 @@ using Vela.Api.Images;
 
 namespace Vela.Api.Admin.Pages;
 
-public sealed class ReportModel(IModerationService moderation, IDmcaAdminService dmca, IBlobStore blobs, TimeProvider clock) : AdminPageModel
+public sealed class ReportModel(IModerationService moderation, IDmcaAdminService dmca, IBlobStore blobs, Works.WorkOriginals originals, TimeProvider clock) : AdminPageModel
 {
     public ReportDetail Detail { get; private set; } = null!;
     public string? ImageUrl { get; private set; }
@@ -14,9 +14,9 @@ public sealed class ReportModel(IModerationService moderation, IDmcaAdminService
     {
         if (await moderation.GetReportAsync(id) is not { } detail) return NotFound();
         Detail = detail;
-        // The private original, one link per page view, valid five minutes, never logged.
+        // The sealed original (exactly what was published and scanned), one link per page view, valid five minutes, never logged.
         if (detail.Item.TargetType == "work")
-            ImageUrl = blobs.CreateReadUrl(BlobNames.WorkOriginal(detail.Item.TargetId), IndexModel.ImageLifetime).ToString();
+            ImageUrl = blobs.CreateReadUrl(await originals.NameAsync(detail.Item.TargetId), IndexModel.ImageLifetime).ToString();
         if (detail.Item.Source == "dmca" && detail.Item.TargetType == "work") Notices = await dmca.NoticesForWorkAsync(detail.Item.TargetId);
         return Page();
     }

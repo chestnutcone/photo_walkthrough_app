@@ -44,7 +44,10 @@
         </dl>
         @if (Model.ImageUrl is { } image)
         {
-            <img class="detail-img" src="@image" alt="Submitted image (private original)">
+            <figure>
+                <img class="detail-img" src="@image" alt="Sealed original (private, exactly as published and scanned)">
+                <figcaption>Sealed original: the private copy taken at publish, from which the public images were made.</figcaption>
+            </figure>
         }
         <h2>@d.WorkTitle</h2>
         <div class="text">@d.WorkIntro</div>

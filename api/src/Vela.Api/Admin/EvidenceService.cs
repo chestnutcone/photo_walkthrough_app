@@ -97,12 +97,14 @@ public sealed partial class EvidenceService(
         _ => db.EvidenceHolds.AsNoTracking().FirstOrDefaultAsync(h => h.TargetType == "user" && h.UserId == targetId),
     };
 
-    /// <summary>Copies the private original and any public variants still present. A missing source is skipped; any other failure throws.</summary>
+    /// <summary>Copies the private (sealed) original and any public variants still present. A missing source is skipped; any other failure throws.</summary>
     private async Task<List<string>> CopyBlobsAsync(Guid holdId, Guid? workId)
     {
         var files = new List<string>();
         if (workId is not { } id) return files;
-        if (await CopyAsync(BlobNames.WorkOriginal(id), BlobNames.EvidenceOriginal(holdId), "application/octet-stream")) files.Add("original");
+        // The sealed copy (S1b-3): the upload URL may have written something else to the upload name since publish.
+        var original = BlobNames.OriginalOf(id, await db.Works.AsNoTracking().Where(w => w.Id == id).Select(w => w.SealedOriginalBlob).FirstOrDefaultAsync());
+        if (await CopyAsync(original, BlobNames.EvidenceOriginal(holdId), "application/octet-stream")) files.Add("original");
         foreach (var name in VariantNames)
             if (await CopyAsync($"{BlobNames.WorkVariantsPrefix(id)}{name}.webp", BlobNames.EvidenceVariant(holdId, name), "image/webp"))
                 files.Add($"variants/{name}.webp");

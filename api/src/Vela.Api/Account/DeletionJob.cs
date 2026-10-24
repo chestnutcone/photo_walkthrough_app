@@ -49,7 +49,7 @@ public sealed class DeletionJob(
     private async Task<int> DeleteBlobsAsync(Guid userId, IReadOnlyList<Guid> workIds)
     {
         var prefixes = new List<string>();
-        foreach (var id in workIds) prefixes.AddRange([BlobNames.WorkVariantsPrefix(id), BlobNames.WorkOriginal(id)]);
+        foreach (var id in workIds) prefixes.AddRange(BlobNames.WorkPrefixes(id));
         prefixes.AddRange([BlobNames.AvatarVariantsPrefix(userId), BlobNames.AvatarOriginal(userId), BlobNames.ExportsPrefix(userId)]);
         foreach (var prefix in prefixes) await blobs.DeletePrefixAsync(prefix);
         return prefixes.Count;

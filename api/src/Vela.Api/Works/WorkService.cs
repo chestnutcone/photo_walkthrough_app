@@ -6,7 +6,8 @@ using Vela.Api.Images;
 namespace Vela.Api.Works;
 
 public sealed class WorkService(
-    VelaDbContext db, WorkReader reader, IBlobStore blobs, IVariantGenerator variants, TimeProvider clock, ILogger<WorkService>? log = null) : IWorkService
+    VelaDbContext db, WorkReader reader, IBlobStore blobs, IVariantGenerator variants, WorkOriginals originals, TimeProvider clock,
+    ILogger<WorkService>? log = null) : IWorkService
 {
     public Task<WorkDto?> GetAsync(Guid workId, Guid? viewerId) => reader.GetAsync(workId, viewerId);
 
@@ -42,24 +43,33 @@ public sealed class WorkService(
     public async Task<WorkDto> RequestPublishAsync(Guid userId, Guid workId)
     {
         var claim = await ClaimForPublishAsync(userId, workId);
+        SealedOriginal? seal = null;
         try
         {
             await EnsureOriginalExistsAsync(claim.Source);
             ImageVariants made;
-            try { made = await variants.GenerateAsync(claim.Source, workId); }
+            try
+            {
+                // S1b-3: copy the upload to a server-owned name once; the variants and every later reader use only that copy.
+                seal = await originals.SealAsync(workId);
+                made = await variants.GenerateAsync(seal.Blob, workId);
+            }
             catch (InvalidImageException)
             {
                 // The upload cannot be used: remove it so the same bytes cannot be decoded again for free.
                 await DeleteQuietlyAsync(BlobNames.WorkOriginal(workId));
                 throw new WorkException(StatusCodes.Status400BadRequest, "invalid_image", "The uploaded image could not be used.");
             }
-            await CompletePublishAsync(userId, workId, claim.Until, made);
+            await CompletePublishAsync(userId, workId, claim.Until, made, seal);
         }
         catch
         {
+            if (seal is not null) await DeleteQuietlyAsync(seal.Blob);
             await ReleaseClaimAsync(workId, claim.Until);
             throw;
         }
+        // The writable upload is no longer needed; the publish sweep deletes it again if this fails or the URL re-creates it.
+        await DeleteQuietlyAsync(BlobNames.WorkOriginal(workId));
         return (await reader.GetAsync(workId, userId))!;
     }
 
@@ -87,7 +97,7 @@ public sealed class WorkService(
         return new PublishClaim(work.ImageBlob, until);
     }
 
-    private async Task CompletePublishAsync(Guid userId, Guid workId, DateTimeOffset until, ImageVariants made)
+    private async Task CompletePublishAsync(Guid userId, Guid workId, DateTimeOffset until, ImageVariants made, SealedOriginal seal)
     {
         var now = clock.GetUtcNow();
         await using var tx = await db.Database.BeginTransactionAsync();
@@ -102,6 +112,8 @@ public sealed class WorkService(
         }
         work.Width = made.Width;
         work.Height = made.Height;
+        work.SealedOriginalBlob = seal.Blob;
+        work.SealedOriginalSha256 = seal.Sha256;
         work.ExpiresAt = null;
         work.Status = WorkStatus.Pending;
         work.PendingSince = now;
@@ -131,8 +143,7 @@ public sealed class WorkService(
         var owner = await db.Works.AsNoTracking().Where(w => w.Id == workId).Select(w => (Guid?)w.ArtistId).FirstOrDefaultAsync();
         if (owner != userId) throw WorkException.NotFound();
         // Blobs first: a failure leaves the row, so a retry cleans up instead of orphaning files.
-        await blobs.DeletePrefixAsync(BlobNames.WorkVariantsPrefix(workId));
-        await blobs.DeletePrefixAsync(BlobNames.WorkOriginal(workId));
+        foreach (var prefix in BlobNames.WorkPrefixes(workId)) await blobs.DeletePrefixAsync(prefix);
         await db.Works.Where(w => w.Id == workId && w.ArtistId == userId).ExecuteDeleteAsync();
     }
 

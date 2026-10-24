@@ -32,7 +32,7 @@ public class LifecycleTests(PostgresFixture pg) : IAsyncLifetime
         await Lifecycle(l => l.TakeDownAsync(work));
 
         Assert.All(Variants(work), v => Assert.False(_s.Host.Blobs.Exists(v)));
-        Assert.True(_s.Host.Blobs.Exists(BlobNames.WorkOriginal(work)));
+        Assert.True(_s.Host.Blobs.Exists(await WorkTestKit.OriginalOf(_s.Host, work)));
         Assert.All(Variants(work), v => Assert.Contains($"https://cdn.test/{v}", _s.Cdn.Purged));
         Assert.Contains($"/s/{work}", _s.Cdn.Purged);
     }
@@ -56,7 +56,7 @@ public class LifecycleTests(PostgresFixture pg) : IAsyncLifetime
     {
         var (_, work) = await _s.Story();
         await Lifecycle(l => l.TakeDownAsync(work));
-        await _s.Host.Blobs.DeletePrefixAsync(BlobNames.WorkOriginal(work));
+        await _s.Host.Blobs.DeletePrefixAsync(await WorkTestKit.OriginalOf(_s.Host, work));
         await Assert.ThrowsAnyAsync<Exception>(() => Lifecycle(l => l.RestoreAsync(work)));
     }
 
@@ -66,7 +66,7 @@ public class LifecycleTests(PostgresFixture pg) : IAsyncLifetime
         var (_, work) = await _s.BlockedStory();
         Assert.Equal(WorkStatus.Blocked, (await WorkTestKit.Load(_s.Host, work)).Status);
         Assert.All(Variants(work), v => Assert.False(_s.Host.Blobs.Exists(v)));
-        Assert.True(_s.Host.Blobs.Exists(BlobNames.WorkOriginal(work)));
+        Assert.True(_s.Host.Blobs.Exists(await WorkTestKit.OriginalOf(_s.Host, work)));
         Assert.Contains($"/s/{work}", _s.Cdn.Purged);
     }
 

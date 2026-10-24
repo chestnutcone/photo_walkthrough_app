@@ -1181,6 +1181,17 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("scan_attempts");
 
+                    b.Property<string>("SealedOriginalBlob")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("sealed_original_blob");
+
+                    b.Property<string>("SealedOriginalSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("sealed_original_sha256")
+                        .IsFixedLength();
+
                     b.Property<string>("SearchText")
                         .IsRequired()
                         .ValueGeneratedOnAdd()

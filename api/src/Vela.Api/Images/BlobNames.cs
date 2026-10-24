@@ -16,6 +16,14 @@ public static class BlobNames
 
     public static string WorkOriginal(Guid workId) => $"{Originals}/{Works}/{workId}";
     public static string AvatarOriginal(Guid userId) => $"{Originals}/{Avatars}/{userId}";
+    /// <summary>Server-owned copies of a work's upload taken at publish (S1b-3). No upload URL is ever issued for these names.</summary>
+    public static string SealedOriginalsPrefix(Guid workId) => $"{Originals}/sealed/{workId}/";
+    /// <summary>A fresh, unguessable sealed name; one per publish attempt.</summary>
+    public static string NewSealedOriginal(Guid workId) => $"{SealedOriginalsPrefix(workId)}{Guid.NewGuid():N}";
+    /// <summary>The original every reader uses after publish: the sealed copy, or the upload for drafts and pre-S1b-3 rows.</summary>
+    public static string OriginalOf(Guid workId, string? sealedBlob) => sealedBlob ?? WorkOriginal(workId);
+    /// <summary>Every prefix that can hold a work's blobs: public variants, the upload and the sealed copies.</summary>
+    public static IReadOnlyList<string> WorkPrefixes(Guid workId) => [WorkVariantsPrefix(workId), WorkOriginal(workId), SealedOriginalsPrefix(workId)];
     /// <summary>Prefix of a work's public variants; delete together with <see cref="WorkOriginal"/>.</summary>
     public static string WorkVariantsPrefix(Guid workId) => $"{Works}/{workId}/";
     public static string ExportsPrefix(Guid userId) => $"{Exports}/{userId}/";

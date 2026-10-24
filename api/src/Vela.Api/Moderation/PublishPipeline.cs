@@ -19,6 +19,8 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
     public const int BlockSeverity = 4;
     public const int MaxScanAttempts = 3;
     public const int BatchLimit = 50;
+    /// <summary>Auto-flag category when a sealed original no longer matches its recorded SHA-256.</summary>
+    public const string SealedMismatch = "sealed_original_mismatch";
     public static readonly TimeSpan MinPendingAge = TimeSpan.FromSeconds(5);
     public static readonly TimeSpan RetryGap = TimeSpan.FromMinutes(3);
 
@@ -76,7 +78,12 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
         Verdict? verdict = null;
         Guid? blockedId = null;
         var failed = false;
-        if (!work.ModerationOverride)
+        // S1b-3: the variants were made from the sealed copy; check it still holds the bytes that were sealed before trusting
+        // a scan of them. A mismatch means the store was written behind the app's back, so the work is blocked for review.
+        if (work.SealedOriginalBlob is { } sealedBlob && work.SealedOriginalSha256 is { } sha
+            && !await sp.GetRequiredService<Works.WorkOriginals>().MatchesAsync(sealedBlob, sha))
+            verdict = new Verdict(BlockSeverity, SealedMismatch);
+        else if (!work.ModerationOverride)
         {
             try { verdict = await ScanAsync(db, scanner, blobs, work, ct); }
             catch (Exception e) when (e is not OperationCanceledException)
@@ -109,6 +116,7 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
         else await PublishAsync(db, bus, work, now, ct);
 
         await tx.CommitAsync(ct);
+        if (work.SealedOriginalBlob is not null) await DeleteUploadAsync(blobs, work.Id);
         // The block is committed first; the images follow. If this fails the reconciler finishes the job.
         if (blockedId is { } blocked)
         {
@@ -120,6 +128,19 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
             }
         }
         return true;
+    }
+
+    /// <summary>
+    /// Retries the request's deletion of the writable upload, and removes anything the still-valid upload URL wrote since:
+    /// after sealing nothing reads that name, it only costs storage.
+    /// </summary>
+    private async Task DeleteUploadAsync(IBlobStore blobs, Guid workId)
+    {
+        try { await blobs.DeletePrefixAsync(BlobNames.WorkOriginal(workId)); }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log.LogWarning("Could not delete the upload of sealed work {WorkId} ({Reason}).", workId, e.GetType().Name);
+        }
     }
 
     private static Task<Work?> ClaimAsync(VelaDbContext db, DateTimeOffset now, TimeSpan minAge, CancellationToken ct)

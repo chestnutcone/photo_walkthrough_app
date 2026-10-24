@@ -172,7 +172,7 @@ public class TakedownReconcilerTests : IAsyncLifetime
     {
         var (_, work) = await _s.BlockedStory();
         var flag = await _s.AutoFlagId("work", work);
-        await _s.Host.Blobs.DeletePrefixAsync($"originals/works/{work}");
+        await _s.Host.Blobs.DeletePrefixAsync(await WorkTestKit.OriginalOf(_s.Host, work));
 
         Assert.Equal(ModerationOutcome.VariantsUnavailable, await _s.Mod(m => m.RestoreAsync(_admin, flag, "x")));
 

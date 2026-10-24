@@ -86,7 +86,7 @@ public class AdminPageTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Contains("user_report", p.Body);
         var thumbs = HtmlInspector.Tags(p.Body).Where(t => t.Name == "img").ToList();
         var thumb = Assert.Single(thumbs); // the reply row has none
-        Assert.StartsWith("https://blob.test/originals/works/" + work, thumb.Attributes["src"]);
+        Assert.StartsWith("https://blob.test/" + await WorkTestKit.OriginalOf(_s.Host, work), thumb.Attributes["src"]);
         Assert.All(_s.Host.Blobs.ReadUrls, u => Assert.True(u.TtlSeconds <= 300, "admin read links live at most five minutes"));
         Assert.NotEmpty(_s.Host.Blobs.ReadUrls);
     }
@@ -152,7 +152,7 @@ public class AdminPageTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Contains("she is being rude", p.Body);
         Assert.Contains("harassment", p.Body);
         var img = Assert.Single(HtmlInspector.Tags(p.Body), t => t.Name == "img");
-        Assert.StartsWith($"https://blob.test/originals/works/{work}", img.Attributes["src"]);
+        Assert.StartsWith("https://blob.test/" + await WorkTestKit.OriginalOf(_s.Host, work), img.Attributes["src"]);
         var url = Assert.Single(_s.Host.Blobs.ReadUrls);
         Assert.True(url.TtlSeconds <= 300);
         Assert.Contains($"/admin/users/{owner.Id}", p.Body);

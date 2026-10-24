@@ -18,7 +18,7 @@ public static class WorkEndpoints
 
     public static IServiceCollection AddWorks(this IServiceCollection services) =>
         services.AddScoped<IQuotaService, QuotaService>()
-            .AddScoped<WorkReader>().AddScoped<IWorkService, WorkService>()
+            .AddScoped<WorkReader>().AddScoped<WorkOriginals>().AddScoped<IWorkService, WorkService>()
             .AddScoped<IDomainEventBus, DomainEventBus>()
             .AddSingleton<PublishPipeline>();
 

@@ -38,6 +38,10 @@ public static class WorkTestKit
         return await db.Works.AsNoTracking().SingleAsync(w => w.Id == id);
     }
 
+    /// <summary>The original every reader uses after publish: the sealed copy (S1b-3), or the upload for a draft.</summary>
+    public static async Task<string> OriginalOf(ProfileTestHost host, Guid id) =>
+        BlobNames.OriginalOf(id, (await Load(host, id)).SealedOriginalBlob);
+
     public static async Task Modify(ProfileTestHost host, Guid id, Action<Work> change)
     {
         await using var db = host.Db();

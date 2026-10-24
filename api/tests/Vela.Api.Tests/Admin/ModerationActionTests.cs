@@ -233,7 +233,7 @@ public class ModerationActionTests(PostgresFixture pg) : IAsyncLifetime
 
         var (_, work) = await _s.BlockedStory();
         var flag = await _s.AutoFlagId("work", work);
-        await _s.Host.Blobs.DeletePrefixAsync($"originals/works/{work}");
+        await _s.Host.Blobs.DeletePrefixAsync(await WorkTestKit.OriginalOf(_s.Host, work));
         Assert.Equal(ModerationOutcome.VariantsUnavailable, await _s.Mod(m => m.RestoreAsync(_admin, flag, "x")));
         Assert.Equal(WorkStatus.Blocked, (await WorkTestKit.Load(_s.Host, work)).Status);
         Assert.Equal("pending", (await _s.LoadReport(flag)).Status);

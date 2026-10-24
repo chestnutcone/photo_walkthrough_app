@@ -11,7 +11,16 @@ public class Work
     public bool ReportHidden { get; set; }
     /// <summary>Set when an admin restores the work; it is then never auto-blocked again.</summary>
     public bool ModerationOverride { get; set; }
+    /// <summary>The draft's upload name ("originals/works/{id}"), writable through the upload URL. Not read after publish.</summary>
     public string ImageBlob { get; set; } = "";
+    /// <summary>
+    /// Server-owned copy of the upload taken at publish ("originals/sealed/{id}/{random}", S1b-3). Every later reader (variants,
+    /// scan check, admin review, evidence, restore, export) uses it. Null for drafts and for rows published before S1b-3, which
+    /// fall back to <see cref="ImageBlob"/> (see docs/security/review-findings.md for the backfill).
+    /// </summary>
+    public string? SealedOriginalBlob { get; set; }
+    /// <summary>Lower-case hex SHA-256 of the sealed bytes, recorded when they were copied.</summary>
+    public string? SealedOriginalSha256 { get; set; }
     /// <summary>Maintained by database triggers: lower-cased title, intro and chapter titles. Never written by the app.</summary>
     public string SearchText { get; private set; } = "";
     public int Width { get; set; }

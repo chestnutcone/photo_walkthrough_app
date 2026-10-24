@@ -301,7 +301,8 @@ public class WorkTests(PostgresFixture pg) : IDisposable
         var u = await Artist();
         var id = await ReadyDraft(_host, u);
         await u.Post($"/v1/works/{id}/publish", new { });
-        Assert.True(_host.Blobs.Exists(BlobNames.WorkOriginal(id)));
+        await Modify(_host, id, w => w.Status = WorkStatus.Published); // a pending work is under review (S1b-2)
+        Assert.True(_host.Blobs.Exists(await OriginalOf(_host, id)));
         Assert.Equal(1, (await u.Get("/v1/me")).Data.GetProperty("usedWorks").GetInt32());
 
         var r = await u.Delete($"/v1/works/{id}");

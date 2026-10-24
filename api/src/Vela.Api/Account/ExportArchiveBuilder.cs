@@ -37,8 +37,14 @@ public sealed class ExportArchiveBuilder(VelaDbContext db, ExportData data, IBlo
             await AddJsonAsync(zip, files, "inquiries_received_summary.json", await data.InquiriesReceivedAsync(userId), ct);
             await AddJsonAsync(zip, files, "reports_filed.json", await data.ReportsFiledAsync(userId), ct);
             await AddJsonAsync(zip, files, "dmca_notices_about_my_works.json", await data.DmcaNoticesAboutMyWorksAsync(userId), ct);
+            var sealedNames = await db.Works.AsNoTracking().Where(w => w.ArtistId == userId).Select(w => new { w.Id, w.SealedOriginalBlob })
+                .ToDictionaryAsync(w => w.Id, w => w.SealedOriginalBlob, ct);
             foreach (var work in works)
-                if (await AddImageAsync(zip, BlobNames.WorkOriginal(work.Id), $"images/works/{work.Id}/original", ct) is { } name) files.Add(name);
+            {
+                // Published works export the sealed copy (S1b-3); drafts have only their upload.
+                var original = BlobNames.OriginalOf(work.Id, sealedNames.GetValueOrDefault(work.Id));
+                if (await AddImageAsync(zip, original, $"images/works/{work.Id}/original", ct) is { } name) files.Add(name);
+            }
             var avatarBlob = await db.Profiles.AsNoTracking().Where(p => p.UserId == userId).Select(p => p.AvatarBlob).SingleOrDefaultAsync(ct);
             if (avatarBlob is not null && await AddImageAsync(zip, avatarBlob, "images/avatar", ct, forcedExtension: "webp") is { } avatar) files.Add(avatar);
             await AddReadmeAsync(zip, files, ct);

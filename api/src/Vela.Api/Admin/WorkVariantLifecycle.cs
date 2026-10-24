@@ -12,11 +12,12 @@ public interface IWorkVariantLifecycle
     /// <summary>Deletes works/{id}/thumb|feed|full.webp, purges them plus the share page <c>/s/{id}</c>, then stamps <c>TakedownDoneAt</c> (blocked/removed works).</summary>
     Task TakeDownAsync(Guid workId);
 
-    /// <summary>Regenerates the variants from the original and records the work's dimensions. Throws when the original cannot be read.</summary>
+    /// <summary>Regenerates the variants from the sealed original and records the work's dimensions. Throws when the original cannot be read.</summary>
     Task RestoreAsync(Guid workId);
 }
 
-public sealed class WorkVariantLifecycle(IBlobStore blobs, IVariantGenerator generator, ICdnPurger cdn, VelaDbContext db, TimeProvider clock) : IWorkVariantLifecycle
+public sealed class WorkVariantLifecycle(
+    IBlobStore blobs, IVariantGenerator generator, Works.WorkOriginals originals, ICdnPurger cdn, VelaDbContext db, TimeProvider clock) : IWorkVariantLifecycle
 {
     private static readonly string[] Names = ["thumb", "feed", "full"];
 
@@ -34,7 +35,12 @@ public sealed class WorkVariantLifecycle(IBlobStore blobs, IVariantGenerator gen
 
     public async Task RestoreAsync(Guid workId)
     {
-        var made = await generator.GenerateAsync(BlobNames.WorkOriginal(workId), workId);
+        // Only the sealed copy (S1b-3): the upload URL may still write to the old name. A copy that no longer matches its
+        // recorded hash is refused rather than published under ModerationOverride.
+        var row = await db.Works.AsNoTracking().Where(w => w.Id == workId).Select(w => new { w.SealedOriginalBlob, w.SealedOriginalSha256 }).SingleAsync();
+        if (row.SealedOriginalBlob is { } sealedBlob && row.SealedOriginalSha256 is { } sha && !await originals.MatchesAsync(sealedBlob, sha))
+            throw new InvalidImageException("sealed_original_mismatch");
+        var made = await generator.GenerateAsync(BlobNames.OriginalOf(workId, row.SealedOriginalBlob), workId);
         await db.Works.Where(w => w.Id == workId)
             .ExecuteUpdateAsync(s => s.SetProperty(w => w.Width, made.Width).SetProperty(w => w.Height, made.Height));
     }

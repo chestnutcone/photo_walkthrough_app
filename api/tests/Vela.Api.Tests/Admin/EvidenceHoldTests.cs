@@ -24,7 +24,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
     {
         var owner = await _s.OwnerWithEmail();
         var (_, work) = await _s.Story("Hold this title", owner);
-        var original = _s.Host.Blobs.Bytes(BlobNames.WorkOriginal(work));
+        var original = _s.Host.Blobs.Bytes(await WorkTestKit.OriginalOf(_s.Host, work));
         var fan = await _s.NewUser();
         var report = await _s.Report(fan, "work", work, "illegal_content", "private reporter note");
         var second = await _s.Report(await _s.NewUser(), "work", work, "spam");
@@ -69,7 +69,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
 
         Assert.Equal(WorkStatus.Removed, (await WorkTestKit.Load(_s.Host, work)).Status);
         foreach (var v in Variants(work)) Assert.False(_s.Host.Blobs.Exists(v));
-        Assert.True(_s.Host.Blobs.Exists(BlobNames.WorkOriginal(work)));
+        Assert.True(_s.Host.Blobs.Exists(await WorkTestKit.OriginalOf(_s.Host, work)));
         Assert.NotNull((await _s.LoadUser(owner.Id)).SuspendedAt);
         Assert.Equal("actioned", (await _s.LoadReport(report)).Status);
         Assert.Equal("actioned", (await _s.LoadReport(second)).Status);

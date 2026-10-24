@@ -100,6 +100,8 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         {
             e.HasOne<User>().WithMany().HasForeignKey(x => x.ArtistId).OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.Status).HasConversion(LowerEnum<WorkStatus>()).HasMaxLength(16);
+            e.Property(x => x.SealedOriginalBlob).HasMaxLength(200);
+            e.Property(x => x.SealedOriginalSha256).HasMaxLength(64).IsFixedLength();
             e.HasIndex(x => new { x.ArtistId, x.Status });
             // Filled by triggers (see AddSearchIndexes), so EF must neither insert nor update it.
             e.Property(x => x.SearchText).HasDefaultValue("");
