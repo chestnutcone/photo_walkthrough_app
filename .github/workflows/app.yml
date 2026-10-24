@@ -1,9 +1,11 @@
 name: app
 on:
   push:
-    paths: ["app/**", ".github/workflows/app.yml"]
+    paths: ["app/**", "contract/**", ".github/workflows/app.yml"]
   pull_request:
-    paths: ["app/**", ".github/workflows/app.yml"]
+    paths: ["app/**", "contract/**", ".github/workflows/app.yml"]
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -11,10 +13,10 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: stable
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test
+      - run: flutter test --coverage

@@ -1,0 +1,35 @@
+# gitleaks configuration for CI (.github/workflows/security.yml). Starts from the default rules and allows only the
+# documented values below. Every entry also exists in api/tests/Vela.Api.Tests/Security/RepoSecretScanTests.cs (AllowList),
+# which runs in the API test suite. Do not widen these without a written reason.
+title = "Vela gitleaks config"
+
+[extend]
+useDefault = true
+
+# Azurite's published well-known development account key (Microsoft documents it); only valid against the local emulator.
+[[allowlists]]
+description = "Azurite well-known dev storage key"
+regexes = ['''Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==''']
+
+# The Azure built-in role definition id "Key Vault Secrets User": a public identifier, not a credential.
+[[allowlists]]
+description = "Azure built-in role definition id"
+regexes = ['''4633458b-17de-408a-b874-0445c86b69e6''']
+
+# A C# type name next to a parameter called "auth" trips the generic rule.
+[[allowlists]]
+description = "AppAttestVerifier parameter list false positive"
+paths = ['''api/src/Vela\.Api/Abuse/AppAttestVerifier\.cs''']
+regexes = ['''X509Certificate2''']
+
+# Test hosts configure throwaway signing keys ("integration-test-signing-key-...") that exist nowhere else.
+[[allowlists]]
+description = "Throwaway signing keys in integration-test hosts"
+paths = ['''api/tests/Vela\.Api\.Tests/.*\.cs''']
+regexes = ['''integration-test-signing-key-[0-9a-z\-]+''']
+
+# Development-only values in appsettings.Development.json and docker-compose.yml (see docs/security/review-findings.md, D-SEC-1).
+[[allowlists]]
+description = "Documented dev-only values"
+paths = ['''api/src/Vela\.Api/appsettings\.Development\.json''', '''docker-compose\.yml''']
+regexes = ['''dev-only-[a-z\-]+[0-9a-z\-]*''', '''vela_dev_only''']

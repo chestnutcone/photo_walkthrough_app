@@ -15,3 +15,20 @@ flutter_*.log
 # Misc
 .env
 .DS_Store
+
+# Key material and local secrets must never be committed (RepoSecretScanTests and gitleaks enforce this)
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+key.properties
+google-services.json
+GoogleService-Info.plist
+local.settings.json
+*.publishsettings
+
+# Local agent worktrees
+.claude/worktrees/
