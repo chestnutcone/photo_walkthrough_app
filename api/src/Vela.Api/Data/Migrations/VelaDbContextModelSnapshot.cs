@@ -1161,6 +1161,10 @@ namespace Vela.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("pending_since");
 
+                    b.Property<DateTimeOffset?>("PublishClaimedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("publish_claimed_until");
+
                     b.Property<int>("PublishFailures")
                         .HasColumnType("integer")
                         .HasColumnName("publish_failures");

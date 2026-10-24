@@ -17,6 +17,7 @@ public static class StorageServiceCollectionExtensions
                 new AzureContainerAccessReader(new Azure.Storage.Blobs.BlobServiceClient(options.ConnectionString)), options, dataProtection,
                 sp.GetRequiredService<ILogger<ContainerAccessGuard>>()));
         }
+        services.AddSingleton(_ => ImageDecodeGate.FromConfiguration(config));
         services.AddScoped<IVariantGenerator, VariantGenerator>();
         services.AddSingleton<DraftCleanupJob>();
         services.AddHostedService(sp => sp.GetRequiredService<DraftCleanupJob>());

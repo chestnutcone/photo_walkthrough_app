@@ -13,12 +13,20 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
 {
     public const string TraceHeader = "X-Trace-Id";
     public const string Message = "Something went wrong. Please try again.";
+    public const string BusyMessage = "We're busy processing images. Try again in a few seconds.";
 
     public async Task InvokeAsync(HttpContext ctx)
     {
         try { await next(ctx); }
         catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested) { throw; }
         catch (BadHttpRequestException) { throw; }
+        catch (Vela.Api.Images.ImageBusyException e) when (!ctx.Response.HasStarted)
+        {
+            // Expected back-pressure from the decode gate, not a fault: no error log, no Sentry event.
+            ctx.Response.Clear();
+            ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(e.RetryAfter.TotalSeconds)).ToString();
+            await Vela.Api.Common.Results.Fail(StatusCodes.Status503ServiceUnavailable, "busy", BusyMessage).ExecuteAsync(ctx);
+        }
         catch (Exception e)
         {
             var traceId = Activity.Current?.TraceId.ToString() ?? ctx.TraceIdentifier;

@@ -119,7 +119,7 @@ public class AzureBlobStoreTests(AzuriteFixture azurite) : IClassFixture<Azurite
         await store.WriteAsync(BlobNames.WorkOriginal(workId), new MemoryStream(ImageFixtures.JpegWithExifOrientation6AndGps(400, 200)), "image/jpeg");
         await store.WriteAsync(BlobNames.AvatarOriginal(userId), new MemoryStream(ImageFixtures.Png(300, 300)), "image/png");
 
-        await gen.GenerateAsync(BlobNames.WorkOriginal(workId));
+        await gen.GenerateAsync(BlobNames.WorkOriginal(workId), workId);
         await gen.GenerateAvatarAsync(BlobNames.AvatarOriginal(userId), userId);
 
         var service = new Azure.Storage.Blobs.BlobServiceClient(azurite.ConnectionString);

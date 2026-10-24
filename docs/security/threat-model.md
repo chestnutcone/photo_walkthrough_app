@@ -104,7 +104,7 @@ Mitigation pointers name the code, then the test that pins it. "Residual" points
 | I | Errors leak internals | Exception middleware returns a fixed envelope, logs the type name only (`Telemetry/ExceptionHandling.cs`; `PublicExposureTests`) | none |
 | I | Login email, subject, hashes in public JSON | DTOs are explicit; scan test over all public and cross-user responses (`PublicExposureTests`) | none |
 | D | Request floods, huge bodies, deep JSON | Global limiter per policy and per user/IP (/64 for IPv6), 1 MB body cap, 32-level JSON depth (`Abuse/RateLimitPolicies.cs`, `RequestLimitsMiddleware.cs`, `WriteEndpointLimitTests`) | R-4: limiter state is per instance |
-| D | Image decompression bombs, huge dimensions | Decode limits and a semaphore in `Images/VariantGenerator.cs`; failure maps to `invalid_image` | memory per decode at the maximum accepted size (R-11) |
+| D | Image decompression bombs, huge dimensions, parallel decodes | Header-only check (60 MP) before any pixel allocation; JPEG/WebP decoded at reduced size (about 2400 px); a 160 MB decode-memory budget (binds PNG); a process-wide `ImageDecodeGate` (`Images:MaxConcurrentDecodes`, default 2, bounded wait, then 503 `busy`); a failing upload is deleted so it cannot be replayed; publish holds no row lock while decoding (S1b-1, `Images/DecodeLimitTests.cs`, `Works/PublishBoundsTests.cs`) | at most 2 x 160 MB per replica (R-11) |
 | E | Normal user reaches admin | Separate cookie scheme and policy; default-deny page convention; allow-list rechecked on every request (`AdminRouteMatrixTests`, `AdminAuthTests`) | none |
 | E | Suspended or deleted user keeps working | Per-request state check with a 20-second cache, evicted at once on suspension; refresh refused (`UserStateCache.cs`; `UserStateTests`, matrix) | up to 20 s on other instances |
 
@@ -178,7 +178,7 @@ Mitigation pointers name the code, then the test that pins it. "Residual" points
 | A-2 | **Scrapers** | `anon-read` 120/min/IP; `user-read` 600/min/user; Cloudflare | `RateLimitTests`, `HardeningTests` | R-5, R-4 |
 | A-3 | **CSAM upload** | Content Safety auto-block (severity 4+), user reports, admin queue; evidence hold in a restricted container; admin-triggered NCMEC report behind an interface; suspension plus banned-identity hash | `Admin/Evidence*Tests.cs`, `NcmecTests.cs`, `BanTests.cs` | R-1: fail-open scan; no hash matching; NCMEC reporter is a stub (owner needs an ESP account) |
 | A-4 | **DMCA abuse** (false claims; mail-bombing the claimant address) | Notice stored, never auto-actioned; admin decides; counter-notice flow with the 10-day wait; ack mails capped per address; per-IP form limit | `Legal/*Tests.cs`, `HardeningTests` | wording and periods need counsel |
-| A-5 | **Report brigading** (silencing an artist) | 10 reports per user per day; a report hides the content *pending review*, an admin restores; restored content is never auto-blocked again; duplicates collapse | `Social/SafetyTests.cs`, `ModerationActionTests.cs` | R-2: a coordinated group of real accounts can still hide a story until review |
+| A-5 | **Report brigading** (silencing an artist) | 10 reports per user per day; a report hides the content *pending review*, an admin restores; restored content is never auto-blocked again; duplicates collapse | `Social/SafetyTests.cs`, `ModerationActionTests.cs` | R-2: one account (10 reports a day) can hide a story until review (corrected at S1b: a group is not needed) |
 | A-6 | **Account enumeration** | Same response for known and unknown emails and for allow-listed and other admin addresses; handle lookups are public by design | `EmailCodeEndpointTests`, `AdminAuthTests` | R-12 (timing) |
 | A-7 | **SAS URL leakage** | One blob, write-only (read-only for exports), https, at most 15 minutes; scrubbed from telemetry | `UploadUrlTests`, `TelemetryTests` | a leaked write URL lets the holder replace that one pending upload |
 | A-8 | **Token theft** | Short access token, rotating refresh token with family revocation, secure storage on device, suspension revokes everything | `TokenServiceTests`, `HardeningTests` | device compromise |
@@ -192,7 +192,7 @@ Mitigation pointers name the code, then the test that pins it. "Residual" points
 | ID | Risk | Rating | Disposition |
 |---|---|---|---|
 | R-1 | Content Safety fails open and has no known-CSAM hash matching; the NCMEC reporter is unconfigured outside Development | High (legal) | Owner decision recorded in the spec; counsel and an ESP account are launch dependencies |
-| R-2 | Report brigading can hide content until an admin reviews it | Medium | Accepted; admin review speed is an owner item |
+| R-2 | Report brigading: a single account's report hides content until an admin reviews it | Medium | Accepted; admin review speed is an owner item |
 | R-3 | Attestation is not enforceable until Apple and Google developer accounts exist; no replay store; App Attest creates a key per call | Medium | Owner decision before enabling in production (ledger B14/A15) |
 | R-4 | Rate limiters are in memory per instance; an attacker spreads requests across replicas | Low | Accepted at scale-to-zero size; move to Cloudflare rules or a shared store if replicas grow |
 | R-5 | Public content can be scraped | Low | Accepted; it is public by design |
@@ -202,7 +202,7 @@ Mitigation pointers name the code, then the test that pins it. "Residual" points
 | R-8 | Web viewer CSP and headers are applied by the host at deploy | Low | Owner/device check |
 | R-9 | Rooted or jailbroken devices can read app storage | Low | Accepted; MASVS-RESILIENCE is intentionally not pursued |
 | R-10 | Telemetry scrubbing verified by unit tests, not on a real event | Low | Device/owner check with a real DSN |
-| R-11 | Peak memory when decoding a 60-megapixel upload | Low | Concurrency semaphore; revisit with load data |
+| R-11 | Peak memory when decoding large uploads | Low | Corrected at S1b-1: the earlier "semaphore" did not exist. Now: header check, reduced-size decode, 160 MB decode budget and `ImageDecodeGate` (default 2 concurrent decodes per replica, so about 320 MB of pixels at worst against the 1 GiB container); revisit the limit with load data |
 | R-12 | Sign-in response time differs slightly for unknown versus known addresses | Low | Accepted; responses and codes are identical, rate limits bound probing |
 | R-13 | No retention period yet for inquiries, notifications and reports | Medium (privacy) | Owner/counsel decision |
 | R-14 | CodeQL needs GitHub Advanced Security on a private repository | Low | Owner decision; the job is in place |

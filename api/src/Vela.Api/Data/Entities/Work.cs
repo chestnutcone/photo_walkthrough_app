@@ -30,4 +30,9 @@ public class Work
     public DateTimeOffset? LastPublishFailureAt { get; set; }
     /// <summary>For blocked or removed works: when the public variants were deleted and the CDN purged. Null means a take-down is still owed (retried by the reconciler).</summary>
     public DateTimeOffset? TakedownDoneAt { get; set; }
+    /// <summary>
+    /// A publish request has claimed this draft until then (S1b-1): the image is read and decoded outside any row lock, and a
+    /// second publish is refused meanwhile. Cleared when the publish finishes or fails; a crashed request's claim simply expires.
+    /// </summary>
+    public DateTimeOffset? PublishClaimedUntil { get; set; }
 }

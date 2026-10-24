@@ -5,7 +5,8 @@ using Vela.Api.Images;
 
 namespace Vela.Api.Works;
 
-public sealed class WorkService(VelaDbContext db, WorkReader reader, IBlobStore blobs, IVariantGenerator variants, TimeProvider clock) : IWorkService
+public sealed class WorkService(
+    VelaDbContext db, WorkReader reader, IBlobStore blobs, IVariantGenerator variants, TimeProvider clock, ILogger<WorkService>? log = null) : IWorkService
 {
     public Task<WorkDto?> GetAsync(Guid workId, Guid? viewerId) => reader.GetAsync(workId, viewerId);
 
@@ -30,35 +31,99 @@ public sealed class WorkService(VelaDbContext db, WorkReader reader, IBlobStore 
         return (await reader.GetAsync(workId, userId))!;
     }
 
+    /// <summary>How long a publish request owns a draft. Far longer than a decode; a crashed request blocks the draft at most this long.</summary>
+    public static readonly TimeSpan PublishClaimLease = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Three steps, so no row lock or transaction is held while the image is read, decoded and written (S1b-1):
+    /// a short transaction that validates and claims the draft, the image work under the decode gate, then a short transaction
+    /// that moves the draft to pending only if the claim is still ours. Any failure releases the claim.
+    /// </summary>
     public async Task<WorkDto> RequestPublishAsync(Guid userId, Guid workId)
+    {
+        var claim = await ClaimForPublishAsync(userId, workId);
+        try
+        {
+            await EnsureOriginalExistsAsync(claim.Source);
+            ImageVariants made;
+            try { made = await variants.GenerateAsync(claim.Source, workId); }
+            catch (InvalidImageException)
+            {
+                // The upload cannot be used: remove it so the same bytes cannot be decoded again for free.
+                await DeleteQuietlyAsync(BlobNames.WorkOriginal(workId));
+                throw new WorkException(StatusCodes.Status400BadRequest, "invalid_image", "The uploaded image could not be used.");
+            }
+            await CompletePublishAsync(userId, workId, claim.Until, made);
+        }
+        catch
+        {
+            await ReleaseClaimAsync(workId, claim.Until);
+            throw;
+        }
+        return (await reader.GetAsync(workId, userId))!;
+    }
+
+    private sealed record PublishClaim(string Source, DateTimeOffset Until);
+
+    private async Task<PublishClaim> ClaimForPublishAsync(Guid userId, Guid workId)
     {
         var now = clock.GetUtcNow();
         await using var tx = await db.Database.BeginTransactionAsync();
         var work = await LockOwnedAsync(userId, workId);
         if (work.Status != WorkStatus.Draft) throw NotEditable();
+        if (work.PublishClaimedUntil is { } held && held > now)
+            throw new WorkException(StatusCodes.Status409Conflict, "not_editable", "This story is already being published.");
         if (work.ExpiresAt is { } expires && expires <= now)
             throw new WorkException(StatusCodes.Status409Conflict, "draft_expired", "This draft has expired. Start a new story.");
         if (!await db.Chapters.AnyAsync(c => c.WorkId == workId))
             throw new WorkException(StatusCodes.Status400BadRequest, "no_chapters", "Add at least one chapter before publishing.");
         if (string.IsNullOrWhiteSpace(work.Title)) throw WorkException.Validation("title", "is required.");
-        await EnsureOriginalExistsAsync(work.ImageBlob);
+        // Postgres keeps microseconds; truncating makes the stored value compare equal when it is read back.
+        var until = now + PublishClaimLease;
+        until = until.AddTicks(-(until.Ticks % 10));
+        work.PublishClaimedUntil = until;
+        await db.SaveChangesAsync();
+        await tx.CommitAsync();
+        return new PublishClaim(work.ImageBlob, until);
+    }
 
-        try
+    private async Task CompletePublishAsync(Guid userId, Guid workId, DateTimeOffset until, ImageVariants made)
+    {
+        var now = clock.GetUtcNow();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var work = (await db.Works.FromSqlInterpolated($"SELECT * FROM works WHERE id = {workId} AND artist_id = {userId} FOR UPDATE").ToListAsync())
+            .SingleOrDefault();
+        if (work is null || work.Status != WorkStatus.Draft || work.PublishClaimedUntil != until)
         {
-            var made = await variants.GenerateAsync(work.ImageBlob);
-            work.Width = made.Width;
-            work.Height = made.Height;
+            // Deleted, expired or taken over meanwhile: our variants must not stay public.
+            await tx.RollbackAsync();
+            await DeleteQuietlyAsync(BlobNames.WorkVariantsPrefix(workId));
+            throw work is null ? WorkException.NotFound() : NotEditable();
         }
-        catch (InvalidImageException)
-        {
-            throw new WorkException(StatusCodes.Status400BadRequest, "invalid_image", "The uploaded image could not be used.");
-        }
+        work.Width = made.Width;
+        work.Height = made.Height;
         work.ExpiresAt = null;
         work.Status = WorkStatus.Pending;
         work.PendingSince = now;
+        work.PublishClaimedUntil = null;
         await db.SaveChangesAsync();
         await tx.CommitAsync();
-        return (await reader.GetAsync(workId, userId))!;
+    }
+
+    private async Task ReleaseClaimAsync(Guid workId, DateTimeOffset until)
+    {
+        db.ChangeTracker.Clear();
+        await db.Works.Where(w => w.Id == workId && w.PublishClaimedUntil == until)
+            .ExecuteUpdateAsync(s => s.SetProperty(w => w.PublishClaimedUntil, (DateTimeOffset?)null));
+    }
+
+    private async Task DeleteQuietlyAsync(string prefix)
+    {
+        try { await blobs.DeletePrefixAsync(prefix); }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log?.LogWarning("Could not delete blobs after a failed publish ({Reason}).", e.GetType().Name);
+        }
     }
 
     public async Task DeleteAsync(Guid userId, Guid workId)

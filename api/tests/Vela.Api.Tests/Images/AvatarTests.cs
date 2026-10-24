@@ -56,7 +56,7 @@ public class AvatarTests(PostgresFixture pg) : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, r.Status);
         Assert.Equal("invalid_image", r.ErrorCode);
-        Assert.True(_host.Blobs.Exists($"originals/avatars/{u.Id}")); // kept after a failed generation
+        Assert.False(_host.Blobs.Exists($"originals/avatars/{u.Id}")); // S1b-1: removed after a failed generation so it cannot be replayed
         await using var db = _host.Db();
         var p = await db.Profiles.SingleAsync(x => x.UserId == u.Id);
         Assert.Null(p.AvatarBlob);

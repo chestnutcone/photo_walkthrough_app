@@ -120,7 +120,7 @@ IDs are `F-<task>-<n>`; the order follows the ledger. "Fixed (S1-n)" points at s
 | F-A7-1 | Cleanup deletes blobs before re-checking the row | Accept | A draft expiring at the instant of publish fails the publish, which the pipeline handles |
 | F-A7-2 | Cleanup starvation by 100 failing drafts | Accept | Needs 100 permanently failing deletions |
 | F-A7-3 | SAS cannot cap upload size | Accept | 25 MB read cap and 60 MP cap before decode (`Images/VariantGenerator.cs`); storage lifecycle for stale originals is an ops item |
-| F-A7-4 | Memory per decode at 60 MP | Accept (R-11) | Semaphore; revisit with load data |
+| F-A7-4 | Memory per decode at 60 MP | Fixed (S1b-1) | Corrected: the "semaphore" this was accepted on did not exist (S1b-1). Now a header check, reduced-size decode, a 160 MB decode budget and `Images/ImageDecodeGate.cs` (default 2, then 503 `busy`); `Images/DecodeLimitTests.cs` |
 | F-A7-5, F-A7-6 | Partial variant sets; no sRGB conversion | Accept | A failed publish is retried; colour is cosmetic |
 | F-A7-7 | SAS start time and https-only | Fixed (S1-5) | Start time not needed |
 | F-A7-8 | SAS mixes wall clock and `TimeProvider` | Accept | Azure checks wall-clock time, so wall clock is correct |

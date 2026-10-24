@@ -38,10 +38,16 @@ public sealed class InMemoryBlobStore : IBlobStore
         return new($"https://blob.test/{name}?sp=r&ttl={seconds}&sig=SECRETSIG");
     }
 
-    public Task<Stream> OpenReadAsync(string name) =>
-        _blobs.TryGetValue(name, out var b)
-            ? Task.FromResult<Stream>(new MemoryStream(b, writable: false))
+    /// <summary>Awaited before every read, so a test can hold a read open (for example to observe locks or concurrency).</summary>
+    public Func<string, Task>? BeforeRead { get; set; }
+
+    public async Task<Stream> OpenReadAsync(string name)
+    {
+        if (BeforeRead is { } hook) await hook(name);
+        return _blobs.TryGetValue(name, out var b)
+            ? new MemoryStream(b, writable: false)
             : throw new FileNotFoundException("blob not found");
+    }
 
     /// <summary>Lets a test make selected prefix deletions fail.</summary>
     public Func<string, bool>? FailDeletes { get; set; }

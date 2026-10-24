@@ -34,7 +34,7 @@ public sealed class WorkVariantLifecycle(IBlobStore blobs, IVariantGenerator gen
 
     public async Task RestoreAsync(Guid workId)
     {
-        var made = await generator.GenerateAsync(BlobNames.WorkOriginal(workId));
+        var made = await generator.GenerateAsync(BlobNames.WorkOriginal(workId), workId);
         await db.Works.Where(w => w.Id == workId)
             .ExecuteUpdateAsync(s => s.SetProperty(w => w.Width, made.Width).SetProperty(w => w.Height, made.Height));
     }
