@@ -62,7 +62,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B12 Notifications list (44aaa28, fix a80d831)
 - [x] B13 Web viewer and deep links (5eb563a, fix d0232c4)
 - [x] B14 Reporting UI, suspended state, crash reporting, attestation (f55a587, fix eb449e2)
-- [ ] C1 Bicep and deployment workflow
+- [x] C1 Bicep and deployment workflow (32cbd7c, fix cd53d6c)
 - [ ] S1 Security review gate
 
 ## Log (newest first; one line per event: date, task, result, commit)
