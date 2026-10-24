@@ -121,9 +121,28 @@ setting to `false` and run an `dotnet ef migrations bundle` from a machine allow
 
 - Origin protection follow-up: the IP allow-list lets any Cloudflare tenant reach the origin. Add Authenticated Origin Pulls
   (mTLS) or a secret-header Origin Rule that the API checks.
-- GitHub Actions are pinned to tags, not commit SHAs (ledgered).
+- GitHub Actions are pinned to commit SHAs (tag in a trailing comment); Dependabot proposes updates weekly.
 - NCMEC reporting is unconfigured in production (needs an ESP account); illegal-content reports stay queued.
 - Orphan `originals` blobs from SAS URLs used after deletion have no sweep yet.
 - Data Protection keys are stored unencrypted in the private `dataprotection` container (account key protects them); add a Key Vault
   key wrap if that is not acceptable.
 - Apple sign-in token revocation on account deletion is not implemented.
+
+## Security settings added at the S1 review gate
+
+See `docs/security/` for the threat model, checklists and findings.
+
+- `Admin__BanPepper` (32+ characters) is required outside Development and Test **even when `Admin__Enabled=false`**: bans recorded
+  earlier are matched with it. Never change it without re-hashing the ban table.
+- `Security__Hsts` (default on outside Development and Test) sends `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+  on every response. `preload` is deliberately not sent; submit to the preload list only as a conscious decision.
+- `Admin__LoginMinimumMs` (default 600) pads every admin sign-in answer so response time does not reveal allow-listed addresses.
+- CORS: only `Web__ViewerUrl`'s origin may read the public endpoints from a browser (GET/HEAD/OPTIONS, no credentials). If the viewer
+  moves, change that setting; nothing else needs touching.
+- Rate limits: `Abuse__RateLimits__user-read__Permit` (signed-in reads, default 600/minute) joins `anon-read`, `write`, `upload`,
+  `auth-email` and `public-form`; `/admin` is limited too.
+- Give the application's database role `INSERT` and `SELECT` only on `admin_actions` so the audit trail cannot be edited by the app.
+- Put Cloudflare Access (or equivalent) in front of `/admin`: the pages are single-factor (an emailed code to an allow-listed address).
+- Android release builds: provide a real signing keystore (the Gradle config still signs with the debug key) and build with
+  `--obfuscate --split-debug-info`.
+
