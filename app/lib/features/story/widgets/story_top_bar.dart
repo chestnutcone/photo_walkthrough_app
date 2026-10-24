@@ -68,8 +68,12 @@ class StoryTopBar extends StatelessWidget {
   final int step;
   final ValueChanged<int> onJump;
   final ValueChanged<StoryMode> onMode;
-  final VoidCallback onClose;
-  final VoidCallback onArtist;
+
+  /// Null hides the close button (the web viewer has nowhere to go back to).
+  final VoidCallback? onClose;
+
+  /// Null makes the artist name inert.
+  final VoidCallback? onArtist;
 
   @override
   Widget build(BuildContext context) {
@@ -99,8 +103,10 @@ class StoryTopBar extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             _ModePill(mode: mode, onMode: onMode),
-            const SizedBox(width: 10),
-            _CloseButton(onTap: onClose),
+            if (onClose case final close?) ...[
+              const SizedBox(width: 10),
+              _CloseButton(onTap: close),
+            ],
           ],
         ),
       ],
@@ -112,7 +118,7 @@ class _ArtistButton extends StatelessWidget {
   const _ArtistButton({required this.work, required this.onTap});
 
   final Work work;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Semantics(

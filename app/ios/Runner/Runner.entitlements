@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		OWNER TODO: replace vela.example with the real links domain (the host
+		that serves /.well-known/apple-app-site-association and the /s/{workId}
+		share pages). Entitlements cannot read dart-defines, so this value must be
+		edited by hand and kept equal to --dart-define=LINKS_DOMAIN. The domain is
+		also enabled under Signing & Capabilities > Associated Domains in Xcode.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:vela.example</string>
+	</array>
+</dict>
+</plist>

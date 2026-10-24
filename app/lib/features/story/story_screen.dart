@@ -36,12 +36,17 @@ class StoryScreen extends ConsumerWidget {
     super.key,
     required this.workId,
     this.readOnly = false,
+    this.standalone = false,
     this.initialChapter,
     this.openReplies = false,
   });
 
   final String workId;
   final bool readOnly;
+
+  /// The web viewer: no feed or portfolios to go back to, so no close button,
+  /// artist link or "Next story".
+  final bool standalone;
 
   /// Deep link: start on this chapter (0-based). Ignored when the story has
   /// no such chapter.
@@ -56,19 +61,27 @@ class StoryScreen extends ConsumerWidget {
     return work.when(
       data: (w) {
         final notice = ownerStatusNotice(w);
-        if (notice != null) return _StatusScaffold(child: _Message(notice));
+        if (notice != null) {
+          return _StatusScaffold(
+            showClose: !standalone,
+            child: _Message(notice),
+          );
+        }
         return _StoryView(
           key: ValueKey(w.id),
           work: w,
           readOnly: readOnly,
+          standalone: standalone,
           initialChapter: initialChapter,
           openReplies: openReplies,
         );
       },
-      loading: () => const _StatusScaffold(
+      loading: () => _StatusScaffold(
+        showClose: !standalone,
         child: CircularProgressIndicator(color: VelaColors.accent),
       ),
       error: (e, _) => _StatusScaffold(
+        showClose: !standalone,
         child: isStoryUnavailable(e)
             ? const _Message("This story isn't available")
             : _Message(
@@ -81,9 +94,10 @@ class StoryScreen extends ConsumerWidget {
 }
 
 class _StatusScaffold extends StatelessWidget {
-  const _StatusScaffold({required this.child});
+  const _StatusScaffold({required this.child, this.showClose = true});
 
   final Widget child;
+  final bool showClose;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -91,17 +105,18 @@ class _StatusScaffold extends StatelessWidget {
     body: Stack(
       children: [
         Center(child: child),
-        SafeArea(
-          child: Align(
-            alignment: Alignment.topRight,
-            child: IconButton(
-              key: const ValueKey('close'),
-              tooltip: 'Close',
-              icon: const Icon(Icons.close, color: VelaColors.ink),
-              onPressed: () => _leave(context),
+        if (showClose)
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                key: const ValueKey('close'),
+                tooltip: 'Close',
+                icon: const Icon(Icons.close, color: VelaColors.ink),
+                onPressed: () => _leave(context),
+              ),
             ),
           ),
-        ),
       ],
     ),
   );
@@ -140,12 +155,14 @@ class _StoryView extends ConsumerStatefulWidget {
     super.key,
     required this.work,
     required this.readOnly,
+    required this.standalone,
     required this.initialChapter,
     required this.openReplies,
   });
 
   final Work work;
   final bool readOnly;
+  final bool standalone;
   final int? initialChapter;
   final bool openReplies;
 
@@ -445,8 +462,11 @@ class _StoryViewState extends ConsumerState<_StoryView> {
         step: state.step,
         onJump: _ctl.jump,
         onMode: _ctl.setMode,
-        onClose: _close,
-        onArtist: () => context.push('/artist/${_work.author.handle}'),
+        // The web viewer has no feed or portfolios to go to.
+        onClose: widget.standalone ? null : _close,
+        onArtist: widget.standalone
+            ? null
+            : () => context.push('/artist/${_work.author.handle}'),
       ),
     );
   }
@@ -499,11 +519,12 @@ class _StoryViewState extends ConsumerState<_StoryView> {
           onTap: _toggleFollow,
         ),
       // The API offers no "next story" hint, so this goes back to the feed.
-      EndAction(
-        label: 'Next story →',
-        filled: true,
-        onTap: () => context.go('/'),
-      ),
+      if (!widget.standalone)
+        EndAction(
+          label: 'Next story →',
+          filled: true,
+          onTap: () => context.go('/'),
+        ),
       if (!owner && !widget.readOnly)
         EndAction(
           label: 'Ask about a print of this work',

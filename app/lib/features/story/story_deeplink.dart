@@ -36,3 +36,11 @@ String storyLocation(String workId, {int? chapter, bool openReplies = false}) {
   if (chapter == null) return base;
   return '$base?chapter=$chapter${openReplies ? '&replies=1' : ''}';
 }
+
+/// `/s/{workId}[?query]` (the shared link, opened by a universal / app link)
+/// becomes `/story/{workId}[?query]`.
+String shareLinkRedirect(Uri uri) {
+  final id = uri.pathSegments.length > 1 ? uri.pathSegments[1] : '';
+  final query = uri.hasQuery ? '?${uri.query}' : '';
+  return '/story/${Uri.encodeComponent(id)}$query';
+}

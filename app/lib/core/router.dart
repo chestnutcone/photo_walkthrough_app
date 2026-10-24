@@ -90,6 +90,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
+      // Shared links (https://{LINKS_DOMAIN}/s/{id}) land here.
+      GoRoute(path: '/s/:workId', redirect: (_, s) => shareLinkRedirect(s.uri)),
       GoRoute(
         path: '/artist/:handle',
         builder: (_, s) => PortfolioScreen(handle: s.pathParameters['handle']!),

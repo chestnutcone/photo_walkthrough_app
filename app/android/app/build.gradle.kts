@@ -27,6 +27,12 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Host of the app links (https://<linksDomain>/s/<workId>). OWNER TODO:
+        // pass -PlinksDomain=<real domain> (or set it in ~/.gradle/gradle.properties)
+        // for release builds; keep it equal to --dart-define=LINKS_DOMAIN. The
+        // default is the Branding placeholder and will not verify.
+        manifestPlaceholders["linksDomain"] =
+            (project.findProperty("linksDomain") as String?) ?: "vela.example"
     }
 
     buildTypes {

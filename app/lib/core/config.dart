@@ -73,4 +73,16 @@ abstract final class AppConfig {
     'APP_VERSION',
     defaultValue: '1.0.0',
   );
+
+  /// Host of the universal / app links (`https://{LINKS_DOMAIN}/s/{workId}`).
+  /// Must match the host in Runner.entitlements and the Android manifest.
+  static const String linksDomain = String.fromEnvironment(
+    'LINKS_DOMAIN',
+    defaultValue: Branding.domain,
+  );
+
+  /// Store listings for the web viewer's "Open in app" banner. Empty hides
+  /// the matching button.
+  static const String appStoreUrl = String.fromEnvironment('APP_STORE_URL');
+  static const String playStoreUrl = String.fromEnvironment('PLAY_STORE_URL');
 }

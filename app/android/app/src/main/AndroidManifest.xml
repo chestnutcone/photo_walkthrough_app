@@ -24,6 +24,23 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- App links: https://${linksDomain}/s/{workId}. The host comes from the
+                 Gradle property linksDomain (see app/android/app/build.gradle.kts);
+                 it must equal the LINKS_DOMAIN dart-define and the host serving
+                 /.well-known/assetlinks.json. autoVerify makes Android check that file. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="${linksDomain}" android:pathPrefix="/s/"/>
+            </intent-filter>
+            <!-- "Open in app" from the web viewer: vela://open/s/{workId}. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="vela" android:host="open"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
