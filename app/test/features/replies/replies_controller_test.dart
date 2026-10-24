@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vela_app/core/api/api_exception.dart';
 import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/core/auth/session_store.dart';
 import 'package:vela_app/features/replies/replies_controller.dart';
@@ -249,5 +250,13 @@ void main() {
         .signIn(accessToken: 'B', refreshToken: 'RB', expiresIn: 3600);
     await pumpEventQueue();
     expect(await c.read(viewerIdsProvider.future), {'other'});
+  });
+
+  test('a_reply_under_review_explains_why_it_cannot_be_deleted', () {
+    final text = describeReplyError(
+      const ApiException(code: 'under_review', message: '', statusCode: 409),
+    );
+    expect(text, contains('being reviewed'));
+    expect(text, isNot(contains('Something went wrong')));
   });
 }

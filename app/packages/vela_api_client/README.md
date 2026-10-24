@@ -108,6 +108,8 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [AccountDeletion](doc/AccountDeletion.md)
+ - [AccountDeletionEnvelope](doc/AccountDeletionEnvelope.md)
  - [AddReplyRequest](doc/AddReplyRequest.md)
  - [ArtistSummary](doc/ArtistSummary.md)
  - [Chapter](doc/Chapter.md)

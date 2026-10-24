@@ -339,5 +339,9 @@ String describeReplyError(ApiException e) {
   if (e.code == 'network_error') {
     return 'No connection. Check your network and try again.';
   }
+  if (e.code == 'under_review') {
+    return "This reply is being reviewed by our moderators, so it can't be "
+        'deleted until the review is finished.';
+  }
   return 'Something went wrong. Please try again.';
 }

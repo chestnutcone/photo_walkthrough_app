@@ -511,7 +511,10 @@ Future<void> _deleteDraft(
       try {
         await apiGuard(() => api.deleteWork(id: id));
         return;
-      } on ApiException {
+      } on ApiException catch (e) {
+        // A story the server already holds for moderation (pending scan,
+        // blocked) is not a draft any more and stays; retrying cannot help.
+        if (e.code == 'under_review') return;
         if (attempt == 0) await delay(const Duration(seconds: 3));
       }
     }

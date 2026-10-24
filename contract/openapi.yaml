@@ -214,6 +214,7 @@ paths:
       operationId: deleteAccount
       tags: [Me]
       summary: "Delete the account and all data"
+      description: "Signs the account out everywhere and hides it and its content at once. The hard delete follows within minutes (state scheduled), or, while any of the account's content is under moderation review, when the reviews end and at the latest 30 days after the request (state deferred_review, completesBy)."
       security:
         - bearerAuth: []
       responses:
@@ -222,7 +223,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                $ref: '#/components/schemas/AccountDeletionEnvelope'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '429':
@@ -298,6 +299,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '503':
+          $ref: '#/components/responses/Busy'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/me/avatar-upload:
@@ -712,6 +715,12 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: "Error 409 (code under_review): the story is pending its scan, blocked, hidden by a report, under an evidence hold, or removed with a copyright notice; nothing was deleted"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
         '429':
           $ref: '#/components/responses/RateLimited'
         '501':
@@ -748,6 +757,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '501':
           $ref: '#/components/responses/NotImplemented'
+        '503':
+          $ref: '#/components/responses/Busy'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/works/{id}/chapters/{index}/replies:
@@ -837,6 +848,12 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: "Error 409 (code under_review): the reply was hidden automatically or by a report, or is under an evidence hold, and waits for a moderator; nothing was deleted"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
         '429':
           $ref: '#/components/responses/RateLimited'
         '501':
@@ -1264,6 +1281,18 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Envelope'
+    Busy:
+      description: "Error 503 (code busy): no image-processing slot became free in time. Nothing changed; retry after Retry-After seconds."
+      headers:
+        Retry-After:
+          description: "Seconds until the request may be retried"
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
     NotImplemented:
       description: "Not implemented yet (code not_implemented)"
       content:
@@ -1451,6 +1480,12 @@ components:
         downloadUrl: {type: string, nullable: true, description: "Read-only signed URL for the zip, valid for at most 15 minutes; present only while status is ready (fetch the export again for a fresh one)"}
         createdAt: {type: string, format: date-time}
         expiresAt: {type: string, format: date-time, nullable: true}
+    AccountDeletion:
+      type: object
+      required: [state, completesBy]
+      properties:
+        state: {type: string, enum: [scheduled, deferred_review], description: "deferred_review = content is under moderation review; the hard delete waits for it"}
+        completesBy: {type: string, format: date-time, nullable: true, description: "For deferred_review: the latest moment the hard delete runs (30 days after the request); earlier once the reviews end. Null when scheduled"}
     UploadTicket:
       type: object
       required: [uploadUrl, expiresAt]
@@ -1657,6 +1692,23 @@ components:
         data:
           allOf:
             - $ref: '#/components/schemas/CreateDraftResult'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    AccountDeletionEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/AccountDeletion'
           nullable: true
         error:
           allOf:

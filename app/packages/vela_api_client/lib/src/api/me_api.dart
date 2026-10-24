@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'package:vela_api_client/src/deserialize.dart';
 import 'package:dio/dio.dart';
 
+import 'package:vela_api_client/src/model/account_deletion_envelope.dart';
 import 'package:vela_api_client/src/model/complete_onboarding_request.dart';
 import 'package:vela_api_client/src/model/envelope.dart';
 import 'package:vela_api_client/src/model/export_job_envelope.dart';
@@ -193,7 +194,7 @@ _responseData = rawData == null ? null : deserialize<MeEnvelope, MeEnvelope>(raw
   }
 
   /// Delete the account and all data
-  /// 
+  /// Signs the account out everywhere and hides it and its content at once. The hard delete follows within minutes (state scheduled), or, while any of the account&#39;s content is under moderation review, when the reviews end and at the latest 30 days after the request (state deferred_review, completesBy).
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -203,9 +204,9 @@ _responseData = rawData == null ? null : deserialize<MeEnvelope, MeEnvelope>(raw
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [Envelope] as data
+  /// Returns a [Future] containing a [Response] with a [AccountDeletionEnvelope] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Envelope>> deleteAccount({ 
+  Future<Response<AccountDeletionEnvelope>> deleteAccount({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -240,11 +241,11 @@ _responseData = rawData == null ? null : deserialize<MeEnvelope, MeEnvelope>(raw
       onReceiveProgress: onReceiveProgress,
     );
 
-    Envelope? _responseData;
+    AccountDeletionEnvelope? _responseData;
 
     try {
 final rawData = _response.data;
-_responseData = rawData == null ? null : deserialize<Envelope, Envelope>(rawData, 'Envelope', growable: true);
+_responseData = rawData == null ? null : deserialize<AccountDeletionEnvelope, AccountDeletionEnvelope>(rawData, 'AccountDeletionEnvelope', growable: true);
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -255,7 +256,7 @@ _responseData = rawData == null ? null : deserialize<Envelope, Envelope>(rawData
       );
     }
 
-    return Response<Envelope>(
+    return Response<AccountDeletionEnvelope>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

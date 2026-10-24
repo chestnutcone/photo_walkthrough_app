@@ -19,6 +19,8 @@ export 'package:vela_api_client/src/api/safety_api.dart';
 export 'package:vela_api_client/src/api/search_api.dart';
 export 'package:vela_api_client/src/api/works_api.dart';
 
+export 'package:vela_api_client/src/model/account_deletion.dart';
+export 'package:vela_api_client/src/model/account_deletion_envelope.dart';
 export 'package:vela_api_client/src/model/add_reply_request.dart';
 export 'package:vela_api_client/src/model/artist_summary.dart';
 export 'package:vela_api_client/src/model/chapter.dart';

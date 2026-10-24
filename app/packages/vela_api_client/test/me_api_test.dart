@@ -23,7 +23,9 @@ void main() {
 
     // Delete the account and all data
     //
-    //Future<Envelope> deleteAccount() async
+    // Signs the account out everywhere and hides it and its content at once. The hard delete follows within minutes (state scheduled), or, while any of the account's content is under moderation review, when the reviews end and at the latest 30 days after the request (state deferred_review, completesBy).
+    //
+    //Future<AccountDeletionEnvelope> deleteAccount() async
     test('test deleteAccount', () async {
       // TODO
     });

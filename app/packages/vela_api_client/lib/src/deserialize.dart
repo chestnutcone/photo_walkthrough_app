@@ -1,3 +1,5 @@
+import 'package:vela_api_client/src/model/account_deletion.dart';
+import 'package:vela_api_client/src/model/account_deletion_envelope.dart';
 import 'package:vela_api_client/src/model/add_reply_request.dart';
 import 'package:vela_api_client/src/model/artist_summary.dart';
 import 'package:vela_api_client/src/model/chapter.dart';
@@ -69,6 +71,10 @@ final _regMap = RegExp(r'^Map<String,(.*)>$');
           return (valueString == 'true' || valueString == '1') as ReturnType;
         case 'double':
           return (value is double ? value : double.parse('$value')) as ReturnType;
+        case 'AccountDeletion':
+          return AccountDeletion.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'AccountDeletionEnvelope':
+          return AccountDeletionEnvelope.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'AddReplyRequest':
           return AddReplyRequest.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'ArtistSummary':
