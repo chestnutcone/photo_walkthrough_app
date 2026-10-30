@@ -118,17 +118,32 @@ public sealed class VariantGenerator(IBlobStore blobs, ImageDecodeGate? gate = n
         var (w, h) = (codec.Info.Width, codec.Info.Height);
         if (w <= 0 || h <= 0) throw new InvalidImageException("corrupt");
         if ((long)w * h > MaxPixels) throw new InvalidImageException("too_many_pixels");
-        var longEdge = Math.Max(w, h);
-        var size = new SKSizeI(w, h);
-        if (longEdge > targetLongEdge)
-        {
-            // A little over the target so rounding never lands below it; JPEG rounds its 1/8 steps up, WebP scales exactly.
-            var scaled = codec.GetScaledDimensions((float)Math.Min(1.0, (targetLongEdge + 2.0) / longEdge));
-            if (scaled.Width > 0 && scaled.Height > 0 && Math.Max(scaled.Width, scaled.Height) >= targetLongEdge) size = scaled;
-        }
+        var size = LongEdgeOf(w, h) > targetLongEdge ? SmallestScaledAtLeast(codec, targetLongEdge) : new SKSizeI(w, h);
         var copies = IsRotated(codec.EncodedOrigin) ? 2 : 1;
         if ((long)size.Width * size.Height * BytesPerPixel * copies > MaxDecodeBytes) throw new InvalidImageException("too_many_pixels");
         return new DecodePlan(size.Width, size.Height);
+    }
+
+    private static int LongEdgeOf(int w, int h) => Math.Max(w, h);
+
+    /// <summary>
+    /// The smallest decode size the codec supports whose long edge is still at least <paramref name="targetLongEdge"/>.
+    /// <c>GetScaledDimensions</c> rounds down to a supported scale (JPEG: k/8; WebP: any; PNG: full size only), so each JPEG step and
+    /// the exact ratio are tried and the smallest that is big enough wins; full size is the fallback.
+    /// </summary>
+    private static SKSizeI SmallestScaledAtLeast(SKCodec codec, int targetLongEdge)
+    {
+        var full = new SKSizeI(codec.Info.Width, codec.Info.Height);
+        var exact = (float)targetLongEdge / LongEdgeOf(full.Width, full.Height);
+        var best = full;
+        foreach (var scale in Enumerable.Range(1, 7).Select(k => k / 8f).Append(exact).Append(exact * 1.001f))
+        {
+            if (scale >= 1f) continue;
+            var d = codec.GetScaledDimensions(scale);
+            if (d.Width <= 0 || d.Height <= 0 || LongEdgeOf(d.Width, d.Height) < targetLongEdge) continue;
+            if ((long)d.Width * d.Height < (long)best.Width * best.Height) best = d;
+        }
+        return best;
     }
 
     private static bool IsRotated(SKEncodedOrigin origin) => origin is not (SKEncodedOrigin.TopLeft or SKEncodedOrigin.Default);

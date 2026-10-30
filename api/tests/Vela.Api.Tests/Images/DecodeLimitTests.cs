@@ -142,4 +142,46 @@ public class DecodeLimitTests
 
         Assert.False(_blobs.Exists(BlobNames.AvatarOriginal(user)));
     }
+
+    // ---- Review round 1, F2: 40-60 MP sources must still be accepted and give a full-size variant ----
+
+    public static TheoryData<string, int, int> LargeCameraSizes() => new()
+    {
+        { "jpeg", 8000, 6000 }, { "jpeg", 7745, 7745 }, { "jpeg", 9000, 6000 },
+        { "webp", 8000, 6000 }, { "webp", 7745, 7745 }, { "webp", 9000, 6000 },
+    };
+
+    private static byte[] Flat(string format, int w, int h)
+    {
+        using var bmp = new SKBitmap(new SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Opaque));
+        bmp.Erase(SKColors.SteelBlue);
+        return ImageFixtures.Encode(bmp, format == "jpeg" ? SKEncodedImageFormat.Jpeg : SKEncodedImageFormat.Webp, 50);
+    }
+
+    [Theory]
+    [MemberData(nameof(LargeCameraSizes))]
+    public async Task Sources_between_40_and_60_megapixels_are_accepted_and_full_is_exactly_2400_on_the_long_edge(string format, int w, int h)
+    {
+        var work = Guid.NewGuid();
+        _blobs.Put(BlobNames.WorkOriginal(work), Flat(format, w, h));
+
+        var v = await new VariantGenerator(_blobs).GenerateAsync(BlobNames.WorkOriginal(work), work);
+
+        Assert.Equal((w, h), (v.Width, v.Height));
+        using var full = SKCodec.Create(new MemoryStream(_blobs.Bytes($"works/{work}/full.webp")))!;
+        Assert.Equal(VariantGenerator.LargestVariantEdge, Math.Max(full.Info.Width, full.Info.Height));
+        using var codec = SKCodec.Create(new MemoryStream(_blobs.Bytes(BlobNames.WorkOriginal(work))))!;
+        var plan = VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge);
+        Assert.InRange(Math.Max(plan.Width, plan.Height), VariantGenerator.LargestVariantEdge, Math.Max(w, h) / 2 + 8);
+    }
+
+    [Theory]
+    [InlineData(8000, 6000)]
+    [InlineData(7745, 7745)]
+    [InlineData(9000, 6000)]
+    public void Png_between_40_and_60_megapixels_is_refused_because_skia_cannot_decode_png_at_reduced_size(int w, int h)
+    {
+        using var codec = SKCodec.Create(new MemoryStream(ImageFixtures.BombPng(w, h)))!;
+        Assert.Equal("too_many_pixels", Assert.Throws<InvalidImageException>(() => VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge)).Reason);
+    }
 }
