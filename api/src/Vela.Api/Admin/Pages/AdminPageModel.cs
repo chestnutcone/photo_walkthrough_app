@@ -27,6 +27,7 @@ public abstract class AdminPageModel : PageModel
         ["dmca_process"] = ("This story was removed after a DMCA notice. Restore it from the notice once the counter-notice process allows it.", true),
         ["evidence_held"] = ("This content is held as evidence and cannot be restored or reinstated.", true),
         ["delivery_failed"] = ("The email could not be sent, so nothing was recorded. Try again.", true),
+        ["malware_flagged"] = ("This story cannot be restored while the malware scan reports its file as malicious (or gives no verdict). Remove it, or ask the owner to upload a clean file as a new story.", true),
         ["ban_refused"] = ("Evidence held and content removed, but this owner is an admin and was not banned.", true),
     };
 
@@ -60,6 +61,7 @@ public abstract class AdminPageModel : PageModel
         ModerationOutcome.DeliveryFailed => "delivery_failed",
         ModerationOutcome.EvidenceHeld => "evidence_held",
         ModerationOutcome.DmcaProcessRequired => "dmca_process",
+        ModerationOutcome.MalwareFlagged => "malware_flagged",
         _ => "forbidden",
     };
 }

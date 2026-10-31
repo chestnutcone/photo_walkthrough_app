@@ -7,6 +7,8 @@ public enum ModerationOutcome
     Ok, ReasonRequired, ReasonTooLong, NotFound, NotApplicable, Forbidden, CannotBanSelf, CannotBanAdmin,
     TargetStillBlocked, VariantsUnavailable, AlreadyResolved,
     EvidenceCopyFailed, AlreadySubmitted, NotConfigured, SubmissionFailed, RestoreTooEarly, DeliveryFailed, DmcaProcessRequired, EvidenceHeld,
+    /// <summary>The work's file was flagged as malware and no clean rescan verdict exists: it is never decoded or published.</summary>
+    MalwareFlagged,
 }
 
 public sealed record ReportItem(Guid Id, string Source, string Reason, string Status, string TargetType, Guid TargetId, DateTimeOffset CreatedAt);

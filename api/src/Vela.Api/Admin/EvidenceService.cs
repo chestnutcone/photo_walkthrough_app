@@ -13,7 +13,8 @@ namespace Vela.Api.Admin;
 /// is left behind (partial copies are deleted) and the caller takes nothing down.
 /// </summary>
 public sealed partial class EvidenceService(
-    VelaDbContext db, IBlobStore blobs, TimeProvider clock, INcmecReporter reporter, EvidenceSnapshotBuilder snapshots, ILogger<EvidenceService> log)
+    VelaDbContext db, IBlobStore blobs, TimeProvider clock, INcmecReporter reporter, EvidenceSnapshotBuilder snapshots,
+    Moderation.MalwareFlags malwareFlags, ILogger<EvidenceService> log)
     : IEvidenceService
 {
     public static readonly TimeSpan Retention = TimeSpan.FromDays(365);
@@ -97,14 +98,19 @@ public sealed partial class EvidenceService(
         _ => db.EvidenceHolds.AsNoTracking().FirstOrDefaultAsync(h => h.TargetType == "user" && h.UserId == targetId),
     };
 
-    /// <summary>Copies the private (sealed) original and any public variants still present. A missing source is skipped; any other failure throws.</summary>
+    /// <summary>
+    /// Copies the private (sealed) original and any public variants still present. A missing source is skipped; any other failure
+    /// throws. The original of a malware-flagged work is not copied (review I-2): the evidence page would offer it to the reviewer's
+    /// browser, and the sealed copy itself stays in the private container, where nothing serves it.
+    /// </summary>
     private async Task<List<string>> CopyBlobsAsync(Guid holdId, Guid? workId)
     {
         var files = new List<string>();
         if (workId is not { } id) return files;
         // The sealed copy (S1b-3): the upload URL may have written something else to the upload name since publish.
         var original = BlobNames.OriginalOf(id, await db.Works.AsNoTracking().Where(w => w.Id == id).Select(w => w.SealedOriginalBlob).FirstOrDefaultAsync());
-        if (await CopyAsync(original, BlobNames.EvidenceOriginal(holdId), "application/octet-stream")) files.Add("original");
+        if (!await malwareFlags.IsFlaggedAsync(id) && await CopyAsync(original, BlobNames.EvidenceOriginal(holdId), "application/octet-stream"))
+            files.Add("original");
         foreach (var name in VariantNames)
             if (await CopyAsync($"{BlobNames.WorkVariantsPrefix(id)}{name}.webp", BlobNames.EvidenceVariant(holdId, name), "image/webp"))
                 files.Add($"variants/{name}.webp");

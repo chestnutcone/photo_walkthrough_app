@@ -13,7 +13,8 @@ namespace Vela.Api.Admin;
 /// on the same target together, and writes one audit row, all in one transaction.
 /// </summary>
 public sealed partial class ModerationService(
-    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings, IUserStateCache stateCache, IAdminAllowList allow, IEvidenceService evidenceService, ILogger<ModerationService> log)
+    VelaDbContext db, TimeProvider clock, IWorkVariantLifecycle lifecycle, ITokenService tokens, IDomainEventBus bus, AdminSettings settings, IUserStateCache stateCache, IAdminAllowList allow, IEvidenceService evidenceService,
+    Moderation.MalwareCheck malware, Moderation.MalwareFlags malwareFlags, ILogger<ModerationService> log)
     : IModerationService
 {
     public const int MaxReasonLength = 500;
@@ -71,6 +72,7 @@ public sealed partial class ModerationService(
     {
         var work = await db.Works.AsNoTracking().SingleOrDefaultAsync(w => w.Id == workId);
         if (work is null) return ModerationOutcome.NotFound;
+        if (await IsMalwareRestoreRefusedAsync(work)) return ModerationOutcome.MalwareFlagged;
         if (work.Status is not (WorkStatus.Blocked or WorkStatus.Removed))
         {
             await using var tx = await db.Database.BeginTransactionAsync();
@@ -83,6 +85,20 @@ public sealed partial class ModerationService(
             return ModerationOutcome.Ok;
         }
         return await Republish(adminId, work, reason);
+    }
+
+    /// <summary>
+    /// S2 fix (review I-1): a restore would decode the file and publish it under ModerationOverride (no further scan), and the
+    /// admin pages never show a malware-flagged image, so it would be a blind publish. Refused while the current verdict on the
+    /// sealed copy is malicious, and for a work that was ever malware-flagged unless a rescan now reports it clean (no verdict,
+    /// a read error or scanning switched off all refuse).
+    /// </summary>
+    private async Task<bool> IsMalwareRestoreRefusedAsync(Work work)
+    {
+        var flagged = await malwareFlags.IsFlaggedAsync(work.Id);
+        var verdict = await malware.TryGetAsync(work.Id, BlobNames.OriginalOf(work.Id, work.SealedOriginalBlob));
+        if (verdict == Moderation.MalwareVerdict.Malicious) return true;
+        return flagged && (!malware.Enabled || verdict != Moderation.MalwareVerdict.Clean);
     }
 
     /// <summary>

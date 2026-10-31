@@ -3,8 +3,10 @@ using Vela.Api.Images;
 
 namespace Vela.Api.Admin.Pages;
 
-public sealed class EvidenceDetailModel(IEvidenceService evidence, IBlobStore blobs, TimeProvider clock) : AdminPageModel
+public sealed class EvidenceDetailModel(IEvidenceService evidence, IBlobStore blobs, Moderation.MalwareFlags malwareFlags, TimeProvider clock) : AdminPageModel
 {
+    /// <summary>The held work's file was flagged as malware: no image (also for holds copied before this check existed).</summary>
+    public bool MalwareFlagged { get; private set; }
     public EvidenceDetail Detail { get; private set; } = null!;
     public string? ImageUrl { get; private set; }
     public DateTimeOffset Now => clock.GetUtcNow();
@@ -32,7 +34,8 @@ public sealed class EvidenceDetailModel(IEvidenceService evidence, IBlobStore bl
         if (await evidence.GetAsync(id) is not { } detail) return false;
         Detail = detail;
         // One link per page view from the private evidence container, valid five minutes, never logged.
-        if (detail.Snapshot is { OriginalCopied: true })
+        MalwareFlagged = detail.WorkId is { } work && await malwareFlags.IsFlaggedAsync(work);
+        if (detail.Snapshot is { OriginalCopied: true } && !MalwareFlagged)
             ImageUrl = blobs.CreateReadUrl(BlobNames.EvidenceOriginal(id), IndexModel.ImageLifetime).ToString();
         return true;
     }

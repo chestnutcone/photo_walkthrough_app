@@ -4,7 +4,8 @@ using Vela.Api.Images;
 
 namespace Vela.Api.Admin.Pages;
 
-public sealed class IndexModel(IModerationService moderation, IBlobStore blobs, Works.WorkOriginals originals, TimeProvider clock) : AdminPageModel
+public sealed class IndexModel(
+    IModerationService moderation, IBlobStore blobs, Works.WorkOriginals originals, Moderation.MalwareFlags malwareFlags, TimeProvider clock) : AdminPageModel
 {
     public const int PageSize = 25;
     public static readonly TimeSpan ImageLifetime = TimeSpan.FromMinutes(5);
@@ -29,17 +30,24 @@ public sealed class IndexModel(IModerationService moderation, IBlobStore blobs, 
             var page = await moderation.QueueAsync(ParseStatus(StatusFilter), ReasonFilter, SourceFilter, cursor, PageSize);
             Items = page.Items;
             NextCursor = page.NextCursor;
-            _originals = await originals.NamesAsync(Items.Where(i => i.TargetType == "work").Select(i => i.TargetId).Distinct().ToList());
+            var works = Items.Where(i => i.TargetType == "work").Select(i => i.TargetId).Distinct().ToList();
+            _originals = await originals.NamesAsync(works);
+            _malware = await malwareFlags.FlaggedAsync(works);
         }
         catch (InvalidCursorException) { return RedirectToPage(new { status = StatusFilter, reason = ReasonFilter, source = SourceFilter }); }
         return Page();
     }
 
     private IReadOnlyDictionary<Guid, string> _originals = new Dictionary<Guid, string>();
+    private IReadOnlySet<Guid> _malware = new HashSet<Guid>();
+
+    /// <summary>The work's file was flagged as malware by this or any other queue item.</summary>
+    public bool IsMalwareWork(ReportItem item) =>
+        item.TargetType == "work" && (Moderation.MalwareCheck.IsMalwareFlag(item.Reason) || _malware.Contains(item.TargetId));
 
     /// <summary>A short-lived read link to the private sealed original (as published and scanned), made per page view. Never logged.</summary>
     public string? ThumbnailUrl(ReportItem item) =>
-        item.TargetType == "work" && !Moderation.MalwareCheck.IsMalwareFlag(item.Reason)
+        item.TargetType == "work" && !IsMalwareWork(item)
             ? blobs.CreateReadUrl(_originals.TryGetValue(item.TargetId, out var name) ? name : BlobNames.WorkOriginal(item.TargetId), ImageLifetime).ToString()
             : null;
 

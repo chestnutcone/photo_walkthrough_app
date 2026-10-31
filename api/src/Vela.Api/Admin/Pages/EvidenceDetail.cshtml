@@ -38,6 +38,10 @@ else
     {
         <img class="detail-img" src="@image" alt="Held image (private evidence copy)">
     }
+    else if (Model.MalwareFlagged)
+    {
+        <p class="note">Image not shown: the malware scan flagged this file. The original was not copied into the hold; the sealed copy stays in private storage.</p>
+    }
     @if (s.Work is { } w)
     {
         <h2>@w.Title</h2>

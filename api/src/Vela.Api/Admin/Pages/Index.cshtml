@@ -77,6 +77,12 @@ else
                     <a href="/admin/reports/@item.Id">Review</a>
                     @if (item.Status == "pending")
                     {
+                        @if (Model.IsMalwareWork(item))
+                        {
+                            <span class="muted">Malware: restore not offered</span>
+                        }
+                        else
+                        {
                         <form method="post" asp-page-handler="Restore" class="inline">
                             <input type="hidden" name="reportId" value="@item.Id">
                             <input type="hidden" name="status" value="@Model.StatusFilter">
@@ -85,6 +91,7 @@ else
                             <input type="text" name="actionReason" maxlength="500" required placeholder="Reason to restore" aria-label="Reason to restore">
                             <button type="submit">Restore</button>
                         </form>
+                        }
                         <form method="post" asp-page-handler="Dismiss" class="inline">
                             <input type="hidden" name="reportId" value="@item.Id">
                             <input type="hidden" name="status" value="@Model.StatusFilter">

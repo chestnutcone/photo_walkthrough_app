@@ -49,7 +49,7 @@
                 <figcaption>Sealed original: the private copy taken at publish, from which the public images were made.</figcaption>
             </figure>
         }
-        else if (Vela.Api.Moderation.MalwareCheck.IsMalwareFlag(d.Item.Reason))
+        else if (Model.MalwareFlagged)
         {
             <p class="note">Image not shown: the malware scan flagged this file. It is kept privately; do not download it to review it.</p>
         }
@@ -82,7 +82,11 @@ else if (d.Item.TargetType == "reply")
 }
 
 <h2>Actions</h2>
-@if (d.EvidenceHoldId is null || d.Item.TargetType == "user")
+@if (Model.MalwareFlagged)
+{
+    <p class="muted">This story cannot be restored while the malware scan reports its file as malicious (or gives no verdict). Remove it instead.</p>
+}
+else if (d.EvidenceHoldId is null || d.Item.TargetType == "user")
 {
     <form method="post" asp-page-handler="Restore" asp-route-id="@d.Item.Id" class="stack">
         <fieldset>

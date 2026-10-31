@@ -3,8 +3,12 @@ using Vela.Api.Images;
 
 namespace Vela.Api.Admin.Pages;
 
-public sealed class ReportModel(IModerationService moderation, IDmcaAdminService dmca, IBlobStore blobs, Works.WorkOriginals originals, TimeProvider clock) : AdminPageModel
+public sealed class ReportModel(
+    IModerationService moderation, IDmcaAdminService dmca, IBlobStore blobs, Works.WorkOriginals originals, Moderation.MalwareFlags malwareFlags, TimeProvider clock)
+    : AdminPageModel
 {
+    /// <summary>The work's file was flagged as malware (by any queue item, open or closed): no image and no Restore form.</summary>
+    public bool MalwareFlagged { get; private set; }
     public ReportDetail Detail { get; private set; } = null!;
     public string? ImageUrl { get; private set; }
     public IReadOnlyList<DmcaNoticeView> Notices { get; private set; } = [];
@@ -15,7 +19,9 @@ public sealed class ReportModel(IModerationService moderation, IDmcaAdminService
         if (await moderation.GetReportAsync(id) is not { } detail) return NotFound();
         Detail = detail;
         // The sealed original (exactly what was published and scanned), one link per page view, valid five minutes, never logged.
-        if (detail.Item.TargetType == "work" && !Moderation.MalwareCheck.IsMalwareFlag(detail.Item.Reason))
+        MalwareFlagged = detail.Item.TargetType == "work"
+            && (Moderation.MalwareCheck.IsMalwareFlag(detail.Item.Reason) || await malwareFlags.IsFlaggedAsync(detail.Item.TargetId));
+        if (detail.Item.TargetType == "work" && !MalwareFlagged)
             ImageUrl = blobs.CreateReadUrl(await originals.NameAsync(detail.Item.TargetId), IndexModel.ImageLifetime).ToString();
         if (detail.Item.Source == "dmca" && detail.Item.TargetType == "work") Notices = await dmca.NoticesForWorkAsync(detail.Item.TargetId);
         return Page();
