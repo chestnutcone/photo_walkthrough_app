@@ -22,7 +22,12 @@ public sealed class WorkOriginals(VelaDbContext db, IBlobStore blobs)
     {
         var name = BlobNames.NewSealedOriginal(workId);
         Stream source;
-        try { source = await blobs.OpenReadAsync(BlobNames.WorkOriginal(workId)); }
+        string? declared;
+        try
+        {
+            declared = await blobs.GetContentTypeAsync(BlobNames.WorkOriginal(workId));
+            source = await blobs.OpenReadAsync(BlobNames.WorkOriginal(workId));
+        }
         catch (FileNotFoundException) { throw new InvalidImageException("missing"); }
         await using (source)
         {
@@ -37,6 +42,12 @@ public sealed class WorkOriginals(VelaDbContext db, IBlobStore blobs)
             {
                 await blobs.DeletePrefixAsync(name);
                 throw new InvalidImageException("too_large");
+            }
+            try { ImageSniffer.Verify(declared, hashing.Head); } // S2-4: the bytes must be what the uploader declared
+            catch (InvalidImageException)
+            {
+                await blobs.DeletePrefixAsync(name);
+                throw;
             }
             return new SealedOriginal(name, hashing.Sha256Hex());
         }
@@ -70,7 +81,11 @@ public sealed class WorkOriginals(VelaDbContext db, IBlobStore blobs)
     {
         private readonly IncrementalHash _hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         private long _read;
+        private readonly byte[] _head = new byte[ImageSniffer.HeadLength];
+        private int _headLength;
         public bool Exceeded { get; private set; }
+        /// <summary>The first bytes that passed through, for the content-type check.</summary>
+        public ReadOnlySpan<byte> Head => _head.AsSpan(0, _headLength);
 
         public string Sha256Hex() => Convert.ToHexStringLower(_hash.GetHashAndReset());
 
@@ -87,6 +102,9 @@ public sealed class WorkOriginals(VelaDbContext db, IBlobStore blobs)
 
         private int Count(ReadOnlySpan<byte> data)
         {
+            var take = Math.Min(_head.Length - _headLength, data.Length);
+            data[..take].CopyTo(_head.AsSpan(_headLength));
+            _headLength += take;
             _read += data.Length;
             if (_read > limit) { Exceeded = true; throw new InvalidImageException("too_large"); }
             _hash.AppendData(data);

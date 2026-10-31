@@ -57,7 +57,9 @@ public sealed class VariantGenerator(IBlobStore blobs, ImageDecodeGate gate, ILo
             try
             {
                 // Decode just large enough that the short edge still covers the 256 px square.
-                decoded = Decode(await ReadSourceAsync(sourceBlob),
+                var data = await ReadSourceAsync(sourceBlob);
+                ImageSniffer.Verify(await blobs.GetContentTypeAsync(sourceBlob), data); // S2-4
+                decoded = Decode(data,
                     info => (int)Math.Ceiling((double)AvatarSize * Math.Max(info.Width, info.Height) / Math.Max(1, Math.Min(info.Width, info.Height))));
             }
             catch (InvalidImageException)

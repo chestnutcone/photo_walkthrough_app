@@ -55,11 +55,12 @@ public sealed class WorkService(
                 seal = await originals.SealAsync(workId);
                 made = await variants.GenerateAsync(seal.Blob, workId);
             }
-            catch (InvalidImageException)
+            catch (InvalidImageException e)
             {
                 // The upload cannot be used: remove it so the same bytes cannot be decoded again for free.
                 await DeleteQuietlyAsync(BlobNames.WorkOriginal(workId));
-                throw new WorkException(StatusCodes.Status400BadRequest, "invalid_image", "The uploaded image could not be used.");
+                throw new WorkException(StatusCodes.Status400BadRequest, "invalid_image", e.Reason == ImageSniffer.MismatchReason
+                    ? "The uploaded file is not the type of image it was sent as." : "The uploaded image could not be used.");
             }
             await CompletePublishAsync(userId, workId, claim.Until, made, seal);
         }

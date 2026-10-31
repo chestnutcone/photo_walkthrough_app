@@ -285,6 +285,39 @@ public class WorkTests(PostgresFixture pg) : IDisposable
         Assert.Equal(WorkStatus.Draft, (await Load(_host, id)).Status);
     }
 
+    [Theory]
+    [InlineData("image/png")]
+    [InlineData("text/html")]
+    [InlineData("application/octet-stream")]
+    public async Task Publish_of_bytes_that_do_not_match_the_declared_type_is_refused_s2(string declared)
+    {
+        var u = await Artist();
+        var id = await ReadyDraft(_host, u);
+        _host.Blobs.Put(BlobNames.WorkOriginal(id), ImageFixtures.Jpeg(400, 300), declared);
+
+        var r = await u.Post($"/v1/works/{id}/publish", new { });
+
+        Assert.Equal(HttpStatusCode.BadRequest, r.Status);
+        Assert.Equal("invalid_image", r.ErrorCode);
+        Assert.Equal(WorkStatus.Draft, (await Load(_host, id)).Status);
+        Assert.DoesNotContain(_host.Blobs.Names, n => n.StartsWith($"originals/sealed/{id}", StringComparison.Ordinal));
+        Assert.DoesNotContain(_host.Blobs.Names, n => n.StartsWith($"works/{id}/", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Published_variants_are_inline_and_the_sealed_copy_is_an_attachment_s2()
+    {
+        var u = await Artist();
+        var id = await ReadyDraft(_host, u);
+
+        Assert.Equal(HttpStatusCode.OK, (await u.Post($"/v1/works/{id}/publish", new { })).Status);
+
+        var w = await Load(_host, id);
+        Assert.Equal(new Vela.Api.Images.BlobHeaders("application/octet-stream", "attachment"), _host.Blobs.Headers(w.SealedOriginalBlob!));
+        Assert.All(_host.Blobs.Names.Where(n => n.StartsWith($"works/{id}/", StringComparison.Ordinal)),
+            n => Assert.Equal("inline", _host.Blobs.Headers(n).ContentDisposition));
+    }
+
     [Fact]
     public async Task Publish_of_an_expired_draft_is_refused()
     {

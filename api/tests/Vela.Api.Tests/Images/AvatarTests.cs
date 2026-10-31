@@ -47,6 +47,31 @@ public class AvatarTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
+    public async Task Avatar_whose_bytes_do_not_match_the_declared_type_is_refused_s2()
+    {
+        var u = await _host.SignInOnboarded(ProfileTestHost.UniqueHandle());
+        _host.Blobs.Put($"originals/avatars/{u.Id}", ImageFixtures.Jpeg(300, 300), contentType: "image/png");
+
+        var r = await u.Patch("/v1/me/profile", new { avatarUploaded = true });
+
+        Assert.Equal(HttpStatusCode.BadRequest, r.Status);
+        Assert.Equal("invalid_image", r.ErrorCode);
+        Assert.False(_host.Blobs.Exists($"avatars/{u.Id}/avatar-256.webp"));
+        Assert.False(_host.Blobs.Exists($"originals/avatars/{u.Id}"));
+    }
+
+    [Fact]
+    public async Task Generated_avatar_is_stored_inline_as_webp_s2()
+    {
+        var u = await _host.SignInOnboarded(ProfileTestHost.UniqueHandle());
+        _host.Blobs.Put($"originals/avatars/{u.Id}", ImageFixtures.Png(300, 300));
+
+        await u.Patch("/v1/me/profile", new { avatarUploaded = true });
+
+        Assert.Equal(new Vela.Api.Images.BlobHeaders("image/webp", "inline"), _host.Blobs.Headers($"avatars/{u.Id}/avatar-256.webp"));
+    }
+
+    [Fact]
     public async Task Avatar_uploaded_with_a_bad_image_is_invalid_image_and_changes_nothing()
     {
         var u = await _host.SignInOnboarded(ProfileTestHost.UniqueHandle());

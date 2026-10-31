@@ -70,8 +70,25 @@ public sealed class AzureBlobStore : IBlobStore
     {
         var (container, blob) = Split(name);
         await EnsureContainersAsync();
+        var headers = BlobHeaders.For(name, contentType); // S2-4: safe disposition on every stored blob
         await _service.GetBlobContainerClient(container).GetBlobClient(blob)
-            .UploadAsync(data, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = contentType } });
+            .UploadAsync(data, new BlobUploadOptions
+            {
+                HttpHeaders = new BlobHttpHeaders { ContentType = headers.ContentType, ContentDisposition = headers.ContentDisposition },
+            });
+    }
+
+    public async Task<string?> GetContentTypeAsync(string name)
+    {
+        var (container, blob) = Split(name);
+        try
+        {
+            return (await _service.GetBlobContainerClient(container).GetBlobClient(blob).GetPropertiesAsync()).Value.ContentType;
+        }
+        catch (RequestFailedException e) when (e.Status == 404)
+        {
+            throw new FileNotFoundException("blob not found", e);
+        }
     }
 
     public async Task<Stream> OpenReadAsync(string name)

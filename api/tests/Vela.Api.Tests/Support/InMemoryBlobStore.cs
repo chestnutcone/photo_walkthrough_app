@@ -7,11 +7,31 @@ namespace Vela.Api.Tests.Support;
 public sealed class InMemoryBlobStore : IBlobStore
 {
     private readonly ConcurrentDictionary<string, byte[]> _blobs = new();
+    private readonly ConcurrentDictionary<string, BlobHeaders> _headers = new();
 
     public IReadOnlyCollection<string> Names => _blobs.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
     public bool Exists(string name) => _blobs.ContainsKey(name);
     public byte[] Bytes(string name) => _blobs[name];
-    public void Put(string name, byte[] data) => _blobs[name] = data;
+    /// <summary>
+    /// Simulates an upload. Without <paramref name="contentType"/> the uploader declares what the bytes are (a well-behaved
+    /// client); pass one to simulate a lying or careless uploader.
+    /// </summary>
+    public void Put(string name, byte[] data, string? contentType = null)
+    {
+        _blobs[name] = data;
+        _declared[name] = contentType ?? ImageSniffer.Detect(data) ?? "application/octet-stream";
+    }
+
+    private readonly ConcurrentDictionary<string, string> _declared = new();
+
+    /// <summary>The headers the API stored with a blob it wrote.</summary>
+    public BlobHeaders Headers(string name) => _headers[name];
+
+    public Task<string?> GetContentTypeAsync(string name) =>
+        _declared.TryGetValue(name, out var t) ? Task.FromResult<string?>(t)
+        : _headers.TryGetValue(name, out var h) ? Task.FromResult<string?>(h.ContentType)
+        : _blobs.ContainsKey(name) ? Task.FromResult<string?>(null)
+        : throw new FileNotFoundException("blob not found");
 
     public Uri CreateUploadUrl(string blobName, TimeSpan ttl) => new($"https://blob.test/{blobName}?sig=test&ttl={(int)ttl.TotalSeconds}");
 
@@ -20,6 +40,8 @@ public sealed class InMemoryBlobStore : IBlobStore
         if (FailWrites?.Invoke(name) == true) throw new IOException("write failed");
         using var ms = new MemoryStream();
         await data.CopyToAsync(ms);
+        _headers[name] = BlobHeaders.For(name, contentType);
+        _declared.TryRemove(name, out _);
         _blobs[name] = ms.ToArray();
     }
 
@@ -55,7 +77,12 @@ public sealed class InMemoryBlobStore : IBlobStore
     public Task DeletePrefixAsync(string prefix)
     {
         if (FailDeletes?.Invoke(prefix) == true) throw new IOException("delete failed");
-        foreach (var k in _blobs.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList()) _blobs.TryRemove(k, out _);
+        foreach (var k in _blobs.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList())
+        {
+            _blobs.TryRemove(k, out _);
+            _headers.TryRemove(k, out _);
+            _declared.TryRemove(k, out _);
+        }
         return Task.CompletedTask;
     }
 

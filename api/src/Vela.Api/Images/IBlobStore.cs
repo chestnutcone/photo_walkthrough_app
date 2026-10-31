@@ -12,6 +12,8 @@ public interface IBlobStore
     /// <summary>Scheme, host and port that read and upload URLs point at (for the admin CSP <c>img-src</c>).</summary>
     Uri ReadOrigin { get; }
     Task<Stream> OpenReadAsync(string name);
+    /// <summary>The Content-Type stored with the blob (for uploads: what the uploader declared). Throws <see cref="FileNotFoundException"/>.</summary>
+    Task<string?> GetContentTypeAsync(string name);
     Task DeletePrefixAsync(string prefix);
     /// <summary>The CDN URL for a blob in the public containers.</summary>
     Uri PublicUrl(string name);
