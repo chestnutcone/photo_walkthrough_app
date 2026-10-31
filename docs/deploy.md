@@ -267,3 +267,22 @@ See `docs/security/` for the threat model, checklists and findings.
 - **Text (S2-2) and inquiry mail (S2-3).** No settings. User text is cleaned (NFC, invisible and control characters stripped,
   stacked marks capped, spaces collapsed) before it is stored; rows written earlier are unchanged. Inquiry mails use a fixed
   template with an "unverified user message" banner and disarmed links.
+
+## Settings and behaviour added by the final API review (FINALAPI)
+
+- **Launch blockers (M9).** `Launch__RequireLaunchSettings` (infra: `true` only for `environment=prod`): the API refuses to start
+  unless `Legal__DmcaAgentName/Email/Address`, `Cloudflare__ZoneId` and `Cloudflare__ApiToken` are set; the error names each missing key.
+- **Avatars (I6).** The 256 px avatar is scanned by Content Safety before it is written to the public `avatars` container. Severity
+  4 or more: refused as `invalid_image`, the upload is deleted, the previous avatar stays, and an `auto:unsafe_avatar:<n>` item is
+  queued against the account. Scanner unavailable: **fail closed** (503 `busy`, `Retry-After: 30`, upload kept), unlike stories and
+  replies, because an avatar has no pending state. Watch the `Avatar scan unavailable` warning.
+- **Traces (I2).** Spans are scrubbed in process before the Azure Monitor exporter: paths become route templates (`/v1/artists/{handle}`),
+  query strings, client addresses and SAS signatures are dropped. Do not add another exporter before the scrubber.
+- **DMCA retention (I5).** `Legal__DmcaRetentionDays` (default 1095): closed notices (rejected, taken down, restored) whose last step
+  is older are deleted daily with a `dmca_expired` audit row; open notices are never touched. Counsel to confirm the period;
+  `admin_actions` (audit trail) and `banned_identities` (hashes) are kept without a period, as the privacy policy states.
+- **Bans during the deletion window (I3).** An account whose deletion is deferred (content under review) can still be banned from the
+  user page or by Mark illegal; the identity hashes survive the hard delete, so the same Apple/Google/email identity cannot sign up again.
+  Mark illegal now says when the owner was already banned, is an admin, or was already fully deleted.
+- **Onboarding gate (M18).** Inquiries, reports and blocks answer 403 `onboarding_required` for an account that never confirmed 18+ and
+  the terms.
