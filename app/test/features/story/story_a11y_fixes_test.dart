@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsFlag;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -51,6 +53,39 @@ void main() {
       expect(size.width, greaterThanOrEqualTo(48), reason: label);
       expect(size.height, greaterThanOrEqualTo(48), reason: label);
     }
+    handle.dispose();
+  });
+
+  // GALLERY a11y audit: the bottom card is a live region, but Android and
+  // iOS only announce a live region when its own label changes. The card had
+  // no label (its text is in child nodes), so stepping through chapters was
+  // silent for TalkBack and VoiceOver users.
+  testWidgets('chapter_changes_are_announced_by_the_live_region_label', (
+    t,
+  ) async {
+    final handle = t.ensureSemantics();
+    await pumpStory(t);
+    String cardLabel() {
+      final node = t.getSemantics(find.byKey(const ValueKey('bottom-card')));
+      expect(node.hasFlag(SemanticsFlag.isLiveRegion), isTrue);
+      return node.label;
+    }
+
+    expect(cardLabel(), 'Story intro, 3 chapters');
+    await t.tap(find.text('Begin →'));
+    await t.pumpAndSettle();
+    expect(cardLabel(), 'Chapter 1 of 3, Detail 1');
+    await t.tap(find.bySemanticsLabel('Next chapter'));
+    await t.pumpAndSettle();
+    expect(cardLabel(), 'Chapter 2 of 3, Detail 2');
+    await t.tap(find.bySemanticsLabel('Next chapter'));
+    await t.pumpAndSettle();
+    await t.tap(find.bySemanticsLabel('Next chapter'));
+    await t.pumpAndSettle();
+    expect(cardLabel(), 'End of story');
+    await t.tap(find.text('Explore freely'));
+    await t.pumpAndSettle();
+    expect(cardLabel(), 'Explore, 3 points');
     handle.dispose();
   });
 }

@@ -79,7 +79,10 @@ class StoryBottomCard extends StatelessWidget {
     final explore = state.mode == StoryMode.explore;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.6;
     final Widget content;
+    final String announcement;
     if (chapter >= 0) {
+      announcement =
+          'Chapter ${chapter + 1} of $n, ${work.chapters[chapter].title}';
       content = _ChapterBody(
         chapter: work.chapters[chapter],
         index: chapter,
@@ -90,10 +93,13 @@ class StoryBottomCard extends StatelessWidget {
       );
     } else if (explore) {
       final first = work.author.displayName.split(' ').first;
+      announcement = 'Explore, $n point${n == 1 ? '' : 's'}';
       content = _ExploreIdleBody(count: n, first: first);
     } else if (state.step == 0) {
+      announcement = 'Story intro, ${_count(n).toLowerCase()}';
       content = _IntroBody(work: work, onBegin: onBegin);
     } else {
+      announcement = 'End of story';
       content = _EndBody(actions: endActions);
     }
     return Positioned(
@@ -102,8 +108,12 @@ class StoryBottomCard extends StatelessWidget {
       bottom: 24,
       child: Semantics(
         key: const ValueKey('bottom-card'),
+        // TalkBack and VoiceOver announce a live region only when its own
+        // label changes; the card's text lives in child nodes, so this
+        // short summary is what is spoken on every step.
         liveRegion: true,
         container: true,
+        label: announcement,
         child: ClipRRect(
           key: cardKey,
           borderRadius: BorderRadius.circular(24),
