@@ -61,6 +61,35 @@ public class TakedownReconcilerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Works_whose_take_down_keeps_failing_do_not_starve_newer_ones_m4()
+    {
+        var owner = await _s.NewUser();
+        var stuck = new List<Guid>();
+        Guid fresh;
+        await using (var db = _s.Host.Db())
+        {
+            Work Removed(int minutesAgo) => new()
+            {
+                Id = Guid.NewGuid(), ArtistId = owner.Id, Title = "t", Status = WorkStatus.Removed, ImageBlob = "b", Width = 3, Height = 4,
+                CreatedAt = ProfileTestHost.Now.AddMinutes(-minutesAgo), PublishedAt = ProfileTestHost.Now,
+            };
+            for (var i = 0; i < TakedownReconciler.BatchLimit; i++) { var w = Removed(100 + i); stuck.Add(w.Id); db.Works.Add(w); }
+            var f = Removed(1); fresh = f.Id; db.Works.Add(f);
+            await db.SaveChangesAsync();
+        }
+        var stuckNames = stuck.Select(id => id.ToString()).ToList();
+        _s.Host.Blobs.FailDeletes = p => stuckNames.Any(p.Contains);
+
+        Assert.Equal(0, await Reconcile()); // the twenty oldest fail
+        Assert.Equal(1, await Reconcile()); // the next run reaches the newer work instead of retrying the same twenty first
+
+        Assert.NotNull((await Work(fresh)).TakedownDoneAt);
+        Assert.All(stuck, id => Assert.Null(Work(id).Result.TakedownDoneAt));
+        _s.Host.Blobs.FailDeletes = null;
+        Assert.Equal(TakedownReconciler.BatchLimit, await Reconcile()); // and the failing ones are still retried
+    }
+
+    [Fact]
     public async Task A_successful_take_down_stamps_the_work_and_reruns_do_nothing()
     {
         var (_, work) = await _s.Story();

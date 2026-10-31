@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Admin;
 using Vela.Api.Data;
@@ -12,6 +13,13 @@ namespace Vela.Api.Moderation;
 public sealed class TakedownReconciler(IServiceScopeFactory scopes, ILogger<TakedownReconciler> log)
 {
     public const int BatchLimit = 20;
+    /// <summary>How many owed works one run looks at before choosing its batch.</summary>
+    public const int ScanLimit = 500;
+
+    // When a work last failed on this replica (M4): works that never failed (or failed longest ago) go first, so a set of
+    // permanently failing works cannot occupy every batch while newer blocked works stay publicly served. In-memory on
+    // purpose: each replica rotates on its own and a restart simply starts over in creation order.
+    private readonly ConcurrentDictionary<Guid, DateTimeOffset> _failedAt = new();
 
     /// <summary>Returns how many works were taken down in this run.</summary>
     public async Task<int> RunOnceAsync(DateTimeOffset now, CancellationToken ct)
@@ -22,11 +30,18 @@ public sealed class TakedownReconciler(IServiceScopeFactory scopes, ILogger<Take
             var db = scope.ServiceProvider.GetRequiredService<VelaDbContext>();
             candidates = await db.Works.AsNoTracking()
                 .Where(w => (w.Status == Data.Entities.WorkStatus.Blocked || w.Status == Data.Entities.WorkStatus.Removed) && w.TakedownDoneAt == null)
-                .OrderBy(w => w.CreatedAt).Select(w => w.Id).Take(BatchLimit).ToListAsync(ct);
+                .OrderBy(w => w.CreatedAt).Select(w => w.Id).Take(ScanLimit).ToListAsync(ct);
         }
+        var owed = candidates.ToHashSet();
+        foreach (var stale in _failedAt.Keys.Where(k => !owed.Contains(k))) _failedAt.TryRemove(stale, out _);
+        // Stable sort: creation order among works with the same failure history.
+        var batch = candidates.OrderBy(id => _failedAt.TryGetValue(id, out var at) ? at : DateTimeOffset.MinValue).Take(BatchLimit).ToList();
         var done = 0;
-        foreach (var id in candidates)
-            if (await TryTakeDownAsync(id, ct)) done++;
+        foreach (var id in batch)
+        {
+            if (await TryTakeDownAsync(id, ct)) { done++; _failedAt.TryRemove(id, out _); }
+            else _failedAt[id] = now;
+        }
         return done;
     }
 
