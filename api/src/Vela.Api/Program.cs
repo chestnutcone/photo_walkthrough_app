@@ -32,7 +32,9 @@ builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Br
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException(
         "ConnectionStrings:Default is not configured. Set it via environment (ConnectionStrings__Default) or a secret store.");
-builder.Services.AddDbContext<VelaDbContext>(o => o.ConfigureVela(connectionString));
+// Interceptors registered in DI are applied (none in production; tests use one to inject commit faults).
+builder.Services.AddDbContext<VelaDbContext>((sp, o) => o.ConfigureVela(connectionString)
+    .AddInterceptors(sp.GetServices<Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor>()));
 
 var jwt = JwtOptions.Load(builder.Configuration);
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Section));

@@ -65,7 +65,9 @@ public sealed class WorkService(
         }
         catch
         {
-            if (seal is not null) await DeleteQuietlyAsync(seal.Blob);
+            // A failing commit can still have committed (review F6): delete our sealed copy only once a fresh connection shows
+            // the row does not record it. When that cannot be checked, keep it (an orphan costs storage; a missing seal blocks).
+            if (seal is not null && !await SealRecordedAsync(workId, seal.Blob)) await DeleteQuietlyAsync(seal.Blob);
             await ReleaseClaimAsync(workId, claim.Until);
             throw;
         }
@@ -130,6 +132,23 @@ public sealed class WorkService(
         db.ChangeTracker.Clear();
         await db.Works.Where(w => w.Id == workId && w.PublishClaimedUntil == until)
             .ExecuteUpdateAsync(s => s.SetProperty(w => w.PublishClaimedUntil, (DateTimeOffset?)null));
+    }
+
+    private async Task<bool> SealRecordedAsync(Guid workId, string sealedBlob)
+    {
+        try
+        {
+            await using var conn = new Npgsql.NpgsqlConnection(db.Database.GetConnectionString());
+            await conn.OpenAsync();
+            await using var cmd = new Npgsql.NpgsqlCommand("SELECT sealed_original_blob FROM works WHERE id = @id", conn);
+            cmd.Parameters.AddWithValue("id", workId);
+            return await cmd.ExecuteScalarAsync() is string recorded && recorded == sealedBlob;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log?.LogWarning("Could not confirm whether a failed publish committed ({Reason}); keeping its sealed copy.", e.GetType().Name);
+            return true;
+        }
     }
 
     private async Task DeleteQuietlyAsync(string prefix)
