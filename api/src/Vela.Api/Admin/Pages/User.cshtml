@@ -31,7 +31,7 @@
 {
     <p class="muted">Admin accounts cannot be banned.</p>
 }
-else if (!u.IsDeleted && !u.IsSuspended)
+else if (!u.IsSuspended)
 {
     <form method="post" asp-page-handler="Ban" asp-route-id="@u.UserId" class="stack">
         <fieldset>

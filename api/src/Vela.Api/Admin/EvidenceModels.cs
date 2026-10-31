@@ -38,7 +38,24 @@ public sealed record EvidenceDetail(
 
 public sealed record EvidenceCapture(ModerationOutcome Outcome, Data.Entities.EvidenceHold? Hold);
 
-public sealed record MarkIllegalResult(ModerationOutcome Outcome, Guid? HoldId, bool BanRefused);
+/// <summary>What Mark illegal did about the owner's account, so the admin is never told "done" when nobody was banned.</summary>
+public enum OwnerBan
+{
+    /// <summary>Not reached (the hold failed or the call was refused).</summary>
+    None,
+    /// <summary>Suspended now and every identity hash recorded (also for an account pending deletion).</summary>
+    Banned,
+    AlreadyBanned,
+    /// <summary>The owner is an allow-listed admin or the acting admin.</summary>
+    Refused,
+    /// <summary>The account was already hard-deleted: its identities are gone, so there is nothing left to ban.</summary>
+    OwnerGone,
+}
+
+public sealed record MarkIllegalResult(ModerationOutcome Outcome, Guid? HoldId, OwnerBan OwnerBan)
+{
+    public bool BanRefused => OwnerBan == OwnerBan.Refused;
+}
 
 public interface IEvidenceService
 {

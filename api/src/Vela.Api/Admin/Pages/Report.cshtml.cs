@@ -72,8 +72,16 @@ public sealed class ReportModel(
         if (confirm is null) return Done(id, "confirmation_required");
         var result = await moderation.MarkIllegalAsync(AdminId, id, reason ?? "");
         if (result.Outcome != ModerationOutcome.Ok || result.HoldId is not { } hold) return Done(id, FlashCode(result.Outcome));
-        return RedirectToPage("/EvidenceDetail", new { id = hold, flash = result.BanRefused ? "ban_refused" : "ok" });
+        return RedirectToPage("/EvidenceDetail", new { id = hold, flash = MarkIllegalFlash(result.OwnerBan) });
     }
+
+    public static string MarkIllegalFlash(OwnerBan ban) => ban switch
+    {
+        OwnerBan.AlreadyBanned => "ok_already_banned",
+        OwnerBan.Refused => "ban_refused",
+        OwnerBan.OwnerGone => "owner_gone",
+        _ => "ok",
+    };
 
     private IActionResult Done(Guid id, string flash) => RedirectToPage(new { id, flash });
 

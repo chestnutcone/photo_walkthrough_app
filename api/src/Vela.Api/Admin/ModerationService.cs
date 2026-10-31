@@ -201,7 +201,9 @@ public sealed partial class ModerationService(
     {
         if (await GateAsync(adminId, reason) is { } refused) return refused;
         if (userId == adminId) return ModerationOutcome.CannotBanSelf;
-        var user = await db.Users.AsNoTracking().Where(u => u.Id == userId && u.DeletedAt == null)
+        // An account pending deletion (DeletedAt set, row and identities not yet purged) can be banned too: that is the window
+        // in which someone deletes the account to escape a report. Once the hard delete ran there is nothing left to ban.
+        var user = await db.Users.AsNoTracking().Where(u => u.Id == userId)
             .Select(u => new { u.IsAdmin }).SingleOrDefaultAsync();
         if (user is null) return ModerationOutcome.NotFound;
         // Only a current admin is protected: someone removed from the allow-list can be banned like anyone else.

@@ -7,20 +7,20 @@ public sealed partial class ModerationService
 {
     public async Task<MarkIllegalResult> MarkIllegalAsync(Guid adminId, Guid reportId, string reason)
     {
-        if (await GateAsync(adminId, reason) is { } refused) return new MarkIllegalResult(refused, null, false);
+        if (await GateAsync(adminId, reason) is { } refused) return new MarkIllegalResult(refused, null, OwnerBan.None);
         var report = await db.Reports.AsNoTracking().SingleOrDefaultAsync(r => r.Id == reportId);
-        if (report is null) return new MarkIllegalResult(ModerationOutcome.NotFound, null, false);
+        if (report is null) return new MarkIllegalResult(ModerationOutcome.NotFound, null, OwnerBan.None);
 
         // 1) Hold the evidence (blobs copied, row committed). A failure here has changed nothing else.
         var captured = await evidenceService.CaptureAsync(adminId, report, reason.Trim());
-        if (captured.Hold is not { } hold) return new MarkIllegalResult(captured.Outcome, null, false);
+        if (captured.Hold is not { } hold) return new MarkIllegalResult(captured.Outcome, null, OwnerBan.None);
 
         // 2) Take the content down, 3) ban the owner, 4) resolve the reports. Each step is skipped when already done,
         // so repeating the call finishes whatever an earlier failure left open.
         await TakeDownHeldContentAsync(adminId, hold, reason.Trim());
-        var banRefused = await BanHoldOwnerAsync(adminId, hold, reason.Trim());
+        var ban = await BanHoldOwnerAsync(adminId, hold, reason.Trim());
         await ResolveAsync(hold.TargetType, hold.WorkId ?? hold.ReplyId ?? hold.UserId, ReportStatus.Actioned);
-        return new MarkIllegalResult(ModerationOutcome.Ok, hold.Id, banRefused);
+        return new MarkIllegalResult(ModerationOutcome.Ok, hold.Id, ban);
     }
 
     private async Task TakeDownHeldContentAsync(Guid adminId, EvidenceHold hold, string reason)
@@ -37,13 +37,23 @@ public sealed partial class ModerationService
         }
     }
 
-    /// <summary>True when the owner could not be banned (an admin, or the acting admin themselves).</summary>
-    private async Task<bool> BanHoldOwnerAsync(Guid adminId, EvidenceHold hold, string reason)
+    /// <summary>
+    /// Bans the owner, including an account whose deletion is pending (its identities still exist until the hard delete), and
+    /// says what really happened.
+    /// </summary>
+    private async Task<OwnerBan> BanHoldOwnerAsync(Guid adminId, EvidenceHold hold, string reason)
     {
-        var owner = await db.Users.AsNoTracking().Where(u => u.Id == hold.UserId && u.DeletedAt == null)
+        var owner = await db.Users.AsNoTracking().Where(u => u.Id == hold.UserId)
             .Select(u => new { Suspended = u.SuspendedAt != null }).SingleOrDefaultAsync();
-        if (owner is null || owner.Suspended) return false;
-        var outcome = await SuspendUserAsync(adminId, hold.UserId, reason);
-        return outcome is ModerationOutcome.CannotBanAdmin or ModerationOutcome.CannotBanSelf;
+        if (owner is null)
+            return await db.BannedIdentities.AsNoTracking().AnyAsync(b => b.UserRef == hold.UserId) ? OwnerBan.AlreadyBanned : OwnerBan.OwnerGone;
+        if (owner.Suspended) return OwnerBan.AlreadyBanned;
+        return await SuspendUserAsync(adminId, hold.UserId, reason) switch
+        {
+            ModerationOutcome.Ok => OwnerBan.Banned,
+            ModerationOutcome.CannotBanAdmin or ModerationOutcome.CannotBanSelf => OwnerBan.Refused,
+            ModerationOutcome.NotFound => OwnerBan.OwnerGone, // hard-deleted between the two reads
+            var other => throw new InvalidOperationException($"Unexpected ban outcome {other}."),
+        };
     }
 }

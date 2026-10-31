@@ -5,7 +5,7 @@ namespace Vela.Api.Admin.Pages;
 /// <summary>Base for the signed-in admin pages: the acting admin and the one-word flash messages shown after a redirect.</summary>
 public abstract class AdminPageModel : PageModel
 {
-    private static readonly Dictionary<string, (string Text, bool Error)> Flashes = new()
+    internal static readonly Dictionary<string, (string Text, bool Error)> Flashes = new()
     {
         ["ok"] = ("Done.", false),
         ["reason_required"] = ("A reason is required (up to 500 characters).", true),
@@ -29,6 +29,8 @@ public abstract class AdminPageModel : PageModel
         ["delivery_failed"] = ("The email could not be sent, so nothing was recorded. Try again.", true),
         ["malware_flagged"] = ("This story cannot be restored while the malware scan reports its file as malicious (or gives no verdict). Remove it, or ask the owner to upload a clean file as a new story.", true),
         ["ban_refused"] = ("Evidence held and content removed, but this owner is an admin and was not banned.", true),
+        ["ok_already_banned"] = ("Evidence held and content removed. The owner was already banned.", false),
+        ["owner_gone"] = ("Evidence held and content removed, but the account was already fully deleted, so no sign-in identity could be banned.", true),
     };
 
     public Guid AdminId => AdminAuth.UserId(User) ?? Guid.Empty;
