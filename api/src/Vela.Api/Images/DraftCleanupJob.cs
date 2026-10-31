@@ -30,7 +30,9 @@ public sealed class DraftCleanupJob(IServiceScopeFactory scopes, TimeProvider cl
         var blobs = scope.ServiceProvider.GetRequiredService<IBlobStore>();
 
         var ids = await db.Works
-            .Where(w => w.Status == WorkStatus.Draft && w.ExpiresAt != null && w.ExpiresAt <= now)
+            // A draft whose publish is in flight (claim not yet lapsed) is skipped: its files are being sealed and scanned (M13).
+            .Where(w => w.Status == WorkStatus.Draft && w.ExpiresAt != null && w.ExpiresAt <= now
+                && (w.PublishClaimedUntil == null || w.PublishClaimedUntil <= now))
             .OrderBy(w => w.ExpiresAt).Take(BatchSize).Select(w => w.Id).ToListAsync(ct);
 
         var deleted = 0;
@@ -40,7 +42,8 @@ public sealed class DraftCleanupJob(IServiceScopeFactory scopes, TimeProvider cl
             {
                 // Blobs first: a failure leaves the row, so the next run retries instead of orphaning files.
                 foreach (var prefix in BlobNames.WorkPrefixes(id)) await blobs.DeletePrefixAsync(prefix);
-                deleted += await db.Works.Where(w => w.Id == id && w.Status == WorkStatus.Draft && w.ExpiresAt <= now).ExecuteDeleteAsync(ct);
+                deleted += await db.Works.Where(w => w.Id == id && w.Status == WorkStatus.Draft && w.ExpiresAt <= now
+                    && (w.PublishClaimedUntil == null || w.PublishClaimedUntil <= now)).ExecuteDeleteAsync(ct);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {

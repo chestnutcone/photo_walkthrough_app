@@ -160,6 +160,34 @@ public class QuotaTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
+    public async Task Cleanup_skips_an_expired_draft_whose_publish_is_in_flight_and_takes_it_once_the_claim_lapses()
+    {
+        // FINALAPI M13: a publish claimed just before expiry must not lose its original and variants mid-flight.
+        var u = await Artist();
+        await Seed(u.Id, WorkStatus.Draft, 1);
+        Guid draft;
+        await using (var db = _host.Db())
+        {
+            draft = await db.Works.Where(w => w.ArtistId == u.Id).Select(w => w.Id).SingleAsync();
+            await db.Works.Where(w => w.Id == draft).ExecuteUpdateAsync(s => s
+                .SetProperty(w => w.ExpiresAt, ProfileTestHost.Now)
+                .SetProperty(w => w.PublishClaimedUntil, ProfileTestHost.Now.AddMinutes(2)));
+        }
+        _host.Blobs.Put($"originals/works/{draft}", [1]);
+        var job = _host.Services.GetServices<IHostedService>().OfType<DraftCleanupJob>().Single();
+
+        await job.RunOnceAsync(ProfileTestHost.Now.AddMinutes(1), CancellationToken.None);
+
+        await using (var check = _host.Db()) Assert.True(await check.Works.AnyAsync(w => w.Id == draft));
+        Assert.True(_host.Blobs.Exists($"originals/works/{draft}"));
+
+        await job.RunOnceAsync(ProfileTestHost.Now.AddMinutes(3), CancellationToken.None);
+
+        await using (var check = _host.Db()) Assert.False(await check.Works.AnyAsync(w => w.Id == draft));
+        Assert.False(_host.Blobs.Exists($"originals/works/{draft}"));
+    }
+
+    [Fact]
     public async Task Cleanup_processes_at_most_100_drafts_per_run()
     {
         var u = await Artist();
