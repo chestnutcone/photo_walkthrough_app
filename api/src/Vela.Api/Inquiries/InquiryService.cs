@@ -92,19 +92,13 @@ public sealed class InquiryService(
             var to = await Auth.LoginEmail.ForUserAsync(db, inquiry.ArtistId);
             if (to is null) { log.LogInformation("Inquiry email skipped ({Reason}).", "no_recipient"); return; }
 
-            await email.SendAsync(to, $"New {inquiry.Type} inquiry via {branding.Value.AppName}", Body(inquiry, workTitle));
+            var mail = InquiryEmail.Compose(branding.Value.AppName, inquiry.Type, inquiry.SenderEmail, workTitle, inquiry.Message);
+            await email.SendAsync(to, mail.Subject, mail.TextBody);
             await db.Inquiries.Where(i => i.Id == inquiry.Id).ExecuteUpdateAsync(s => s.SetProperty(i => i.EmailedAt, clock.GetUtcNow()));
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             log.LogWarning("Inquiry email failed ({Reason}).", e.GetType().Name);
         }
-    }
-
-    /// <summary>Plain text only; the message goes in verbatim and nothing user-written reaches the subject.</summary>
-    private static string Body(Inquiry i, string? workTitle)
-    {
-        var about = workTitle is null ? "" : $"About: {workTitle}\n";
-        return $"Type: {i.Type}\nReply to: {i.SenderEmail}\n{about}\nMessage:\n{i.Message}\n";
     }
 }
