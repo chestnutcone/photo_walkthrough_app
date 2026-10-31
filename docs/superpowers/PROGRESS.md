@@ -186,6 +186,7 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | GALLERY | Contrast measured from rendered pixels flags 11-13 pt labels (anti-aliasing); specified colours pass | Accept | See a11y-audit.md |
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-31 FINALAPI (61cf8cb..fc8ed7b + docs): API 1444/1444 (was 1406), one full run 18 min 27 s; dotnet build 0 warnings; `scripts/validate-infra.sh` OK. No app/, contract/ or generated client touched; no flutter run. Pushed.
 - 2026-10-31 FINALAPP (c91fed6..f14ca3c + docs): Flutter 935 pass (was 900), 2 skipped; flutter analyze no issues; gallery 114/114; web viewer release build has no third-party script origin (`scripts/check-web-viewer-origins.sh`); Android release refused without key/real domain, debug and allowed local release build. No api/infra/contract touched, no dotnet run. Pushed.
 - 2026-10-31 GALLERY (2d65b4a..71c2e27 + docs): Flutter 900 pass (was 887), flutter analyze no issues, gallery 64/64 and audit 50/50 (`--tags gallery --run-skipped`), e2e 18/18 on the emulator, web viewer checked with Playwright. No API code touched. Pushed.
 - 2026-10-31 CLEANUP (77fa745..18c5700 + docs): API 1406/1406 (was 1389), Flutter 887 pass (was 878), flutter analyze no issues, dotnet build 0 warnings. Deferred minors consolidated above. Pushed.
