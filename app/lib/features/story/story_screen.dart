@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:vela_api_client/vela_api_client.dart';
 
 import '../../core/api/api_exception.dart';
+import '../../core/branding.dart';
 import '../../core/theme/tokens.dart';
 import '../create/create_messages.dart';
 import 'camera_tween.dart';
@@ -83,7 +84,7 @@ class StoryScreen extends ConsumerWidget {
             child: _Message(notice),
           );
         }
-        return _StoryView(
+        final view = _StoryView(
           key: ValueKey(w.id),
           work: w,
           readOnly: readOnly,
@@ -91,6 +92,16 @@ class StoryScreen extends ConsumerWidget {
           initialChapter: initialChapter,
           openReplies: openReplies,
         );
+        // The web viewer's tab title names the story (WCAG 2.4.2).
+        return standalone
+            ? Title(
+                title: w.title.trim().isEmpty
+                    ? Branding.appName
+                    : '${w.title} · ${Branding.appName}',
+                color: VelaColors.background,
+                child: view,
+              )
+            : view;
       },
       loading: () => _StatusScaffold(
         showClose: !standalone,

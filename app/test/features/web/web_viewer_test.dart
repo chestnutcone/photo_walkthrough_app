@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vela_app/features/web/web_viewer_config.dart';
 
@@ -11,6 +12,29 @@ const _stores = WebViewerConfig(
 );
 
 void main() {
+  // GALLERY web viewer pass: every shared story had the tab title "Vela"
+  // (WCAG 2.4.2: the title should say what the page is about).
+  testWidgets('page_title_names_the_story', (t) async {
+    final labels = <String>[];
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'SystemChrome.setApplicationSwitcherDescription') {
+          labels.add((call.arguments as Map)['label'] as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await pumpWeb(t);
+    expect(labels.last, 'Salt and Rope · Vela');
+  });
+
   testWidgets('web_viewer_renders_story_without_session', (t) async {
     final h = await pumpWeb(t);
     expect(find.text('Salt and Rope'), findsWidgets);
