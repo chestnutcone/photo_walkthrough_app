@@ -33,3 +33,9 @@ Notes and sandbox limits:
 - The headless swiftshader emulator occasionally dies under load; restart it and re-run. `adb reverse` must be
   re-applied after a restart (the scripts do it).
 - Real Google/Apple sign-in, Play Integrity, TalkBack speech and verified app links cannot run here; see the report.
+
+Widget-level companions (no emulator needed, excluded from the normal `flutter test` by `app/dart_test.yaml`):
+`cd app && flutter test --tags gallery --run-skipped test/gallery/gallery_test.dart` writes the screenshot gallery
+(`docs/review/screenshots/widgets/`, `docs/review/gallery.md`); `... test/gallery/a11y_audit_test.dart` runs the four
+guideline matchers over the same scenes and writes `docs/review/a11y-audit.md`. Web viewer check:
+`tools/web_viewer_check.js` (see `docs/review/web-viewer-report.md`).

@@ -65,7 +65,18 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] C1 Bicep and deployment workflow (32cbd7c, fix cd53d6c)
 - [ ] S1 Security review gate
 - [x] S2 Upload and text hardening, report threshold, E1 a11y fixes (5493cf0..7b13e4e; malware gate, text sanitizer, inquiry mail, content sniff, report threshold, 48pt targets/contrast/portrait/deep-link back, per-install fake SSO); review fix round 399497f..51d7f26 (malware restore/render per work, 10 s wait + 45 s app publish timeout + idempotent retry, mark-cap/tag/blank-name sanitizer fixes, inquiry quoting, threshold ignores suspended reporters, search normalisation, R-2 back to Medium as owner decision)
+- [x] GALLERY Screenshots, accessibility audit, emulator e2e, web viewer check (2d65b4a..71c2e27): widget gallery of 64 shots
+  ([gallery.md](../review/gallery.md)), audit over every screen ([a11y-audit.md](../review/a11y-audit.md)), e2e 18/18 on the emulator
+  ([e2e-report.md](../review/e2e-report.md)), Playwright web viewer pass ([web-viewer-report.md](../review/web-viewer-report.md));
+  11 defects fixed test-first (live-region chapter announcements, tap-zone semantics, pin reading order, arrow keys, composer 48 pt,
+  Google "G" mark, search prompt, sheet double grabbers, meta chip wrap, not-found debug text, web page title)
 - [x] CLEANUP Contract and leftovers (77fa745, 77da463, b57a3c0, accfbf2, 18c5700): 501 stubs removed, idempotent follow text, open notification type, contract length limits (F-T2-1, F-A8-4, F-A13-1), B7 website opens https, 'Followed by' excludes viewer, zero build/analyze warnings, consolidated Deferred minors list below
+
+## Review documents
+- Widget screenshot gallery: [docs/review/gallery.md](../review/gallery.md)
+- Accessibility audit (widget level, every screen): [docs/review/a11y-audit.md](../review/a11y-audit.md); S2 triage: [a11y-triage.md](../review/a11y-triage.md)
+- Emulator end-to-end report: [docs/review/e2e-report.md](../review/e2e-report.md)
+- Web viewer check: [docs/review/web-viewer-report.md](../review/web-viewer-report.md)
 
 ## Deferred minors (single consolidated list, CLEANUP 2026-10-31)
 
@@ -137,9 +148,15 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | B14 | App Attest key per call, no server nonce store, young `app_attest` plugin (F-B14-1) | Owner | Decide before enabling attestation |
 | B14 | Native crash scrub and a real scrubbed event (F-B14-2); Android release build unverified | Device | Needs a DSN / device |
 | B14 | Reported work stays in the loaded feed until refresh (F-B14-3); tests do not go through generated client paths | Accept | Needs a hidden-ids set across providers |
-| S2 | On-device `g_a11y_test` / e2e not re-run after S2 | Device | Needs an emulator session |
+| GALLERY | Web viewer: custom story controls are not Tab-focusable and show no focus ring (Arrow keys now step chapters) | Later | Rebuild the story chrome, card and pins as focusable buttons with a designed focus ring |
+| GALLERY | Web viewer loads Google's GSI script (`google_sign_in` web plugin registered in the shared build); blocked by the documented CSP | Later | Separate viewer package or conditional plugin registrant |
+| GALLERY | Desktop-width viewer: full-width card, spotlight can sit under the card | Owner | Handoff designs only the phone frame |
+| GALLERY | Story top bar puts the artist on its own line at 390 pt and text scale 1.0 (the S2 120 pt rule; handoff shows one row) | Owner | Visual choice; artist stays readable |
+| GALLERY | Onboarding welcome names Apple on Android ("Apple, Google and email") while the sheet offers Google and email | Owner | Wording |
+| GALLERY | Contrast measured from rendered pixels flags 11-13 pt labels (anti-aliasing); specified colours pass | Accept | See a11y-audit.md |
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-31 GALLERY (2d65b4a..71c2e27 + docs): Flutter 900 pass (was 887), flutter analyze no issues, gallery 64/64 and audit 50/50 (`--tags gallery --run-skipped`), e2e 18/18 on the emulator, web viewer checked with Playwright. No API code touched. Pushed.
 - 2026-10-31 CLEANUP (77fa745..18c5700 + docs): API 1406/1406 (was 1389), Flutter 887 pass (was 878), flutter analyze no issues, dotnet build 0 warnings. Deferred minors consolidated above. Pushed.
 - 2026-10-31 S2 review fixes (399497f..51d7f26): API 1389/1389 (was 1335), Flutter 878 pass, flutter analyze only the 6 integration_test infos. Owner decision open: I-5 illegal_content instant hide (threat-model section 7). Pushed.
 - 2026-10-31 S2 complete (5493cf0..7b13e4e): API 1335/1335, Flutter 853 pass, flutter analyze clean outside integration_test infos. Pushed.

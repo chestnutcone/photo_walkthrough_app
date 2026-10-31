@@ -1,5 +1,8 @@
 # Accessibility audit triage (S2)
 
+> Update 2026-10-31 (GALLERY): the on-device suite was re-run (15 findings, see [e2e-report.md](e2e-report.md)) and a
+> widget-level audit over every screen now exists: [a11y-audit.md](a11y-audit.md).
+
 Triage of every line in [`a11y-violations.txt`](a11y-violations.txt) (E1 on-device run of Flutter's tap-target,
 labelled-target and text-contrast guidelines on 19 screens). Fixed items are covered by widget tests; the on-device suite
 (`app/integration_test/g_a11y_test.dart`) has not been re-run in S2 (no emulator session), so re-run it with `scripts/run-e2e.sh`

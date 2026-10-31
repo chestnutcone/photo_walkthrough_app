@@ -1,7 +1,7 @@
 # End-to-end verification report (Android emulator, real local API)
 
 Latest run: **2026-10-31** (GALLERY task). Device: Android 15 (API 35) x86_64 emulator `vela_test`, 1080 x 2400, headless with
-swiftshader and KVM; debug build `dev.vela.app` on the branch at 6460870..ab4c0e7; API in Development mode on `http://10.0.2.2:5080`
+swiftshader and KVM; debug build `dev.vela.app` on the branch at c30040c (later test files also picked up ab4c0e7); API in Development mode on `http://10.0.2.2:5080`
 with Postgres 16 and Azurite in Docker, seeded by `tools/seed_local.py`. Re-run everything with `scripts/run-e2e.sh`
 ([docs/dev/run-e2e.md](../dev/run-e2e.md)).
 
