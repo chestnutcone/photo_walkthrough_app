@@ -9,6 +9,12 @@ public interface IVariantGenerator
     /// </summary>
     Task<ImageVariants> GenerateAsync(string sourceBlob, Guid workId);
 
-    /// <summary>Source is originals/avatars/{userId}; it is deleted on success and on <see cref="InvalidImageException"/> (not when busy). Writes "avatars/{userId}/avatar-256.webp" (centre-cropped square) and returns its blob name.</summary>
-    Task<string> GenerateAvatarAsync(string sourceBlob, Guid userId);
+    /// <summary>
+    /// Source is originals/avatars/{userId}; it is deleted on success, on <see cref="InvalidImageException"/> and when
+    /// <paramref name="accept"/> returns false (then <see cref="UnsafeImageException"/>), but not when busy or when
+    /// <paramref name="accept"/> throws. The encoded square is handed to <paramref name="accept"/> (outside the decode gate)
+    /// before anything is written, so a refused image never reaches the public container. Writes
+    /// "avatars/{userId}/avatar-256.webp" (centre-cropped square) and returns its blob name.
+    /// </summary>
+    Task<string> GenerateAvatarAsync(string sourceBlob, Guid userId, Func<Stream, Task<bool>>? accept = null);
 }

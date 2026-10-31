@@ -8,8 +8,12 @@ using Vela.Api.Works;
 namespace Vela.Api.Profiles;
 
 public sealed class ProfileService(VelaDbContext db, ArtistQueries artists, WorkCounts workCounts, TimeProvider clock,
-    IBlobStore blobs, IVariantGenerator images) : IProfileService
+    IBlobStore blobs, IVariantGenerator images, Moderation.IContentSafety safety, Social.ReportService reports,
+    ILogger<ProfileService> log) : IProfileService
 {
+    /// <summary>Retry hint when the avatar scan is unavailable (fail closed: an avatar is public on every card).</summary>
+    private static readonly TimeSpan ScanRetryAfter = TimeSpan.FromSeconds(30);
+
     private static readonly TimeSpan HandleChangeWindow = TimeSpan.FromDays(30);
 
     public async Task<MeDto> GetMeAsync(Guid userId)
@@ -72,10 +76,39 @@ public sealed class ProfileService(VelaDbContext db, ArtistQueries artists, Work
 
     private async Task<string> GenerateAvatarAsync(Guid userId)
     {
-        try { return await images.GenerateAvatarAsync(BlobNames.AvatarOriginal(userId), userId); }
+        var severity = 0;
+        try
+        {
+            return await images.GenerateAvatarAsync(BlobNames.AvatarOriginal(userId), userId, async image =>
+            {
+                severity = await ScanAvatarAsync(image);
+                return severity < Moderation.PublishPipeline.BlockSeverity;
+            });
+        }
         catch (InvalidImageException)
         {
             throw new ProfileException(400, "invalid_image", "That image can't be used. Use a JPEG, PNG or WebP under 25 MB.");
+        }
+        catch (UnsafeImageException)
+        {
+            // Same rule as work images (severity >= 4). Nothing was published; the account is queued so repeat attempts are seen.
+            log.LogWarning("Avatar refused by Content Safety for {UserId} (severity {Severity}).", userId, severity);
+            // The flag is saved through this request's context: drop the refused profile edits first so they are not saved with it.
+            db.ChangeTracker.Clear();
+            await reports.CreateAutoFlagAsync("user", userId, "unsafe_avatar", severity);
+            throw new ProfileException(400, "invalid_image", "That image can't be used as a profile photo. Choose another one.");
+        }
+    }
+
+    /// <summary>Fail closed: without a verdict the avatar is not published (503 busy, the upload is kept for the retry).</summary>
+    private async Task<int> ScanAvatarAsync(Stream image)
+    {
+        try { return await safety.SeverityAsync(image); }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            Telemetry.VelaMetrics.ScanFailed("avatar");
+            log.LogWarning("Avatar scan unavailable ({Reason}).", e.GetType().Name);
+            throw new ImageBusyException(ScanRetryAfter);
         }
     }
 

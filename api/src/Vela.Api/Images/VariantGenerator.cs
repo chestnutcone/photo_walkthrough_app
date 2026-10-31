@@ -48,9 +48,9 @@ public sealed class VariantGenerator(IBlobStore blobs, ImageDecodeGate gate, ILo
         return new ImageVariants(decoded.Width, decoded.Height, $"{dir}/thumb.webp", $"{dir}/feed.webp", $"{dir}/full.webp");
     }
 
-    public async Task<string> GenerateAvatarAsync(string sourceBlob, Guid userId)
+    public async Task<string> GenerateAvatarAsync(string sourceBlob, Guid userId, Func<Stream, Task<bool>>? accept = null)
     {
-        string name;
+        byte[] webp;
         using (await _gate.EnterAsync())
         {
             Decoded decoded;
@@ -76,9 +76,21 @@ public sealed class VariantGenerator(IBlobStore blobs, ImageDecodeGate gate, ILo
             using (var canvas = new SKCanvas(square))
             using (var image = SKImage.FromBitmap(oriented))
                 canvas.DrawImage(image, crop, SKRect.Create(AvatarSize, AvatarSize), Sampling, null);
-            name = $"avatars/{userId}/avatar-256.webp";
-            await WriteWebpAsync(name, square);
+            webp = EncodeWebp(square);
         }
+        // The scan is network-bound, so it runs after the decode slot is released. A throwing check keeps the upload for a retry.
+        if (accept is not null)
+        {
+            bool ok;
+            using (var scan = new MemoryStream(webp, writable: false)) ok = await accept(scan);
+            if (!ok)
+            {
+                await DeleteSourceAsync(sourceBlob);
+                throw new UnsafeImageException();
+            }
+        }
+        var name = $"avatars/{userId}/avatar-256.webp";
+        using (var output = new MemoryStream(webp, writable: false)) await blobs.WriteAsync(name, output, "image/webp");
         // The raw upload is not needed once the avatar exists. A failed delete must not turn a finished avatar into an error:
         // the stale original lives in the private originals container and is overwritten by the next upload.
         await DeleteSourceAsync(sourceBlob);
@@ -252,6 +264,14 @@ public sealed class VariantGenerator(IBlobStore blobs, ImageDecodeGate gate, ILo
     }
 
     /// <summary>Skia's encoder writes pixels only, so no EXIF, GPS, XMP or ICC data reaches the output.</summary>
+    private static byte[] EncodeWebp(SKBitmap bitmap)
+    {
+        bitmap.SetImmutable();
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Webp, WebpQuality) ?? throw new InvalidImageException("corrupt");
+        return data.ToArray();
+    }
+
     private async Task WriteWebpAsync(string blob, SKBitmap bitmap)
     {
         bitmap.SetImmutable(); // share, do not copy, the pixels
