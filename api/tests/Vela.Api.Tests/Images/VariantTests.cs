@@ -15,7 +15,7 @@ public class VariantTests
     private static readonly Guid W4Id = Guid.Parse("00000000-0000-0000-0000-000000000005");
     private static readonly Guid BadId = Guid.Parse("00000000-0000-0000-0000-000000000006");
 
-    public VariantTests() => _gen = new VariantGenerator(_blobs);
+    public VariantTests() => _gen = new VariantGenerator(_blobs, TestGates.Roomy());
 
     private static (int W, int H) Size(byte[] data)
     {

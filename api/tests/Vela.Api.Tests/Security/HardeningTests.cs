@@ -287,7 +287,7 @@ public class HardeningUnitTests
         var user = Guid.NewGuid();
         blobs.Put(Vela.Api.Images.BlobNames.AvatarOriginal(user), ImageFixtures.Jpeg(300, 300));
 
-        var name = await new Vela.Api.Images.VariantGenerator(blobs).GenerateAvatarAsync(Vela.Api.Images.BlobNames.AvatarOriginal(user), user);
+        var name = await new Vela.Api.Images.VariantGenerator(blobs, TestGates.Roomy()).GenerateAvatarAsync(Vela.Api.Images.BlobNames.AvatarOriginal(user), user);
 
         Assert.True(blobs.Exists(name));
     }

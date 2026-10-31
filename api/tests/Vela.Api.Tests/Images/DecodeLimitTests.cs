@@ -54,7 +54,7 @@ public class DecodeLimitTests
     {
         var work = Guid.NewGuid();
         _blobs.Put(BlobNames.WorkOriginal(work), PngHeaderOnly(20000, 20000)); // 400 MP, 1.6 GB if decoded
-        var gen = new VariantGenerator(_blobs);
+        var gen = new VariantGenerator(_blobs, TestGates.Roomy());
 
         var watch = Stopwatch.StartNew();
         var e = await Assert.ThrowsAsync<InvalidImageException>(() => gen.GenerateAsync(BlobNames.WorkOriginal(work), work));
@@ -92,7 +92,7 @@ public class DecodeLimitTests
         var work = Guid.NewGuid();
         _blobs.Put(BlobNames.WorkOriginal(work), ImageFixtures.Jpeg(4800, 2400));
 
-        var v = await new VariantGenerator(_blobs).GenerateAsync(BlobNames.WorkOriginal(work), work);
+        var v = await new VariantGenerator(_blobs, TestGates.Roomy()).GenerateAsync(BlobNames.WorkOriginal(work), work);
 
         Assert.Equal((4800, 2400), (v.Width, v.Height));
         using var full = SKCodec.Create(new MemoryStream(_blobs.Bytes($"works/{work}/full.webp")))!;
@@ -138,7 +138,7 @@ public class DecodeLimitTests
         var user = Guid.NewGuid();
         _blobs.Put(BlobNames.AvatarOriginal(user), ImageFixtures.Jpeg(800, 800).Take(300).ToArray());
 
-        await Assert.ThrowsAsync<InvalidImageException>(() => new VariantGenerator(_blobs).GenerateAvatarAsync(BlobNames.AvatarOriginal(user), user));
+        await Assert.ThrowsAsync<InvalidImageException>(() => new VariantGenerator(_blobs, TestGates.Roomy()).GenerateAvatarAsync(BlobNames.AvatarOriginal(user), user));
 
         Assert.False(_blobs.Exists(BlobNames.AvatarOriginal(user)));
     }
@@ -165,7 +165,7 @@ public class DecodeLimitTests
         var work = Guid.NewGuid();
         _blobs.Put(BlobNames.WorkOriginal(work), Flat(format, w, h));
 
-        var v = await new VariantGenerator(_blobs).GenerateAsync(BlobNames.WorkOriginal(work), work);
+        var v = await new VariantGenerator(_blobs, TestGates.Roomy()).GenerateAsync(BlobNames.WorkOriginal(work), work);
 
         Assert.Equal((w, h), (v.Width, v.Height));
         using var full = SKCodec.Create(new MemoryStream(_blobs.Bytes($"works/{work}/full.webp")))!;
@@ -225,7 +225,7 @@ public class DecodeLimitTests
         var work = Guid.NewGuid();
         _blobs.Put(BlobNames.WorkOriginal(work), JpegWithHeader(0xC2, 6000, 6000)); // 216 MB of coefficients alone
 
-        var e = await Assert.ThrowsAsync<InvalidImageException>(() => new VariantGenerator(_blobs).GenerateAsync(BlobNames.WorkOriginal(work), work));
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => new VariantGenerator(_blobs, TestGates.Roomy()).GenerateAsync(BlobNames.WorkOriginal(work), work));
 
         Assert.Equal("too_many_pixels", e.Reason);
         Assert.DoesNotContain(_blobs.Names, n => n.StartsWith("works/", StringComparison.Ordinal));
@@ -237,7 +237,7 @@ public class DecodeLimitTests
         var user = Guid.NewGuid();
         _blobs.Put(BlobNames.AvatarOriginal(user), JpegWithHeader(0xC2, 7745, 7745));
 
-        var e = await Assert.ThrowsAsync<InvalidImageException>(() => new VariantGenerator(_blobs).GenerateAvatarAsync(BlobNames.AvatarOriginal(user), user));
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => new VariantGenerator(_blobs, TestGates.Roomy()).GenerateAvatarAsync(BlobNames.AvatarOriginal(user), user));
 
         Assert.Equal("too_many_pixels", e.Reason);
         Assert.False(_blobs.Exists(BlobNames.AvatarOriginal(user)));

@@ -104,6 +104,8 @@ if (!builder.Environment.IsEnvironment("Test")) builder.Services.AddHostedServic
 
 builder.Services.AddVelaDataProtection(builder.Configuration, builder.Environment); // last: its missing-setting error must not mask the earlier settings' own
 var app = builder.Build();
+// Fail at startup, not on the first upload, if the process-wide decode gate is missing (review F9).
+Vela.Api.Images.ImageDecodeGate.EnsureRegistered(app.Services);
 // Opt-in (infra sets it): EF Core takes a database-wide lock while migrating, so several replicas starting together are safe.
 if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {

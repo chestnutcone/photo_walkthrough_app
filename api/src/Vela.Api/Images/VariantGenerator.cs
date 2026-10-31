@@ -2,7 +2,8 @@ using SkiaSharp;
 
 namespace Vela.Api.Images;
 
-public sealed class VariantGenerator(IBlobStore blobs, ImageDecodeGate? gate = null, ILogger<VariantGenerator>? log = null) : IVariantGenerator
+/// <remarks>The gate is required and must be the process-wide singleton (review F9): a per-instance gate would not limit anything.</remarks>
+public sealed class VariantGenerator(IBlobStore blobs, ImageDecodeGate gate, ILogger<VariantGenerator>? log = null) : IVariantGenerator
 {
     public const long MaxSourceBytes = 25L * 1024 * 1024;
     /// <summary>Checked from the codec header, before any pixel memory is allocated.</summary>
@@ -23,7 +24,7 @@ public sealed class VariantGenerator(IBlobStore blobs, ImageDecodeGate? gate = n
 
     private static readonly (string Name, int LongEdge)[] Sizes = [("thumb", 400), ("feed", 1080), ("full", LargestVariantEdge)];
 
-    private readonly ImageDecodeGate _gate = gate ?? new ImageDecodeGate(ImageDecodeGate.DefaultMaxConcurrentDecodes, ImageDecodeGate.DefaultWait);
+    private readonly ImageDecodeGate _gate = gate ?? throw new ArgumentNullException(nameof(gate));
 
     public async Task<ImageVariants> GenerateAsync(string sourceBlob, Guid workId)
     {

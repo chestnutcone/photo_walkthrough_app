@@ -113,7 +113,7 @@ public class AzureBlobStoreTests(AzuriteFixture azurite) : IClassFixture<Azurite
     public async Task Public_containers_never_hold_an_original_after_a_full_create_and_generate_cycle()
     {
         var store = await Store();
-        var gen = new VariantGenerator(store);
+        var gen = new VariantGenerator(store, TestGates.Roomy());
         var workId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         await store.WriteAsync(BlobNames.WorkOriginal(workId), new MemoryStream(ImageFixtures.JpegWithExifOrientation6AndGps(400, 200)), "image/jpeg");

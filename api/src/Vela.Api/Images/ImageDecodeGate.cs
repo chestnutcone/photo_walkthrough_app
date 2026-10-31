@@ -35,6 +35,9 @@ public sealed class ImageDecodeGate : IDisposable
         return new ImageDecodeGate(limit, wait);
     }
 
+    /// <summary>Resolved once at startup (Program.cs), so a host without the singleton fails fast instead of decoding unguarded.</summary>
+    public static ImageDecodeGate EnsureRegistered(IServiceProvider services) => services.GetRequiredService<ImageDecodeGate>();
+
     public int Limit { get; }
 
     /// <summary>The most decodes ever held at once (for tests and diagnostics).</summary>
