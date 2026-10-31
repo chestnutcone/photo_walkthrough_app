@@ -65,6 +65,7 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] C1 Bicep and deployment workflow (32cbd7c, fix cd53d6c)
 - [ ] S1 Security review gate
 - [x] S2 Upload and text hardening, report threshold, E1 a11y fixes (5493cf0..7b13e4e; malware gate, text sanitizer, inquiry mail, content sniff, report threshold, 48pt targets/contrast/portrait/deep-link back, per-install fake SSO); review fix round 399497f..51d7f26 (malware restore/render per work, 10 s wait + 45 s app publish timeout + idempotent retry, mark-cap/tag/blank-name sanitizer fixes, inquiry quoting, threshold ignores suspended reporters, search normalisation, R-2 back to Medium as owner decision)
+- [x] CLEANUP Contract and leftovers (77fa745, 77da463, b57a3c0, accfbf2, 18c5700): 501 stubs removed, idempotent follow text, open notification type, contract length limits (F-T2-1, F-A8-4, F-A13-1), B7 website opens https, 'Followed by' excludes viewer, zero build/analyze warnings, consolidated Deferred minors list below
 
 ## Deferred minors (single consolidated list, CLEANUP 2026-10-31)
 
@@ -139,6 +140,7 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | S2 | On-device `g_a11y_test` / e2e not re-run after S2 | Device | Needs an emulator session |
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-31 CLEANUP (77fa745..18c5700 + docs): API 1406/1406 (was 1389), Flutter 887 pass (was 878), flutter analyze no issues, dotnet build 0 warnings. Deferred minors consolidated above. Pushed.
 - 2026-10-31 S2 review fixes (399497f..51d7f26): API 1389/1389 (was 1335), Flutter 878 pass, flutter analyze only the 6 integration_test infos. Owner decision open: I-5 illegal_content instant hide (threat-model section 7). Pushed.
 - 2026-10-31 S2 complete (5493cf0..7b13e4e): API 1335/1335, Flutter 853 pass, flutter analyze clean outside integration_test infos. Pushed.
 - 2026-10-23 M6 reached: B6-B14 complete. 773 app tests pass, web build ok. Pushed.
