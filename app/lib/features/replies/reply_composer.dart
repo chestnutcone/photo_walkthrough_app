@@ -141,9 +141,13 @@ class _ReplyComposerState extends ConsumerState<ReplyComposer> {
                     filled: true,
                     fillColor: VelaColors.input,
                     isDense: true,
+                    // 48pt tap target with the real fonts (was 42).
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 11,
+                      vertical: 14,
+                    ),
+                    constraints: const BoxConstraints(
+                      minHeight: kMinTapTarget,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(99),

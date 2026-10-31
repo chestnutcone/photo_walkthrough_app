@@ -489,8 +489,11 @@ class _StoryViewState extends ConsumerState<_StoryView> {
         button: true,
         label: 'Previous chapter',
         onTap: _ctl.prev,
+        // The Semantics above is the accessible button; without this the
+        // detector adds a second, unlabelled tap node.
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
           onTap: _ctl.prev,
         ),
       ),
@@ -504,8 +507,11 @@ class _StoryViewState extends ConsumerState<_StoryView> {
         button: true,
         label: 'Next chapter',
         onTap: _ctl.next,
+        // The Semantics above is the accessible button; without this the
+        // detector adds a second, unlabelled tap node.
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
           onTap: _ctl.next,
         ),
       ),

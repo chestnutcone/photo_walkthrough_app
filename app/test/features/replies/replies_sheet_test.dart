@@ -44,6 +44,15 @@ void main() {
     );
   });
 
+  // GALLERY a11y audit: the composer field was 42pt tall.
+  testWidgets('composer_meets_the_tap_target_guidelines', (t) async {
+    final handle = t.ensureSemantics();
+    await pumpSheet(t, replies: []);
+    await expectLater(t, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(t, meetsGuideline(iOSTapTargetGuideline));
+    handle.dispose();
+  });
+
   testWidgets('empty_state_when_no_replies', (t) async {
     await pumpSheet(t, replies: []);
     expect(find.text('No replies on this detail yet.'), findsOneWidget);

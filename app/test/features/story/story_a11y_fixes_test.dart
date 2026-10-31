@@ -105,4 +105,15 @@ void main() {
     await t.pumpAndSettle();
     expect(kicker(1, 3), findsOneWidget);
   });
+
+  // GALLERY a11y audit: the tap zones' gesture detectors added their own
+  // unlabelled tap nodes next to the labelled Previous/Next chapter buttons.
+  testWidgets('chapter_tap_zones_have_no_unlabelled_tap_nodes', (t) async {
+    final handle = t.ensureSemantics();
+    await pumpStory(t);
+    await t.tap(find.text('Begin →'));
+    await t.pumpAndSettle();
+    await expectLater(t, meetsGuideline(labeledTapTargetGuideline));
+    handle.dispose();
+  });
 }
