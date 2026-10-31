@@ -64,9 +64,10 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B14 Reporting UI, suspended state, crash reporting, attestation (f55a587, fix eb449e2)
 - [x] C1 Bicep and deployment workflow (32cbd7c, fix cd53d6c)
 - [ ] S1 Security review gate
-- [x] S2 Upload and text hardening, report threshold, E1 a11y fixes (5493cf0..7b13e4e; malware gate, text sanitizer, inquiry mail, content sniff, report threshold, 48pt targets/contrast/portrait/deep-link back, per-install fake SSO)
+- [x] S2 Upload and text hardening, report threshold, E1 a11y fixes (5493cf0..7b13e4e; malware gate, text sanitizer, inquiry mail, content sniff, report threshold, 48pt targets/contrast/portrait/deep-link back, per-install fake SSO); review fix round 399497f..51d7f26 (malware restore/render per work, 10 s wait + 45 s app publish timeout + idempotent retry, mark-cap/tag/blank-name sanitizer fixes, inquiry quoting, threshold ignores suspended reporters, search normalisation, R-2 back to Medium as owner decision)
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-31 S2 review fixes (399497f..51d7f26): API 1389/1389 (was 1335), Flutter 878 pass, flutter analyze only the 6 integration_test infos. Owner decision open: I-5 illegal_content instant hide (threat-model section 7). Pushed.
 - 2026-10-31 S2 complete (5493cf0..7b13e4e): API 1335/1335, Flutter 853 pass, flutter analyze clean outside integration_test infos. Pushed.
 - 2026-10-23 M6 reached: B6-B14 complete. 773 app tests pass, web build ok. Pushed.
 - 2026-10-23 M5 reached: B1-B5 complete. 214 app tests pass. Pushed.
