@@ -19,6 +19,8 @@ public partial class RepoSecretScanTests
         new("api/src/Vela.Api/appsettings.Development.json", "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==", "Azurite's published well-known dev account key (documented by Microsoft), only valid against the local emulator"),
         new("api/src/Vela.Api/appsettings.Development.json", "vela_dev_only", "Local docker-compose Postgres password"),
         new("docker-compose.yml", "vela_dev_only", "Local docker-compose Postgres password; the port is only published for local development"),
+        new("scripts/run-local-api.sh", "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==", "Azurite's published well-known dev account key, used by the local end-to-end API script against the emulator only"),
+        new("scripts/run-local-api.sh", "vela_dev_only", "Local docker-compose Postgres password, used by the local end-to-end API script"),
     ];
 
     private static readonly string[] SkipDirs = ["bin", "obj", ".git", ".claude", ".dart_tool", "build", "node_modules", ".superpowers", "TestResults", "design_handoff_vela_app", "Pods", ".gradle", "Migrations", "ephemeral", ".symlinks", ".plugin_symlinks"];
