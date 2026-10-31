@@ -29,6 +29,34 @@ public class HttpJwksProviderTests
         return JsonSerializer.Serialize(new { keys });
     }
 
+    private sealed class ConcurrentHandler(string body) : HttpMessageHandler
+    {
+        public int Calls;
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+        {
+            Interlocked.Increment(ref Calls);
+            await Task.Yield(); // finish on another thread so writes to the cache really interleave
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) };
+        }
+    }
+
+    [Fact]
+    public async Task Parallel_fetches_for_different_providers_never_corrupt_or_lose_cache_entries()
+    {
+        // Apple and Google have separate per-URI locks, so their fetches write the shared cache at the same time (FINALAPI I7).
+        var h = new ConcurrentHandler(Jwks("k"));
+        var p = new HttpJwksProvider(new HttpClient(h), new MutableTimeProvider(DateTimeOffset.UtcNow));
+        var uris = Enumerable.Range(0, 200).Select(i => $"http://t{i}/jwks").ToArray();
+
+        for (var round = 0; round < 5; round++)
+        {
+            var results = await Task.WhenAll(uris.SelectMany(u => Enumerable.Range(0, 3).Select(_ => Task.Run(() => p.GetKeyAsync(u, "k")))));
+            Assert.All(results, Assert.NotNull);
+        }
+
+        Assert.Equal(uris.Length, h.Calls); // one fetch per provider: no entry was lost by a racing write
+    }
+
     [Fact]
     public async Task Caches_keys_and_refreshes_once_per_minute_on_unknown_kid()
     {

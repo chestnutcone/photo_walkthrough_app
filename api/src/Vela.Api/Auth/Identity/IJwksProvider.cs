@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Vela.Api.Auth.Identity;
@@ -18,8 +19,10 @@ public sealed class HttpJwksProvider(HttpClient http, TimeProvider clock) : IJwk
     private static readonly TimeSpan MaxAge = TimeSpan.FromHours(6);
     private static readonly TimeSpan MinRefresh = TimeSpan.FromMinutes(1);
     private sealed record Entry(DateTimeOffset At, DateTimeOffset LastAttempt, Dictionary<string, SecurityKey> Keys);
-    private readonly Dictionary<string, Entry> _cache = [];
-    private readonly Dictionary<string, SemaphoreSlim> _gates = [];
+    // Concurrent maps: each URI has its own gate, so fetches for different providers write the cache at the same time.
+    // Entry is immutable and only replaced whole, so a ConcurrentDictionary is enough.
+    private readonly ConcurrentDictionary<string, Entry> _cache = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _gates = new();
 
     public async Task<SecurityKey?> GetKeyAsync(string jwksUri, string kid, CancellationToken ct = default)
     {
@@ -52,8 +55,5 @@ public sealed class HttpJwksProvider(HttpClient http, TimeProvider clock) : IJwk
         finally { gate.Release(); }
     }
 
-    private SemaphoreSlim GateFor(string uri)
-    {
-        lock (_gates) return _gates.TryGetValue(uri, out var g) ? g : _gates[uri] = new SemaphoreSlim(1, 1);
-    }
+    private SemaphoreSlim GateFor(string uri) => _gates.GetOrAdd(uri, static _ => new SemaphoreSlim(1, 1));
 }
