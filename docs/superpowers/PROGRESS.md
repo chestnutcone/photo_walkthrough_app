@@ -64,8 +64,10 @@ Read this first after any interruption. Update it after every task, then commit.
 - [x] B14 Reporting UI, suspended state, crash reporting, attestation (f55a587, fix eb449e2)
 - [x] C1 Bicep and deployment workflow (32cbd7c, fix cd53d6c)
 - [ ] S1 Security review gate
+- [x] S2 Upload and text hardening, report threshold, E1 a11y fixes (5493cf0..7b13e4e; malware gate, text sanitizer, inquiry mail, content sniff, report threshold, 48pt targets/contrast/portrait/deep-link back, per-install fake SSO)
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-31 S2 complete (5493cf0..7b13e4e): API 1335/1335, Flutter 853 pass, flutter analyze clean outside integration_test infos. Pushed.
 - 2026-10-23 M6 reached: B6-B14 complete. 773 app tests pass, web build ok. Pushed.
 - 2026-10-23 M5 reached: B1-B5 complete. 214 app tests pass. Pushed.
 - 2026-10-23 M4 reached: A14b, A15, A16 complete (fix commits d1cf76b, b8b648a, 13b2e1d). 926+ API tests pass. Pushed.
