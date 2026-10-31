@@ -453,6 +453,18 @@ final scenes = <Scene>[
     textScales: both,
   ),
   Scene(
+    'onboarding-follow',
+    'Onboarding',
+    'Step 2: follow suggested artists.',
+    () => GalleryWorld(signedIn: true, onboarded: false),
+    (g) async {
+      await profileStep(g);
+      await g.tap(key('age-check'));
+      await g.tap(key('terms-check'));
+      await g.tap(key('profile-continue'));
+    },
+  ),
+  Scene(
     'onboarding-demo',
     'Onboarding',
     'The bundled sample story.',
