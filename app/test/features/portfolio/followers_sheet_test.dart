@@ -14,6 +14,14 @@ void main() {
     return h;
   }
 
+  // GALLERY screenshot review: the theme's Material drag handle drew a
+  // second grabber above the sheet's own.
+  testWidgets('shows_exactly_one_grabber', (t) async {
+    await open(t);
+    final sheet = t.widget<BottomSheet>(find.byType(BottomSheet));
+    expect(sheet.showDragHandle, isFalse);
+  });
+
   testWidgets('rows_paginate_by_cursor', (t) async {
     final h = await open(
       t,

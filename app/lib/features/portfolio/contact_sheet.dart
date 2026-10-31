@@ -43,6 +43,8 @@ Future<void> showContactSheet(BuildContext context, InquiryTarget target) =>
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      // The sheet draws its own grabber; the theme's handle would add a second.
+      showDragHandle: false,
       backgroundColor: VelaColors.sheet,
       barrierColor: const Color(0x66000000),
       shape: const RoundedRectangleBorder(

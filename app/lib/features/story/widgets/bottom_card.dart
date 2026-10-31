@@ -249,24 +249,30 @@ class _ChapterBody extends StatelessWidget {
         child: Row(
           spacing: 8,
           children: [
+            // The chip takes the free width (and wraps only when it must);
+            // without one the pill still sits on the right.
             if ((chapter.meta ?? '').isNotEmpty)
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0x24F2EEE6)),
-                  ),
-                  child: Text(
-                    chapter.meta!,
-                    style: VelaText.mono11.copyWith(color: VelaColors.muted),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0x24F2EEE6)),
+                    ),
+                    child: Text(
+                      chapter.meta!,
+                      style: VelaText.mono11.copyWith(color: VelaColors.muted),
+                    ),
                   ),
                 ),
-              ),
-            const Spacer(),
+              )
+            else
+              const Spacer(),
             GestureDetector(
               onTap: onReplies,
               behavior: HitTestBehavior.opaque,

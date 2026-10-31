@@ -27,7 +27,9 @@ abstract final class AppConfig {
     // define should fail at start-up, not silently on the first request.
     if (defined.isNotEmpty) {
       if (isRelease && !defined.toLowerCase().startsWith('https://')) {
-        throw StateError('API_BASE_URL must start with https:// in release builds');
+        throw StateError(
+          'API_BASE_URL must start with https:// in release builds',
+        );
       }
       return defined;
     }

@@ -64,7 +64,10 @@ class PinLayer extends StatelessWidget {
         screen.dy <= viewport.height;
     if (!onScreen) return layer;
     // 1pt clear of the card, so rounding never lets the hit box touch it.
-    final maxY = math.max(half, math.min(viewport.height, safeBottom) - half - 1);
+    final maxY = math.max(
+      half,
+      math.min(viewport.height, safeBottom) - half - 1,
+    );
     final safe = Offset(
       screen.dx.clamp(half, viewport.width - half).toDouble(),
       screen.dy.clamp(half, maxY).toDouble(),

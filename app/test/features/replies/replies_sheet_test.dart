@@ -33,6 +33,17 @@ void main() {
     expect(find.text('No replies on this detail yet.'), findsNothing);
   });
 
+  // GALLERY screenshot review: the theme turns on Material's drag handle for
+  // every sheet, and this sheet draws its own grabber, so two were shown.
+  testWidgets('shows_exactly_one_grabber', (t) async {
+    await pumpSheet(t, replies: []);
+    expect(find.byKey(const ValueKey('sheet-grabber')), findsOneWidget);
+    expect(
+      t.widget<BottomSheet>(find.byType(BottomSheet)).showDragHandle,
+      isFalse,
+    );
+  });
+
   testWidgets('empty_state_when_no_replies', (t) async {
     await pumpSheet(t, replies: []);
     expect(find.text('No replies on this detail yet.'), findsOneWidget);

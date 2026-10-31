@@ -47,6 +47,22 @@ void main() {
       expect(find.text('Reply'), findsOneWidget);
     });
 
+    // GALLERY screenshot review: a Spacer next to the Flexible meta chip
+    // capped the chip at half the free width, so a short line wrapped.
+    testWidgets('meta_chip_stays_on_one_line_when_it_fits', (t) async {
+      await pumpStory(
+        t,
+        work: workJson(
+          chapters: [
+            {...chapterJson(0), 'meta': '85mm · f/4 · 1/500'},
+          ],
+        ),
+      );
+      await _begin(t);
+      final size = t.getSize(find.text('85mm · f/4 · 1/500'));
+      expect(size.height, lessThan(22), reason: 'one line: $size');
+    });
+
     testWidgets('reply_pill_shows_count', (t) async {
       await pumpStory(t);
       await _begin(t);
@@ -218,7 +234,10 @@ void main() {
           ),
         );
         expect(_within(screen, r), isTrue, reason: 'badge $i $r');
-        expect(t.getRect(pin(i)).size, const Size(kMinTapTarget, kMinTapTarget));
+        expect(
+          t.getRect(pin(i)).size,
+          const Size(kMinTapTarget, kMinTapTarget),
+        );
         expect(_within(screen, t.getRect(pin(i))), isTrue, reason: 'hit $i');
       }
     });

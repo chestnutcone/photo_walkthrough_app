@@ -43,6 +43,14 @@ bool sendEnabled(WidgetTester t) =>
     t.widget<FilledButton>(key('contact-send')).onPressed != null;
 
 void main() {
+  // GALLERY screenshot review: the theme's Material drag handle drew a
+  // second grabber above the sheet's own.
+  testWidgets('shows_exactly_one_grabber', (t) async {
+    await openContact(t);
+    final sheet = t.widget<BottomSheet>(find.byType(BottomSheet));
+    expect(sheet.showDragHandle, isFalse);
+  });
+
   group('ContactSheet', () {
     testWidgets('contact_send_disabled_until_valid', (t) async {
       await openContact(t);
