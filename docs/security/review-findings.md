@@ -78,7 +78,7 @@ IDs are `F-<task>-<n>`; the order follows the ledger. "Fixed (S1-n)" points at s
 | F-T1-1 | Per-file `Results` alias | Closed | Folded into T2 |
 | F-T1-2 | CI: permissions, SHA pins, coverage, path triggers | Fixed (S1-18) | `permissions`, pins, `contract/**` and `scripts/**` triggers; coverage is now collected (`--collect` / `--coverage`); a hard 80% gate is Owner's call |
 | F-T1-3 | pubspec description and README boilerplate | Fixed | `app/pubspec.yaml` description; README already project-specific |
-| F-T2-1 | Length limits missing from the contract | Open (cleanup task) | Server enforces them (`*Validator.cs`); contract-only change plus regeneration |
+| F-T2-1 | Length limits missing from the contract | Fixed (CLEANUP) | `minLength`/`maxLength` on every request text field, counted in code points of the cleaned text (stated in `info.description`); `ContractTests.Text_length_limits_in_the_contract_match_the_server` pins them to the validator constants |
 | F-T2-2 | Whitespace-only inquiry passes `minLength` | Accept | Server trims and refuses; contract wording only |
 | F-T2-3 | Inquiry sender email must stay out of logs | Closed | Telemetry tests and `Inquiries/InquiryTests.cs` assert it |
 | F-A1-1 | DB CHECKs for handle, bio, status values, hidden consistency; FKs for notifications; Inquiries indexes; cascade-metadata test; null-zoom tests | Accept | Values are written only by validated code and enum converters; a CHECK adds no defence against an external attacker. Cheap pre-launch hardening if a migration is wanted anyway |
@@ -99,11 +99,11 @@ IDs are `F-<task>-<n>`; the order follows the ledger. "Fixed (S1-n)" points at s
 | F-A4-6 | `email_codes` / `verify_attempts` never pruned | Fixed (S1-13) | |
 | F-A4-7 | Review emails skip the DB, so timing reveals the allow-list | Accept | Review mode is off after app review and logs a startup warning |
 | F-A4-8, F-A4-9 | Per-IP count-then-insert not atomic; 30/IP/hour can lock a shared NAT | Accept / Owner | Soft limit by design; the number is Owner's to tune after real traffic |
-| F-A4-10 | Unused `levels` parameter | Accept | Test helper |
+| F-A4-10 | Unused `levels` parameter | Fixed (CLEANUP) | Removed with the other build warnings |
 | F-A5-1 | `WWW-Authenticate` missing | Fixed (S1-16) | |
 | F-A5-2, F-A5-3 | Boundary tests; handle timing at 29d23h | Accept | Cosmetic test gaps |
 | F-A5-4 | Onboarding double-submit race; fragile constraint-name match | Accept | Outcome is a 409; fragility only matters on a rename |
-| F-A5-5 | Suggested-artists test reads shared DB (flaky) | Open (follow-up task before final review) | Test hygiene, not security |
+| F-A5-5 | Suggested-artists test reads shared DB (flaky) | Closed | The test owns an isolated database (`ArtistEndpointTests.Suggested_orders_by_followers_then_newest...`) |
 | F-A5-6 | Follower counts include suspended/deleted users | Owner | Product decision |
 | F-A5-7 | More than 50 `followArtistIds` rejected rather than truncated | Accept | Documented behaviour |
 
@@ -130,7 +130,7 @@ IDs are `F-<task>-<n>`; the order follows the ledger. "Fixed (S1-n)" points at s
 | F-A8-1 | Throwing handler can starve the publish queue (carry to A9/A10) | Accept | Handlers do not throw by construction; the work row carries `PublishFailures` |
 | F-A8-2 | Missing tests; `\r` allowed; non-JSON content type not enveloped; orphan variants on a failed save | Accept | Cosmetic / orphan GC; ASVS 13.1.5 is recorded as Not met |
 | F-A8-3 | Content Safety call has no cancellation or timeout | Fixed (S1-17) | |
-| F-A8-4 | Chapter fields lack `maxLength` in the contract | Open (cleanup task) | Same as F-T2-1 |
+| F-A8-4 | Chapter fields lack `maxLength` in the contract | Fixed (CLEANUP) | Same as F-T2-1 |
 | F-A8-5 | Published stories are not editable | Owner | Feature decision (edit with re-scan) |
 | F-A9-1, F-A9-2, F-A9-5 | Cursor replay after follow change; feed returns full works; test gaps | Accept | Rare / performance follow-up |
 | F-A9-3 | Failing work retries every 3 minutes with no cap | Accept | `PublishFailures` is recorded; a cap is a tuning choice |
@@ -153,7 +153,7 @@ IDs are `F-<task>-<n>`; the order follows the ledger. "Fixed (S1-n)" points at s
 
 | ID | Item | Disposition | Reason / evidence |
 |---|---|---|---|
-| F-A13-1 | Dead `ContractStubs` test and stale 501 responses in the contract | Open (cleanup task) | |
+| F-A13-1 | Dead `ContractStubs` test and stale 501 responses in the contract | Fixed (CLEANUP) | `Stubs/ContractStubs.cs` and its test removed; 37 `501` entries and the `NotImplemented` response removed; `ContractTests.No_operation_declares_a_501...` guards it |
 | F-A13-2 | Deleted user's token works for up to 15 minutes | Closed | A14a state check; `Admin/UserStateTests.cs` |
 | F-A13-3 | Orphan blobs from SAS URLs used after hard delete | Device | Ops: periodic orphan scan or lifecycle rule; bounded by the 15-minute URL life |
 | F-A13-4 | `follows.json` lists suspended/deleted followers | Accept | Only public handles |
@@ -190,9 +190,9 @@ IDs are `F-<task>-<n>`; the order follows the ledger. "Fixed (S1-n)" points at s
 | F-B2-2 | Requests during a refresh go out with the stale token | Accept | The 401 triggers one refresh and a retry |
 | F-B2-3 | `api_providers` / `auth_controller` circular import | Accept | No runtime effect |
 | F-B4-x | Long `build()`; spotlight assigned in `build`; photo cover/contain fallback; no autoplay UI | Accept / Owner | Cover/contain is a visual decision (ledger) |
-| F-B5-x | Contract: follow idempotency text; artist city and colour; reply total; icon placement | Open (cleanup) / Owner | Not security |
+| F-B5-x | Contract: follow idempotency text; artist city and colour; reply total; icon placement | Fixed (CLEANUP: idempotency text on `follow`/`unfollow`) / Owner (the rest) | Not security |
 | F-B6-x | Report hides reply locally only; initials avatars; Shift+Enter untestable | Accept | |
-| F-B7-x | Website row copies the URL; no profile share; chapters stat; 'Followed by' sign-in; sender email not prefilled | Owner | Product |
+| F-B7-x | Website row copies the URL; no profile share; chapters stat; 'Followed by' sign-in; sender email not prefilled | Fixed (CLEANUP: https websites open in the browser, other values stay copy-only; 'Followed by' never names the viewer) / Owner (the rest) | Product |
 | F-B8-1 | Review-mode lockout does not reset on client resend | Accept | Server lock is per email per hour |
 | F-B8-2 | Real Apple/Google SDK wrappers untested | Device | Needs the owner's client ids and a device |
 | F-B8-3 | Until B14 sends `X-Attestation`, production sign-in returns 403 | Closed | B14 sends it; enabling attestation remains an Owner decision |
