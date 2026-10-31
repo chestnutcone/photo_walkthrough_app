@@ -138,5 +138,90 @@ public class UnderReviewDeleteTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, (await author.Delete($"/v1/replies/{fine}")).Status);
     }
 
+    // ---- Review round 1, F3: deleting a work must not cascade away replies under review ----
+
+    [Fact]
+    public async Task A_work_with_an_auto_hidden_reply_on_it_cannot_be_deleted()
+    {
+        var (artist, work) = await _s.Story();
+        var reply = await _s.ReplyOn(await _s.NewUser(), work, "nasty " + Unsafe);
+        Assert.Equal(HiddenBy.Auto, (await _s.LoadReply(reply)).HiddenBy);
+
+        await AssertRefusedAndIntact(artist, work);
+        Assert.NotNull(await _s.LoadReply(reply));
+    }
+
+    [Fact]
+    public async Task A_work_with_a_report_hidden_reply_on_it_cannot_be_deleted()
+    {
+        var (artist, work) = await _s.Story();
+        var reply = await _s.ReplyOn(await _s.NewUser(), work, "rude words");
+        await _s.Report(await _s.NewUser(), "reply", reply, "harassment");
+
+        await AssertRefusedAndIntact(artist, work);
+    }
+
+    [Fact]
+    public async Task A_work_with_a_held_reply_on_it_cannot_be_deleted()
+    {
+        var (artist, work) = await _s.Story();
+        var author = await _s.NewUser();
+        var reply = await _s.ReplyOn(author, work, "fine looking text");
+        await using (var db = _s.Host.Db())
+        {
+            db.EvidenceHolds.Add(new EvidenceHold
+            {
+                Id = Guid.NewGuid(), UserId = author.Id, ReplyId = reply, TargetType = "reply", BlobPrefix = "evidence/x/", Reason = "r",
+                HoldUntil = ProfileTestHostNow.AddDays(365), CreatedByAdminId = _admin, CreatedAt = ProfileTestHostNow,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await AssertRefusedAndIntact(artist, work);
+    }
+
+    // ---- Review round 1, F4: any open report (including the fail-open scan_unavailable flag) means under review ----
+
+    private async Task OpenFlag(string type, Guid target, string source = "auto_flag", string reason = "auto:scan_unavailable:0")
+    {
+        await using var db = _s.Host.Db();
+        db.Reports.Add(new Report { Id = Guid.NewGuid(), Source = source, Reason = reason, TargetType = type, TargetId = target, CreatedAt = ProfileTestHostNow });
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task A_published_work_that_was_never_scanned_cannot_be_deleted()
+    {
+        var (owner, work) = await _s.Story();
+        await OpenFlag("work", work);
+        Assert.False((await WorkTestKit.Load(_s.Host, work)).ReportHidden);
+
+        await AssertRefusedAndIntact(owner, work);
+    }
+
+    [Fact]
+    public async Task A_published_work_with_any_open_report_cannot_be_deleted()
+    {
+        var (owner, work) = await _s.Story();
+        await OpenFlag("work", work, "dmca", "copyright");
+
+        await AssertRefusedAndIntact(owner, work);
+    }
+
+    [Fact]
+    public async Task A_visible_reply_that_was_never_scanned_cannot_be_deleted()
+    {
+        var (_, work) = await _s.Story();
+        var author = await _s.NewUser();
+        var reply = await _s.ReplyOn(author, work, "visible");
+        await OpenFlag("reply", reply);
+
+        var r = await author.Delete($"/v1/replies/{reply}");
+
+        Assert.Equal(HttpStatusCode.Conflict, r.Status);
+        Assert.Equal("under_review", r.ErrorCode);
+        Assert.NotNull(await _s.LoadReply(reply));
+    }
+
     private static readonly DateTimeOffset ProfileTestHostNow = Profiles.ProfileTestHost.Now;
 }

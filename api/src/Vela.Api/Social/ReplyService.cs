@@ -81,8 +81,8 @@ public sealed class ReplyService(
             .Select(r => new { Reply = r, OwnerId = db.Works.Where(w => w.Id == r.WorkId).Select(w => w.ArtistId).First() })
             .FirstOrDefaultAsync();
         if (target is null || (target.Reply.AuthorId != userId && target.OwnerId != userId)) throw ReplyNotFound();
-        // S1b-2: a reply waiting for moderation stays until an admin decides. The delete re-checks the hidden state, so a hide
-        // that lands between the check and the delete still wins.
+        // S1b-2: a reply waiting for moderation (hidden, reported, held or never scanned) stays until an admin decides. The delete
+        // re-checks the hidden state, so a hide that lands between the check and the delete still wins.
         if (await review.ReplyAsync(target.Reply)) throw UnderReviewReply();
         var deleted = await db.Replies.Where(r => r.Id == replyId
             && !(r.Hidden && (r.HiddenBy == HiddenBy.Auto || r.HiddenBy == HiddenBy.Report))).ExecuteDeleteAsync();

@@ -105,7 +105,7 @@ public static class AccountKit
             new Reply { Id = uro, WorkId = ow, ChapterIndex = 0, AuthorId = u.Id, Text = "U reply on O", CreatedAt = now },
             new Reply { Id = oru, WorkId = uw, ChapterIndex = 0, AuthorId = o.Id, Text = "O reply on U", CreatedAt = now },
             new Reply { Id = tro, WorkId = ow, ChapterIndex = 0, AuthorId = t.Id, Text = "T reply on O", CreatedAt = now },
-            new Reply { Id = Guid.NewGuid(), WorkId = uw, ChapterIndex = 1, AuthorId = u.Id, Text = "U reply on own", Hidden = true, HiddenBy = HiddenBy.Report, CreatedAt = now });
+            new Reply { Id = Guid.NewGuid(), WorkId = uw, ChapterIndex = 1, AuthorId = u.Id, Text = "U reply on own", Hidden = true, HiddenBy = HiddenBy.Admin, CreatedAt = now }); // decided: a report- or auto-hidden reply would defer the delete (S1b-2)
         db.Follows.AddRange(
             new Follow { FollowerId = u.Id, FolloweeId = o.Id, CreatedAt = now }, new Follow { FollowerId = o.Id, FolloweeId = u.Id, CreatedAt = now },
             new Follow { FollowerId = t.Id, FolloweeId = o.Id, CreatedAt = now }, new Follow { FollowerId = o.Id, FolloweeId = t.Id, CreatedAt = now });

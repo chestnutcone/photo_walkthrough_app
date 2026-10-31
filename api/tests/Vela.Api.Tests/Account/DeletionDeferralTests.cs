@@ -144,4 +144,48 @@ public class DeletionDeferralTests(PostgresFixture pg) : IDisposable
         Assert.True(await after.DmcaNotices.AnyAsync(n => n.Id == notice));
         Assert.True(await after.EvidenceHolds.AnyAsync(x => x.Id == hold));
     }
+
+    private static async Task<Guid> AddReply(ProfileTestHost h, Guid work, Guid author, bool hidden)
+    {
+        await using var db = h.Db();
+        var id = Guid.NewGuid();
+        db.Replies.Add(new Vela.Api.Data.Entities.Reply
+        {
+            Id = id, WorkId = work, ChapterIndex = 0, AuthorId = author, Text = "x", Hidden = hidden, HiddenBy = hidden ? HiddenBy.Auto : null, CreatedAt = Now,
+        });
+        await db.SaveChangesAsync();
+        return id;
+    }
+
+    [Fact]
+    public async Task A_hidden_reply_by_the_user_on_someone_elses_work_defers_the_hard_delete_even_without_a_report_row()
+    {
+        var h = await Host();
+        var u = await Onboarded(h, null, "Author");
+        var other = await Onboarded(h, null, "Other");
+        await AddReply(h, await AddWork(h, other.Id, WorkStatus.Published), u.Id, hidden: true);
+
+        Assert.Equal("deferred_review", (await u.Delete("/v1/me")).Data.GetProperty("state").GetString());
+        Assert.Equal(0, await Sweep(h));
+        Assert.NotNull(await LoadUser(h, u.Id));
+    }
+
+    [Fact]
+    public async Task A_reply_under_review_by_someone_else_on_the_users_work_defers_the_hard_delete_which_would_cascade_it_away()
+    {
+        var h = await Host();
+        var u = await Onboarded(h, null, "Artist");
+        var other = await Onboarded(h, null, "Replier");
+        var reply = await AddReply(h, await AddWork(h, u.Id, WorkStatus.Published), other.Id, hidden: false);
+        await using (var db = h.Db())
+        {
+            db.Reports.Add(new Report { Id = Guid.NewGuid(), Source = "auto_flag", Reason = "auto:scan_unavailable:0", TargetType = "reply", TargetId = reply, CreatedAt = Now });
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal("deferred_review", (await u.Delete("/v1/me")).Data.GetProperty("state").GetString());
+        Assert.Equal(0, await Sweep(h));
+        await using var after = h.Db();
+        Assert.True(await after.Replies.AnyAsync(r => r.Id == reply));
+    }
 }
