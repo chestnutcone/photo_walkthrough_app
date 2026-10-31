@@ -38,6 +38,13 @@ Decisions worth knowing:
 - Least privilege gap: the app connects as the server admin and `MigrateOnStartup` runs DDL as that account. Follow-up: a
   separate runtime role with DML only, with migrations run by a bundle under the admin account.
 - Postgres storage auto-grows (never goes read-only when full); set an Azure Monitor alert on storage percent.
+- Log volume against the 0.15 GB/day cap: once the cap is hit Log Analytics drops every further record that day, warnings and
+  errors included. `appsettings.json` therefore keeps `Microsoft.AspNetCore`, `Microsoft.EntityFrameworkCore` (one SQL statement
+  per Information line, 0.3-2 KB each) and `System.Net.Http.HttpClient` at Warning (`LogLevelConfigTests` pins this). What stays at
+  Information is event-shaped (about ten messages: a deletion, an export, a cleanup sweep that removed something), so a day is a few
+  hundred lines. Traces are sampled at 10% (`Telemetry__SamplingRatio`) with no database spans: 100k requests a day is about
+  10k request spans of roughly 1-1.5 KB, about 15 MB, plus metrics (a few MB). Check the `Usage` table weekly at first; never set
+  `Logging__LogLevel__Default=Debug` or turn EF back to Information in prod except briefly.
 
 ## One-time owner steps
 
