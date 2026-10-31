@@ -297,11 +297,11 @@ class _SearchBar extends StatelessWidget {
             style: VelaText.sans15,
             cursorColor: VelaColors.accent,
             decoration: InputDecoration(
-              // The label is the field's accessible name; it reads as the
-              // hint while empty and is hidden once there is text.
-              labelText: 'Search artists and stories',
-              floatingLabelBehavior: FloatingLabelBehavior.never,
-              labelStyle: VelaText.sans15.copyWith(color: VelaColors.faint),
+              // A hint, not a never-floating label: Material hides such a
+              // label while the field is focused, and this field
+              // autofocuses. The hint is also the field's accessible hint.
+              hintText: 'Search artists and stories',
+              hintStyle: VelaText.sans15.copyWith(color: VelaColors.faint),
               border: InputBorder.none,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(vertical: 14),

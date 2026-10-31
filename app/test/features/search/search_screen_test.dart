@@ -9,6 +9,42 @@ import 'support/search_harness.dart';
 Finder _key(String k) => find.byKey(ValueKey(k));
 
 void main() {
+  // GALLERY screenshot review: the prompt was a label with
+  // FloatingLabelBehavior.never, which Material hides while the field is
+  // focused, and the field autofocuses: the screen opened on a blank bar.
+  testWidgets('prompt_is_visible_while_the_empty_field_is_focused', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await pumpSearch(tester);
+    final field = find.byKey(const ValueKey('search-field'));
+    final editable = tester.widget<EditableText>(
+      find.descendant(of: field, matching: find.byType(EditableText)),
+    );
+    expect(editable.focusNode.hasFocus, isTrue);
+    final prompt = find.descendant(
+      of: field,
+      matching: find.text('Search artists and stories'),
+    );
+    expect(prompt, findsOneWidget);
+    final hidden = find.ancestor(
+      of: prompt,
+      matching: find.byWidgetPredicate(
+        (w) =>
+            (w is Opacity && w.opacity == 0) ||
+            (w is FadeTransition && w.opacity.value == 0) ||
+            (w is AnimatedOpacity && w.opacity == 0),
+      ),
+    );
+    expect(hidden, findsNothing, reason: 'prompt is drawn');
+    final node = tester.getSemantics(
+      find.descendant(of: field, matching: find.byType(EditableText)),
+    );
+    final spoken = '${node.label} ${node.hint}';
+    expect(spoken, contains('Search artists and stories'), reason: '$node');
+    handle.dispose();
+  });
+
   testWidgets('empty_state_shows_suggested_artists', (tester) async {
     final h = await pumpSearch(tester);
     expect(find.text('SUGGESTED ARTISTS'), findsOneWidget);
