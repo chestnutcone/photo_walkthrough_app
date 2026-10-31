@@ -22,13 +22,27 @@ public static partial class InquiryEmail
             $"{appName} has not checked who sent this or what it says. Web addresses in it have been disabled.\n" +
             "Do not open links or attachments you did not expect, and never send passwords, sign-in codes or payment details by email.\n" +
             $"{Rule}\n\n" +
-            $"Inquiry type: {type}\nReply to (unverified): {senderEmail}\n{about}\nMessage:\n{Neutralise(message)}\n\n" +
+            $"Inquiry type: {type}\nReply to (unverified): {senderEmail}\n{about}\nMessage:\n{Quote(Neutralise(message))}\n\n" +
             $"{Rule}\nSomeone used the contact form on your {appName} profile. Your email address was not shared with them.\n";
         return new Message($"New {type} inquiry via {appName}", body);
     }
 
-    [GeneratedRegex(@"(?i)\b(https?|ftp|mailto|javascript|data|file|tel|sms)\s*:")]
+    /// <summary>
+    /// Every message line starts with "| " (review M-10), so the sender cannot end the message with a copy of <see cref="Rule"/>
+    /// and a fake footer that looks like the template's own text.
+    /// </summary>
+    public static string Quote(string text) => string.Join('\n', text.Split('\n').Select(l => l.Length == 0 ? "|" : "| " + l));
+
+    [GeneratedRegex(@"(?i)\b(https?|ftp|sftp|ssh|wss?|mailto|javascript|vbscript|data|file|tel|sms|intent|itms-services|itms-apps|ms-[a-z-]+|[a-z][a-z0-9+.-]{1,30}(?=\s*://))\s*:")]
     private static partial Regex Scheme();
+
+    /// <summary>IDNA treats these as dots too (review M-11): "evil。example" resolves like "evil.example" in some clients.</summary>
+    [GeneratedRegex(@"(?<=[\p{L}\p{N}-])[\u3002\uFF0E\uFF61](?=[\p{L}\p{N}])")]
+    private static partial Regex LookalikeDot();
+
+    /// <summary>A bare IPv4 address ("192.0.2.1/login").</summary>
+    [GeneratedRegex(@"\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b")]
+    private static partial Regex Ipv4();
 
     [GeneratedRegex(@"(?i)\bwww\.")]
     private static partial Regex Www();
@@ -42,6 +56,8 @@ public static partial class InquiryEmail
     {
         var t = Scheme().Replace(text, m => m.Groups[1].Value + "[:]");
         t = Www().Replace(t, m => m.Value[..^1] + "[.]");
+        t = LookalikeDot().Replace(t, "[.]");
+        t = Ipv4().Replace(t, m => string.Join("[.]", m.Groups[1].Value, m.Groups[2].Value, m.Groups[3].Value, m.Groups[4].Value));
         return DomainDot().Replace(t, "[.]");
     }
 }

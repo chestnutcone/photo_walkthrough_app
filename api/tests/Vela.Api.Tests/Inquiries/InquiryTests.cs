@@ -66,7 +66,7 @@ public class InquiryTests(PostgresFixture pg) : IDisposable
         Assert.Equal("New Buy a print inquiry via Vela", mail.Subject);
         Assert.Contains("buyer@example.test", mail.TextBody);
         Assert.Contains("Harbor", mail.TextBody);
-        Assert.Contains("Line one\nLine two", mail.TextBody);
+        Assert.Contains("| Line one\n| Line two", mail.TextBody);
         await using var db = h.Db();
         var row = await db.Inquiries.SingleAsync();
         Assert.NotNull(row.EmailedAt);
