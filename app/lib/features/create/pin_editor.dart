@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/tokens.dart';
 import '../story/photo_layout.dart';
@@ -54,7 +57,10 @@ class PinEditor extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTapUp: (d) {
               final f = frame.toPhotoFraction(d.localPosition);
-              if (f != null) onTapPhoto(f);
+              if (f == null) return;
+              // Handoff "Interactions": a light tick when a pin drops.
+              unawaited(HapticFeedback.selectionClick());
+              onTapPhoto(f);
             },
             child: Stack(
               clipBehavior: Clip.none,

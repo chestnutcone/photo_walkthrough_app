@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/features/create/blob_uploader.dart';
@@ -12,6 +13,32 @@ import 'support/create_harness.dart';
 CreateState read(CreateHarness h) => h.container.read(createControllerProvider);
 
 void main() {
+  testWidgets('dropping_a_pin_gives_a_selection_haptic (final review M-3)', (
+    t,
+  ) async {
+    final calls = <String>[];
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          calls.add(call.arguments as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await pumpCreate(t);
+    await pickAndAnnotate(t);
+    calls.clear();
+    await tapPhotoAt(t, 0.5, 0.5);
+    expect(calls, ['HapticFeedbackType.selectionClick']);
+  });
+
   testWidgets('tapping_a_chapter_edits_it_in_place_keeping_order', (t) async {
     final h = await pumpCreate(t);
     await pickAndAnnotate(t);
