@@ -9,7 +9,39 @@ Build (separate entry point, release needs `API_BASE_URL`):
       --dart-define=PLAY_STORE_URL=<optional https store link>
 
 `--no-web-resources-cdn` bundles CanvasKit instead of loading it from
-gstatic.com, so the policy below needs no third-party script origin.
+gstatic.com. Plugins that would inject a third-party script are kept out of
+the web build: `google_sign_in_web` is replaced (pubspec
+`dependency_overrides`) by the no-op `packages/google_sign_in_web_none`,
+because the real one loads `https://accounts.google.com/gsi/client` on every
+page as soon as it is registered. The viewer never signs in, so nothing is
+lost; Android and iOS use their own Google implementations. With that, the
+built viewer loads scripts from its own origin only, and the policy below
+needs no third-party script origin. Check every build (CI does):
+
+    scripts/check-web-viewer-origins.sh app/build/web
+
+It fails on Google/Apple/Sentry SDK hosts, tag managers or public JS CDNs in
+the output, on a cross-origin `<script src>` in `index.html`, and on a build
+made without `--no-web-resources-cdn`.
+
+Other plugins registered in the web build (secure storage, shared
+preferences, image picker, url launcher, Sign in with Apple, Sentry,
+package info) inject no script; the viewer does not call them.
+
+Fonts: the bundled fonts cover Latin text. For a glyph they lack (emoji, CJK
+in a user's title), the engine asks `fonts.gstatic.com` for a fallback font;
+the policy below blocks that (`font-src 'self'`), so such glyphs render as
+boxes instead of contacting Google. Allow `https://fonts.gstatic.com` in
+`font-src` and `connect-src` only if that trade-off is wanted.
+
+Size (release, 2026-10-31): `main.dart.js` 3.2 MB (0.9 MB gzip), CanvasKit
+`canvaskit.wasm` 7.3 MB (2.9 MB gzip) or the Chromium variant 5.4 MB (2.1 MB
+gzip); `build/web` is about 42 MB because it holds every renderer variant
+(`canvaskit/`, `chromium/`, `skwasm*`, `wimp*`, `webparagraph/`) and
+`.symbols` files. A visitor downloads one JS bundle and one CanvasKit
+variant. The `.symbols` files are for symbolising crashes and need not be
+deployed; pruning renderer variants is deferred until it is checked in each
+browser (see PROGRESS "Deferred minors").
 
 The viewer serves only `/s/{workId}`. Any other path, and every story that is
 missing, private, blocked or removed, shows "This story isn't available". It

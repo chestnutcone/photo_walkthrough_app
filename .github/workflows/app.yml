@@ -1,9 +1,9 @@
 name: app
 on:
   push:
-    paths: ["app/**", "contract/**", ".github/workflows/app.yml"]
+    paths: ["app/**", "contract/**", ".github/workflows/app.yml", "scripts/check-web-viewer-origins.sh"]
   pull_request:
-    paths: ["app/**", "contract/**", ".github/workflows/app.yml"]
+    paths: ["app/**", "contract/**", ".github/workflows/app.yml", "scripts/check-web-viewer-origins.sh"]
 permissions:
   contents: read
 jobs:
@@ -20,3 +20,9 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test --coverage
+      # The public web viewer must load no third-party script (final review I-2).
+      - run: >-
+          flutter build web -t lib/main_web.dart --release --no-web-resources-cdn
+          --dart-define=API_BASE_URL=https://api.ci.invalid
+          --dart-define=LINKS_DOMAIN=links.ci.invalid
+      - run: ../scripts/check-web-viewer-origins.sh build/web
