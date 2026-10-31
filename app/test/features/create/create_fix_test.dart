@@ -28,6 +28,24 @@ Uint8List hugePng() {
 
 void main() {
   group('lost publish response', () {
+    testWidgets('publish_allows_more_than_the_server_wait_for_its_answer', (
+      t,
+    ) async {
+      final h = await pumpCreate(t, statuses: const ['published']);
+      await pickAndAnnotate(t);
+      await addChapter(t, title: 'One');
+      await t.tap(find.byKey(const ValueKey('publish')));
+      await t.pumpAndSettle();
+
+      final publish = h.calls('POST', '/v1/works/w1/publish').single;
+      expect(publish.receiveTimeout, publishReceiveTimeout);
+      // Server: seal + up to 10 s verdict wait + decode; the app must not give up first.
+      expect(
+        publishReceiveTimeout,
+        greaterThanOrEqualTo(const Duration(seconds: 45)),
+      );
+    });
+
     testWidgets('retry_after_a_lost_publish_response_goes_to_polling', (
       t,
     ) async {

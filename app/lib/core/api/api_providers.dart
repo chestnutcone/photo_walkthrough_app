@@ -11,6 +11,23 @@ import 'auth_interceptor.dart';
 export '../auth/auth_controller.dart'
     show clockProvider, sessionEpochProvider, sessionProvider;
 
+/// `extra` key a request sets to a [Duration] to replace the 20 s default
+/// receive timeout for that request only (the generated client takes no
+/// per-request Options, but passes `extra` through).
+const receiveTimeoutExtra = 'vela.receiveTimeout';
+
+/// Applies [receiveTimeoutExtra].
+class PerRequestTimeoutInterceptor extends Interceptor {
+  const PerRequestTimeoutInterceptor();
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final timeout = options.extra[receiveTimeoutExtra];
+    if (timeout is Duration) options.receiveTimeout = timeout;
+    handler.next(options);
+  }
+}
+
 /// Test seam for the HTTP transport. Null uses Dio's default.
 final httpClientAdapterProvider = Provider<HttpClientAdapter?>((_) => null);
 
@@ -25,6 +42,7 @@ Dio _newDio(Ref ref) {
   );
   final adapter = ref.read(httpClientAdapterProvider);
   if (adapter != null) dio.httpClientAdapter = adapter;
+  dio.interceptors.add(const PerRequestTimeoutInterceptor());
   return dio;
 }
 

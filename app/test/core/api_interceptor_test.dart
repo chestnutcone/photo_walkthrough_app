@@ -34,6 +34,39 @@ FakeSessionStorage _stored(String access, String refresh) =>
     FakeSessionStorage(_session(access, refresh).encode());
 
 void main() {
+  group('per-request receive timeout (S2 fix I-3)', () {
+    test('a request can raise its receive timeout through extra', () async {
+      final adapter = FakeAdapter((_) => jsonResponse(200, okEnvelope({})));
+      final c = _container(adapter, _stored('A1', 'R1'));
+
+      await c
+          .read(dioProvider)
+          .post<dynamic>(
+            '/v1/works/w1/publish',
+            options: Options(
+              extra: {receiveTimeoutExtra: const Duration(seconds: 45)},
+            ),
+          );
+
+      expect(
+        adapter.requests.single.receiveTimeout,
+        const Duration(seconds: 45),
+      );
+    });
+
+    test('other requests keep the 20 s default', () async {
+      final adapter = FakeAdapter((_) => jsonResponse(200, okEnvelope({})));
+      final c = _container(adapter, _stored('A1', 'R1'));
+
+      await c.read(dioProvider).get<dynamic>('/v1/me');
+
+      expect(
+        adapter.requests.single.receiveTimeout,
+        const Duration(seconds: 20),
+      );
+    });
+  });
+
   test('interceptor_attaches_bearer_token', () async {
     final adapter = FakeAdapter((_) => jsonResponse(200, okEnvelope({})));
     final c = _container(adapter, _stored('A1', 'R1'));

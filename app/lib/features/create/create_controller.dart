@@ -21,6 +21,11 @@ const int maxUploadBytes = 20 * 1024 * 1024;
 
 /// Polling: 1s, 2s, 3s, 4s then 5s steps, giving up after two minutes.
 const Duration pollTimeout = Duration(minutes: 2);
+
+/// Receive timeout for publishWork: the server seals the upload, waits up to
+/// 10 s for the malware verdict and makes the variants before answering
+/// (S2 fix I-3), so the 20 s default is too tight.
+const Duration publishReceiveTimeout = Duration(seconds: 45);
 const int _maxPollStepSeconds = 5;
 
 /// Waiting before the one background retry of a draft delete.
@@ -372,7 +377,12 @@ class CreateController extends Notifier<CreateState> {
       );
       if (_stale(gen)) return null;
       _publishRequested = true;
-      final res = await apiGuard(() => _api.publishWork(id: id));
+      final res = await apiGuard(
+        () => _api.publishWork(
+          id: id,
+          extra: const {receiveTimeoutExtra: publishReceiveTimeout},
+        ),
+      );
       if (_stale(gen)) return null;
       final work = unwrapEnvelope(
         success: res.data?.success ?? false,
