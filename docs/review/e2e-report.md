@@ -1,8 +1,44 @@
 # End-to-end verification report (Android emulator, real local API)
 
-Date: 2026-10-24. Device: Android 35 x86_64 emulator (headless, swiftshader), debug APK `dev.vela.app`,
-API in Development mode on `http://10.0.2.2:5080` with Postgres 16 and Azurite in Docker.
-Re-run everything with `scripts/run-e2e.sh` ([docs/dev/run-e2e.md](../dev/run-e2e.md)).
+Latest run: **2026-10-31** (GALLERY task). Device: Android 15 (API 35) x86_64 emulator `vela_test`, 1080 x 2400, headless with
+swiftshader and KVM; debug build `dev.vela.app` on the branch at 6460870..ab4c0e7; API in Development mode on `http://10.0.2.2:5080`
+with Postgres 16 and Azurite in Docker, seeded by `tools/seed_local.py`. Re-run everything with `scripts/run-e2e.sh`
+([docs/dev/run-e2e.md](../dev/run-e2e.md)).
+
+## 2026-10-31 re-run (after S2, S2 fixes, CLEANUP and the GALLERY fixes)
+
+| File | Flows | Tests | Result |
+|---|---|---|---|
+| `a_guest_test.dart` | A | 1 | pass |
+| `b_signin_onboarding_test.dart` | B, C | 2 | pass |
+| `d_social_test.dart` | D, H, J, K | 4 | pass |
+| `e_create_test.dart` | E (create, EXIF rotation, navigation) | 3 | pass |
+| `f_profile_search_settings_test.dart` | F, G, I (settings, export, delete, session restart) | 5 | pass |
+| `g_a11y_test.dart` | accessibility guidelines on 19 screens | 3 | pass (violations are collected, not asserted) |
+| **Total** | | **18** | **18 pass, 0 fail**; no regression needed a fix |
+
+Screenshots of every flow were replaced by this run (`docs/review/screenshots/<flow>/`, 540 px wide); the manual `links/` and
+`gap/` sets are from the first run and were not repeated.
+
+On-device accessibility (`a11y-violations.txt`): **15** findings, down from 21. Tap targets: only the 15 pt progress segments
+(story intro and chapter; ruling S2-6). Text contrast: 13 lines, all 11-13 pt labels measured from anti-aliased pixels or
+captured during a transition (for example "NEW STORY" 1.16 over the photo fading in). The widget-level audit, which measures the
+specified colours, passes contrast on every screen: see [a11y-audit.md](a11y-audit.md). The screen-by-screen widget gallery is
+[gallery.md](gallery.md); the web viewer check is [web-viewer-report.md](web-viewer-report.md).
+
+Gaps seen on this run (not fixed):
+- Onboarding welcome says "Signing in with Apple, Google and email gives you three separate accounts" on Android, where the
+  sign-in sheet offers only Google and email (the sheet's note names the two). Minor copy inconsistency; owner wording.
+- Same limits as before: no real Google/Apple sign-in, Play Integrity, verified app links, TalkBack speech, release build.
+
+Fixed in this task from the gallery, audit and web pass (all test-first, all in the widget suite): story live-region label so
+chapter changes are announced; unlabelled tap nodes on the chapter tap zones; pins read in chapter order; Arrow keys step
+chapters; reply composer 48 pt with the real fonts; Google button no longer reads its "G" mark; search prompt visible while the
+field is focused; double grabber on three sheets; meta chip wrapping; unknown-route debug text; web viewer page title.
+
+## First run (2026-10-24)
+
+The rest of this report is the first run, kept as found.
 
 ## Summary
 
