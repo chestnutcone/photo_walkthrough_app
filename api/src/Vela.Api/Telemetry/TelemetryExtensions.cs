@@ -26,6 +26,7 @@ public static class TelemetryExtensions
                 .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(t.SamplingRatio)))
                 .AddAspNetCoreInstrumentation(o => o.RecordException = false)
                 .AddHttpClientInstrumentation()
+                .AddVelaTraceScrubbing() // before the exporter: url.query, handles and ids in paths never leave the process (I2)
                 .AddAzureMonitorTraceExporter(o => o.ConnectionString = t.AzureMonitorConnectionString))
             .WithMetrics(b => b
                 .AddAspNetCoreInstrumentation()
