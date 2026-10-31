@@ -169,7 +169,10 @@ void main() {
     final router = await _pump(tester, _container());
     router.go('/nope');
     await tester.pumpAndSettle();
-    expect(find.text('route:not-found'), findsOneWidget);
+    // GALLERY screenshot review: this used to show the debug text
+    // 'route:not-found' to users (unknown deep link paths land here).
+    expect(find.textContaining('route:'), findsNothing);
+    expect(find.text("This page isn't available"), findsOneWidget);
     await tester.tap(find.text('Go home'));
     await tester.pumpAndSettle();
     expect(find.byType(FeedScreen), findsOneWidget);

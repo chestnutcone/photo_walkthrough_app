@@ -38,7 +38,10 @@ class SsoButtons extends StatelessWidget {
         key: const ValueKey('sso-google'),
         style: velaOutlinedButtonStyle(),
         onPressed: enabled ? onGoogle : null,
-        icon: Text('G', style: VelaText.serif24.copyWith(height: 1)),
+        // Decorative mark: the label already says Google.
+        icon: ExcludeSemantics(
+          child: Text('G', style: VelaText.serif24.copyWith(height: 1)),
+        ),
         label: const Text('Continue with Google'),
       ),
       const SizedBox(height: 10),

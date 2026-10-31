@@ -1,6 +1,7 @@
 import 'dart:ui' show SemanticsFlag;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -114,6 +115,38 @@ void main() {
     await t.tap(find.text('Begin →'));
     await t.pumpAndSettle();
     await expectLater(t, meetsGuideline(labeledTapTargetGuideline));
+    handle.dispose();
+  });
+
+  // GALLERY a11y audit: pins were read in screen position order (1, 4, 3,
+  // 2), not chapter order.
+  testWidgets('pins_are_read_in_chapter_order', (t) async {
+    final handle = t.ensureSemantics();
+    await pumpStory(
+      t,
+      work: workJson(
+        chapters: [
+          chapterJson(0, x: 0.3, y: 0.5),
+          chapterJson(1, x: 0.6, y: 0.8),
+          chapterJson(2, x: 0.5, y: 0.2),
+        ],
+      ),
+    );
+    final labels = <String>[];
+    void visit(SemanticsNode n) {
+      final l = n.getSemanticsData().label;
+      if (l.startsWith('Chapter ')) labels.add(l);
+      n
+          .debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
+          .forEach(visit);
+    }
+
+    visit(t.binding.pipelineOwner.semanticsOwner!.rootSemanticsNode!);
+    expect(labels, [
+      'Chapter 1: Detail 1',
+      'Chapter 2: Detail 2',
+      'Chapter 3: Detail 3',
+    ]);
     handle.dispose();
   });
 }

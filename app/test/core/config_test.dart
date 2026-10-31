@@ -36,7 +36,12 @@ void main() {
     );
   });
   test('release_builds_refuse_a_non_https_api_url', () {
-    for (final url in ['http://api.example.com', 'ftp://x', 'api.example.com', 'HTTP://API.EXAMPLE.COM']) {
+    for (final url in [
+      'http://api.example.com',
+      'ftp://x',
+      'api.example.com',
+      'HTTP://API.EXAMPLE.COM',
+    ]) {
       expect(
         () => AppConfig.resolveApiBaseUrl(
           defined: url,

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show OrdinalSortKey;
 
 import '../../../core/theme/tokens.dart';
 import '../camera_math.dart';
@@ -131,6 +132,8 @@ class _Pin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
+    // Read in chapter order, not by position on the photo.
+    sortKey: OrdinalSortKey(number.toDouble()),
     button: true,
     label: label,
     excludeSemantics: true,

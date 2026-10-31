@@ -20,6 +20,20 @@ ProviderContainer _container(WidgetTester tester) {
 
 void main() {
   group('sso buttons', () {
+    // GALLERY a11y audit: the text "G" mark was read aloud ("G Continue with
+    // Google").
+    testWidgets('google_button_is_read_as_continue_with_google', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await pumpSignIn(tester);
+      expect(
+        tester.getSemantics(key('sso-google')).label,
+        'Continue with Google',
+      );
+      handle.dispose();
+    });
+
     testWidgets('google_button_calls_sso_client_then_api', (tester) async {
       final h = await pumpSignIn(tester);
 

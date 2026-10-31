@@ -314,7 +314,10 @@ void main() {
           Breadcrumb(
             category: 'http',
             type: 'http',
-            data: {'url': 'https://api.example.com/v1/works', 'X-Attestation': token},
+            data: {
+              'url': 'https://api.example.com/v1/works',
+              'X-Attestation': token,
+            },
           ),
         ],
       ),
