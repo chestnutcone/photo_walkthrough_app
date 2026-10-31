@@ -70,6 +70,11 @@ Read this first after any interruption. Update it after every task, then commit.
   ([e2e-report.md](../review/e2e-report.md)), Playwright web viewer pass ([web-viewer-report.md](../review/web-viewer-report.md));
   11 defects fixed test-first (live-region chapter announcements, tap-zone semantics, pin reading order, arrow keys, composer 48 pt,
   Google "G" mark, search prompt, sheet double grabbers, meta chip wrap, not-found debug text, web page title)
+- [x] FINALAPP Final review (app) fixes (c91fed6..f14ca3c): every sign-out path runs the sign-out cleaners and clears the image
+  cache, account_deleted wipes all, refresh 403 only for account_* codes, Google SDK sign-out (I-1, M-1, M-2); web viewer loads no
+  Google GSI script + CI origin check (I-2); 24 MP cap, killable 30 s isolate re-encode, undecodable rotated JPEG refused (I-3, M-7);
+  Sign in with Apple entitlement (I-4); Android release refuses the debug key and placeholder values, iOS check script (I-5); delete
+  copy (M-8); deep link kept through onboarding (M-4); intl month names (M-9); pin-drop haptic (M-3)
 - [x] CLEANUP Contract and leftovers (77fa745, 77da463, b57a3c0, accfbf2, 18c5700): 501 stubs removed, idempotent follow text, open notification type, contract length limits (F-T2-1, F-A8-4, F-A13-1), B7 website opens https, 'Followed by' excludes viewer, zero build/analyze warnings, consolidated Deferred minors list below
 
 ## Review documents
@@ -121,7 +126,7 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | A16 | Sentry `BeforeSend` throw drops the event (F-A16-4, R-10) | Device | Confirm with a real DSN |
 | S1b | S1b-4 unscanned variants at a predictable URL / staging prefix; S1b-7 unbounded upload size; S1b-9 evidence not tamper-evident | Later | Each needs storage-layout or Azure work; listed in `s1b-security-reviewer-findings.md` section 7 |
 | S1b | S1b-10/11/16/18 (admin bearer reads, review/admin overlap, email canonicalisation for bans, scheme routes); S1b-19 read-SAS content-type override | Later | Low; not cheap without design changes |
-| S1b | Re-signup cooling-off after deletion with open reviews (S1b-2 rest); Android release signed with debug key (S1b-17); inquiry footer text (S1b-20) | Owner | Legal/product decision; release keystore; wording |
+| S1b | Re-signup cooling-off after deletion with open reviews (S1b-2 rest); Android release key (S1b-17: a release without `key.properties` is now refused, the owner must create the key, see deploy.md "App release builds"); inquiry footer text (S1b-20) | Owner | Legal/product decision; release keystore; wording |
 | S2 | Defender malware settings not validated against Azure; tag-read permission needed under managed identity | Device | bicep build/lint only |
 | S2-fix | M-3 late verdict after the sweep published is not acted on | Later | Needs a reconciler pass (threat model R-18) |
 | S2-fix | M-7 only replies are cleaned client-side (other forms get an opaque 400 for bidi isolates from RTL copy) | Later | Per-field client clean or server message surfacing across several forms |
@@ -140,7 +145,7 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | B6 | Report hides a reply locally only; initials avatars; Shift+Enter not widget-testable; an earlier reply shows Report if `/me` fails | Accept | Server state is authoritative on reload |
 | B7 | No profile Share pill (no profile share URL); Chapters stat 0 when omitted; followers and inquiries need sign-in; sender email not prefilled | Owner | Contract/product |
 | B7 | Dio drops cancelled responses itself (tests use a fake client) | Accept | Test seam only |
-| B8 | Review-mode lockout not reset by resend (F-B8-1); text "G" instead of the official mark; no return-to-deep-link after onboarding; handle availability by GET-404 heuristic; no remaining-attempts count | Accept / Owner (Google mark asset) | Server lock is per email; 409 at submit catches hidden handles |
+| B8 | Review-mode lockout not reset by resend (F-B8-1); text "G" instead of the official mark; handle availability by GET-404 heuristic; no remaining-attempts count | Accept / Owner (Google mark asset) | Server lock is per email; 409 at submit catches hidden handles |
 | B8 | Real Apple/Google SDK wrappers untested (F-B8-2) | Device | Needs client ids and a device |
 | B9 | No list-drafts endpoint (no resume; a killed app leaves a draft holding a quota slot up to 24 h); system picker instead of in-app grid; no reorder UI; half-clipped edge pins | Owner | Contract/design |
 | B10 | `/me` has no sign-in provider; `handle_change_too_soon` has no date; no GET latest export; several profile fields not editable; client https-only website vs server http | Owner | Contract/product |
@@ -149,13 +154,19 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | B14 | Native crash scrub and a real scrubbed event (F-B14-2); Android release build unverified | Device | Needs a DSN / device |
 | B14 | Reported work stays in the loaded feed until refresh (F-B14-3); tests do not go through generated client paths | Accept | Needs a hidden-ids set across providers |
 | GALLERY | Web viewer: custom story controls are not Tab-focusable and show no focus ring (Arrow keys now step chapters) | Later | Rebuild the story chrome, card and pins as focusable buttons with a designed focus ring |
-| GALLERY | Web viewer loads Google's GSI script (`google_sign_in` web plugin registered in the shared build); blocked by the documented CSP | Later | Separate viewer package or conditional plugin registrant |
 | GALLERY | Desktop-width viewer: full-width card, spotlight can sit under the card | Owner | Handoff designs only the phone frame |
 | GALLERY | Story top bar puts the artist on its own line at 390 pt and text scale 1.0 (the S2 120 pt rule; handoff shows one row) | Owner | Visual choice; artist stays readable |
 | GALLERY | Onboarding welcome names Apple on Android ("Apple, Google and email") while the sheet offers Google and email | Owner | Wording |
+| FINALAPP | RTL text direction only per reply (`replies/bidi.dart`); titles, bios and chapter bodies use the ambient LTR direction (M-9 rest) | Later | US launch; needs a per-field direction rule and checks in story, portfolio and create |
+| FINALAPP | Web build ~42 MB: every renderer variant (`chromium/`, `skwasm*`, `wimp*`, `webparagraph/`) and `.symbols` deployed (M-5 rest) | Later | A visitor downloads one bundle (0.9 MB gzip JS + 2-3 MB gzip CanvasKit); pruning variants must be checked per browser first. Real numbers in `app/web/README.md` |
+| FINALAPP | Web viewer emoji/CJK glyphs not in the bundled fonts render as boxes (engine fallback fonts from fonts.gstatic.com are blocked by the CSP) | Owner | Privacy vs glyph coverage; allow fonts.gstatic.com in the CSP or bundle fallback fonts |
+| FINALAPP | Google SDK sign-out runs only when the SSO client was used in this app run (after a restart the SDK may still remember the account) | Accept | google_sign_in throws before initialize(); the next sign-in shows the account chooser |
+| FINALAPP | iOS release check is a script (`scripts/check-release-config.sh`), not an Xcode build phase | Device | Editing the Xcode project without a Mac/Xcode to verify is riskier than the script; add a Run Script phase on the first Mac build |
+| FINALAPP | API `Legal/privacy.md` "Retention" says "backups expire within 30 days of deletion" while the database restore window is 7 days and blob soft delete 7 days (the "Your rights" paragraph and the app copy are right) | Owner (API/counsel) | Out of the app's scope (api/); fix with the counsel text |
 | GALLERY | Contrast measured from rendered pixels flags 11-13 pt labels (anti-aliasing); specified colours pass | Accept | See a11y-audit.md |
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-10-31 FINALAPP (c91fed6..f14ca3c + docs): Flutter 935 pass (was 900), 2 skipped; flutter analyze no issues; gallery 114/114; web viewer release build has no third-party script origin (`scripts/check-web-viewer-origins.sh`); Android release refused without key/real domain, debug and allowed local release build. No api/infra/contract touched, no dotnet run. Pushed.
 - 2026-10-31 GALLERY (2d65b4a..71c2e27 + docs): Flutter 900 pass (was 887), flutter analyze no issues, gallery 64/64 and audit 50/50 (`--tags gallery --run-skipped`), e2e 18/18 on the emulator, web viewer checked with Playwright. No API code touched. Pushed.
 - 2026-10-31 CLEANUP (77fa745..18c5700 + docs): API 1406/1406 (was 1389), Flutter 887 pass (was 878), flutter analyze no issues, dotnet build 0 warnings. Deferred minors consolidated above. Pushed.
 - 2026-10-31 S2 review fixes (399497f..51d7f26): API 1389/1389 (was 1335), Flutter 878 pass, flutter analyze only the 6 integration_test infos. Owner decision open: I-5 illegal_content instant hide (threat-model section 7). Pushed.
