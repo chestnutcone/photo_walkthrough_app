@@ -15,6 +15,7 @@ Templates: `infra/main.bicep` (+ `infra/modules`). Check locally with `scripts/v
 | Static Web App (Free) | web story viewer |
 | ACS Email | sending domain is a parameter |
 | Budget | alert at 2x `monthlyBudget` (plus a forecast notice at 1x) |
+| Defender for Storage (prod only, `malwareScanning`) | about 10 USD a month per storage account plus about 0.15 USD per GB scanned on upload (list prices when written; check current pricing). Capped at `malwareScanningCapGBPerMonth` (default 10 GB, so at most about 11.50 USD a month); past the cap uploads are not scanned and the API fails open |
 
 Decisions worth knowing:
 
@@ -168,3 +169,30 @@ See `docs/security/` for the threat model, checklists and findings.
 - **Blob soft delete (S1b-15).** Deleted blobs and containers are retained for 7 days. Bytes removed by account deletion or a
   take-down are therefore recoverable by an operator (never served) for up to 7 days before Azure purges them; the privacy policy
   states this. An operator restoring a soft-deleted blob of a deleted account must delete it again.
+
+## Settings and behaviour added by S2 (upload and text hardening)
+
+- **Malware scanning (S2-1).** `malwareScanning` (Bicep; default `true` only when `environment == 'prod'`) enables Defender for
+  Storage on-upload malware scanning on the storage account and sets `Malware__Mode=defender` on the app; elsewhere it is `off`.
+  At publish the API seals the upload, then waits up to `Malware__VerdictTimeoutSeconds` (default 20, polling every
+  `Malware__PollMilliseconds`, default 1000) for the index tag `Malware Scanning scan result` on the sealed copy.
+  `Malicious`: the work is blocked before anything decodes it, the sealed copy is kept privately, and an `auto:malware:7` item
+  is queued; admin pages never render that file (review it in an isolated environment if at all). No verdict in time, or a tag
+  read error: the publish continues (fail-open) and a warning with the work id only is logged (`No malware verdict ...`); the
+  publish sweep reads the tag again before it publishes and blocks a late `Malicious`. Watch for that warning: a steady stream
+  means the cap was reached or Defender is off. Reading tags needs tag-read permission: the account key in
+  `storage-connection-string` has it; if the API moves to its managed identity, `Storage Blob Data Contributor` is **not**
+  enough (add `Storage Blob Data Owner` or a custom role with `.../blobs/tags/read`). Local dev and tests use
+  `Malware__Mode=fake`, which flags any file containing the EICAR test string (refused outside Development/Test).
+- **Content type (S2-4).** An upload whose bytes are not the JPEG, PNG or WebP that its PUT declared is refused as `invalid_image`
+  (works at publish, avatars at profile update) and deleted. Every blob the API writes carries `Content-Disposition: inline` (public
+  `works`, `avatars`, images only) or `attachment` (everything private). Blob storage cannot store `X-Content-Type-Options`, so add
+  a Cloudflare **Transform Rule** (Modify Response Header) on `img.<domain>`: set `X-Content-Type-Options: nosniff` (and optionally
+  `Content-Security-Policy: default-src 'none'; img-src 'self'; sandbox`). Direct blob-endpoint URLs (read SAS for exports and
+  admin views) rely on the stored Content-Type and `attachment` disposition.
+- **Report threshold (S2-5).** `Reports__HideAfterDistinctReporters` (default 3) and `Reports__EstablishedAccountDays` (default 7):
+  an `illegal_content` report hides the item at once; other reasons hide it once that many distinct accounts have pending reports
+  on it, or when the reporter's account is older than that many days. Below the threshold reports wait in the queue.
+- **Text (S2-2) and inquiry mail (S2-3).** No settings. User text is cleaned (NFC, invisible and control characters stripped,
+  stacked marks capped, spaces collapsed) before it is stored; rows written earlier are unchanged. Inquiry mails use a fixed
+  template with an "unverified user message" banner and disarmed links.
