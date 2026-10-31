@@ -16,7 +16,7 @@ public class Work
     /// <summary>
     /// Server-owned copy of the upload taken at publish ("originals/sealed/{id}/{random}", S1b-3). Every later reader (variants,
     /// scan check, admin review, evidence, restore, export) uses it. Null for drafts and for rows published before S1b-3, which
-    /// fall back to <see cref="ImageBlob"/> (see docs/security/review-findings.md for the backfill).
+    /// fall back to <see cref="ImageBlob"/> (backfill procedure: docs/deploy.md, "Sealed originals").
     /// </summary>
     public string? SealedOriginalBlob { get; set; }
     /// <summary>Lower-case hex SHA-256 of the sealed bytes, recorded when they were copied.</summary>
