@@ -184,6 +184,31 @@ void main() {
       expect(field.controller!.text.length, 2000);
     });
 
+    testWidgets('message_counts_cleaned_code_points_like_the_server_s2_fix', (
+      t,
+    ) async {
+      // Flags are one grapheme but two code points: the server counts 2 per
+      // flag, so 1001 flags (2002 code points) must not fit.
+      await openContact(t);
+      await t.enterText(key('contact-message'), '\u{1F1F5}\u{1F1F9}' * 1001);
+      await t.pump();
+      final text = t.widget<TextField>(key('contact-message')).controller!.text;
+      expect(text.runes.length, 2000);
+      // Invisible characters the server strips do not use up the limit.
+      await t.enterText(key('contact-message'), '\u200b' * 50 + 'x' * 2000);
+      await t.pump();
+      expect(
+        t
+            .widget<TextField>(key('contact-message'))
+            .controller!
+            .text
+            .runes
+            .where((r) => r == 0x78)
+            .length,
+        2000,
+      );
+    });
+
     testWidgets('guest_must_sign_in_before_the_sheet_opens', (t) async {
       final h = await openContact(t, signedIn: false);
       expect(h.signInLaunches, hasLength(1));

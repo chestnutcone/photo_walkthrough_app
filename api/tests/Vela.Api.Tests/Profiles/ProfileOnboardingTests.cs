@@ -88,6 +88,9 @@ public class ProfileOnboardingTests(PostgresFixture pg) : IDisposable
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
+    [InlineData("\u2800")] // Braille blank (S2 fix M-5)
+    [InlineData("\u0301\u0301")] // marks with no base render as nothing visible
+    [InlineData("\u2800 \U0001D159")]
     public async Task Onboarding_with_empty_display_name_is_refused_without_echoing_input(string name)
     {
         var r = await (await _host.SignIn()).Onboard(ProfileTestHost.UniqueHandle(), name);

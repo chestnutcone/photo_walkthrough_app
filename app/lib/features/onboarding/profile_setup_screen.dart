@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/form_styles.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/text/user_text_formatter.dart';
 import 'avatar_picker.dart';
 import 'handle_availability.dart';
 import 'handle_rules.dart';
@@ -112,9 +113,7 @@ class _ProfileSetupState extends ConsumerState<ProfileSetupScreen> {
           textCapitalization: TextCapitalization.words,
           textInputAction: TextInputAction.next,
           autofillHints: const [AutofillHints.name],
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(maxDisplayNameLength),
-          ],
+          inputFormatters: [UserTextFormatter(maxDisplayNameLength)],
           style: VelaText.sans15,
           decoration: velaInputDecoration(hint: 'Your name'),
           onChanged: notifier.setName,

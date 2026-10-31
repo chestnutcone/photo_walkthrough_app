@@ -5,6 +5,7 @@ import 'package:vela_api_client/vela_api_client.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/text/user_text_formatter.dart';
 import '../../core/theme/tokens.dart';
 import '../story/story_settings.dart';
 import 'contact_rules.dart';
@@ -272,7 +273,7 @@ class _ContactSheetState extends ConsumerState<ContactSheet> {
       minLines: 4,
       maxLines: 8,
       keyboardType: TextInputType.multiline,
-      inputFormatters: [LengthLimitingTextInputFormatter(kInquiryMaxMessage)],
+      inputFormatters: [UserTextFormatter(kInquiryMaxMessage, multiline: true)],
       style: VelaText.sans14,
       decoration: _field(label: 'Message', hint: messageHint(_type)),
     ),

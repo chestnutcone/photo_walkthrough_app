@@ -22,6 +22,13 @@ String cleanUserText(String? raw, {bool multiline = false}) {
   return multiline ? _collapseLines(kept) : _collapseSpaces(kept).trim();
 }
 
+final _visible = RegExp(r'[\p{L}\p{N}\p{S}\p{P}]', unicode: true);
+
+/// True when [text] has a letter, number, symbol or punctuation code point:
+/// a required name must not render blank (M-5). Same as the server's
+/// `TextSanitizer.HasVisible`.
+bool hasVisibleText(String text) => _visible.hasMatch(text);
+
 /// The length the server checks: code points of the cleaned text.
 int userTextLength(String raw, {bool multiline = false}) =>
     cleanUserText(raw, multiline: multiline).runes.length;
@@ -47,30 +54,91 @@ List<int> _filter(List<int> cps, bool multiline) {
     if (mapped < 0) continue;
     if (_is(_stackingMark, mapped)) {
       if (++marks > maxStackedMarks) continue;
-    } else {
+    } else if (!_isMarkTransparent(mapped)) {
+      // ZWJ, ZWNJ and the directional marks neither count nor reset the run,
+      // so they cannot be used to stack unlimited marks on one base (I-4).
       marks = 0;
     }
     out.add(mapped);
+    if (mapped == 0x1F3F4) i = _keepFlagTags(cps, i, out);
+  }
+  return _dropLooseJoiners(out);
+}
+
+/// A joiner was judged against the next input code point; drop the ones whose
+/// next kept neighbour no longer qualifies (it was capped or dropped), so
+/// cleaning is idempotent.
+List<int> _dropLooseJoiners(List<int> cps) {
+  final out = <int>[];
+  for (var i = 0; i < cps.length; i++) {
+    final cp = cps[i];
+    if (cp == 0x200C || cp == 0x200D) {
+      final prev = out.isEmpty ? -1 : out.last;
+      final next = i + 1 < cps.length ? cps[i + 1] : -1;
+      if (!_joinerFits(cp, prev, next)) continue;
+    }
+    out.add(cp);
   }
   return out;
 }
+
+bool _joinerFits(int cp, int prev, int next) {
+  final letters = _isJoinable(prev) && _isJoinable(next);
+  if (cp == 0x200C) return letters;
+  return letters || (_isEmojiPart(prev) && _isEmoji(next));
+}
+
+/// After U+1F3F4: keeps the following tag run only when it is a valid
+/// subdivision flag (2-6 of a-z/0-9 as tags, then the cancel tag); any other
+/// run (hidden ASCII, M-4) is dropped whole. Returns the last index consumed.
+int _keepFlagTags(List<int> cps, int i, List<int> out) {
+  var j = i + 1;
+  while (j < cps.length && cps[j] >= 0xE0020 && cps[j] <= 0xE007F) {
+    j++;
+  }
+  final run = cps.sublist(i + 1, j);
+  final body = run.isEmpty ? const <int>[] : run.sublist(0, run.length - 1);
+  final valid =
+      run.isNotEmpty &&
+      run.last == 0xE007F &&
+      body.length >= 2 &&
+      body.length <= 6 &&
+      body.every(
+        (c) => (c >= 0xE0030 && c <= 0xE0039) || (c >= 0xE0061 && c <= 0xE007A),
+      );
+  if (valid) out.addAll(run);
+  return j - 1;
+}
+
+bool _isMarkTransparent(int cp) =>
+    cp == 0x200C || cp == 0x200D || _isDirectional(cp);
+
+bool _isDirectional(int cp) => cp == 0x200E || cp == 0x200F || cp == 0x061C;
 
 int _map(int cp, int prev, int next, bool multiline) {
   if (cp == 0x0A) return multiline ? 0x0A : 0x20;
   if (_isSpace(cp)) return 0x20;
   if (_is(_control, cp)) return -1;
-  if (cp == 0x115F || cp == 0x1160 || cp == 0x3164 || cp == 0xFFA0) return -1;
-  if (cp == 0x200D) {
-    final emoji = _isEmojiPart(prev) && _isEmoji(next);
-    return emoji || (_isJoinable(prev) && _isJoinable(next)) ? cp : -1;
+  if (_rendersBlank(cp)) return -1;
+  if (cp == 0x200C || cp == 0x200D) {
+    return _joinerFits(cp, prev, next) ? cp : -1;
   }
-  if (cp == 0x200C) return _isJoinable(prev) && _isJoinable(next) ? cp : -1;
-  if (cp >= 0xE0020 && cp <= 0xE007F) {
-    return prev == 0x1F3F4 || (prev >= 0xE0020 && prev <= 0xE007E) ? cp : -1;
-  }
+  // Tag characters are kept only by _keepFlagTags, inside a valid flag.
+  if (cp >= 0xE0020 && cp <= 0xE007F) return -1;
+  if (_isDirectional(cp) && _isDirectional(prev)) return -1;
   if (_is(_format, cp)) return _keepFormat(cp) ? cp : -1;
   return cp;
 }
+
+/// Visible-looking blanks: Hangul fillers, Braille blank, musical null
+/// notehead (M-5).
+bool _rendersBlank(int cp) =>
+    cp == 0x115F ||
+    cp == 0x1160 ||
+    cp == 0x3164 ||
+    cp == 0xFFA0 ||
+    cp == 0x2800 ||
+    cp == 0x1D159;
 
 bool _is(RegExp category, int cp) =>
     cp >= 0 && category.hasMatch(String.fromCharCode(cp));

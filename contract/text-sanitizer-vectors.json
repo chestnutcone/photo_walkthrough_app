@@ -267,6 +267,97 @@
    "multiline": false,
    "expected": "",
    "length": 0
+  },
+  {
+   "name": "caps marks across ZWJ between marks (I-4)",
+   "input": "a\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d",
+   "multiline": false,
+   "expected": "a\u05b0\u05b0\u05b0\u05b0",
+   "length": 5
+  },
+  {
+   "name": "caps marks across LRM between marks (I-4)",
+   "input": "x\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e",
+   "multiline": false,
+   "expected": "x\u0300\u0300\u0300\u0300\u200e",
+   "length": 6
+  },
+  {
+   "name": "caps marks across ZWNJ and RLM between marks",
+   "input": "b\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f",
+   "multiline": false,
+   "expected": "b\u05b0\u05b0\u05b0\u200c\u05b0\u200f",
+   "length": 7
+  },
+  {
+   "name": "keeps Hindi conjunct ZWJ after a virama",
+   "input": "\u0915\u094d\u200d\u0937",
+   "multiline": false,
+   "expected": "\u0915\u094d\u200d\u0937",
+   "length": 4
+  },
+  {
+   "name": "drops a repeated directional mark",
+   "input": "x\u200e\u200e\u200ey",
+   "multiline": false,
+   "expected": "x\u200ey",
+   "length": 3
+  },
+  {
+   "name": "keeps Scotland flag tag sequence",
+   "input": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc73\udb40\udc63\udb40\udc74\udb40\udc7f",
+   "multiline": false,
+   "expected": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc73\udb40\udc63\udb40\udc74\udb40\udc7f",
+   "length": 7
+  },
+  {
+   "name": "drops hidden ASCII in tag characters (M-4)",
+   "input": "hi \ud83c\udff4\udb40\udc69\udb40\udc67\udb40\udc6e\udb40\udc6f\udb40\udc72\udb40\udc65\udb40\udc20\udb40\udc61\udb40\udc6c\udb40\udc6c",
+   "multiline": false,
+   "expected": "hi \ud83c\udff4",
+   "length": 4
+  },
+  {
+   "name": "drops an unterminated tag run",
+   "input": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67",
+   "multiline": false,
+   "expected": "\ud83c\udff4",
+   "length": 1
+  },
+  {
+   "name": "drops a tag run that is too long",
+   "input": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc78\udb40\udc78\udb40\udc7f",
+   "multiline": false,
+   "expected": "\ud83c\udff4",
+   "length": 1
+  },
+  {
+   "name": "drops a tag run with characters outside a-z 0-9",
+   "input": "\ud83c\udff4\udb40\udc47\udb40\udc42\udb40\udc2d\udb40\udc45\udb40\udc7f",
+   "multiline": false,
+   "expected": "\ud83c\udff4",
+   "length": 1
+  },
+  {
+   "name": "drops a lone tag terminator",
+   "input": "\ud83c\udff4\udb40\udc7f",
+   "multiline": false,
+   "expected": "\ud83c\udff4",
+   "length": 1
+  },
+  {
+   "name": "drops Braille blank (M-5)",
+   "input": "\u2800",
+   "multiline": false,
+   "expected": "",
+   "length": 0
+  },
+  {
+   "name": "drops musical null notehead (M-5)",
+   "input": "a\ud834\udd59b",
+   "multiline": false,
+   "expected": "ab",
+   "length": 2
   }
  ]
 }

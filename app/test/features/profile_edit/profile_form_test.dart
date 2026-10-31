@@ -31,6 +31,17 @@ void main() {
     });
   });
 
+  test('blank_looking_display_names_are_refused_s2_fix', () {
+    for (final name in ['\u2800', '\u0301', '\u2800 \u{1D159}', '\u200e']) {
+      expect(
+        validateForm(base.copyWith(displayName: name)).keys,
+        contains('displayName'),
+        reason: name.runes.toString(),
+      );
+    }
+    expect(validateForm(base.copyWith(displayName: '\u2764')), isEmpty);
+  });
+
   test('bio_counts_code_points_like_the_server', () {
     // 280 emoji = 560 UTF-16 units but 280 code points: allowed.
     expect(validateForm(base.copyWith(bio: '😀' * 280)), isEmpty);

@@ -126,7 +126,7 @@ Map<String, String> validateForm(ProfileForm raw, {ProfileForm? original}) {
   final errors = <String, String>{};
   final nameLen = codePointCount(f.displayName);
   // Only invisible characters, such as a Hangul filler, is no name at all.
-  if (nameLen < 1) {
+  if (nameLen < 1 || !hasVisibleText(cleanUserText(f.displayName))) {
     errors['displayName'] = 'Enter a name.';
   }
   if (nameLen > nameMax) {

@@ -11,14 +11,18 @@ namespace Vela.Api.Common;
 /// <item>Lone surrogates are dropped, then the text is normalised to NFC.</item>
 /// <item>Control characters are dropped; tabs and every Unicode space become a plain space (new lines too, unless multi-line).</item>
 /// <item>Invisible format characters are dropped (zero-width space, BOM, word joiner, soft hyphen, bidi controls, Hangul
-/// fillers). Kept: LRM/RLM/ALM, the Arabic number signs, emoji tag sequences after U+1F3F4, ZWJ inside an emoji sequence, and
+/// fillers, Braille blank, musical null notehead). Kept: LRM/RLM/ALM (not repeated), the Arabic number signs, valid subdivision
+/// flag tag sequences after U+1F3F4 (any other tag run is dropped whole), ZWJ inside an emoji sequence, and
 /// ZWJ/ZWNJ between two letters or marks of a script beyond Latin, Greek, Cyrillic and Armenian (Indic conjuncts, Persian).</item>
-/// <item>At most <see cref="MaxStackedMarks"/> non-spacing or enclosing marks in a row (stops zalgo); the rest are dropped.</item>
+/// <item>At most <see cref="MaxStackedMarks"/> non-spacing or enclosing marks in a row (stops zalgo); the rest are dropped.
+/// Joiners and directional marks between marks do not restart the count.</item>
 /// <item>Runs of spaces become one space and the text is trimmed; multi-line text also trims each line and keeps at most one
 /// blank line between paragraphs.</item>
 /// </list>
 /// Length is counted in Unicode code points of the cleaned text (<see cref="Length"/>): Dart and .NET agree on code points,
-/// while grapheme segmentation differs between their Unicode tables.
+/// while grapheme segmentation differs between their Unicode tables. NFC data can still differ for characters newer than the
+/// container's ICU (the app ships Unicode 18 tables in unorm_dart), so a count can differ by one for scripts added recently
+/// (review M-9); the shared vectors cover only stable composites.
 /// </summary>
 public static class TextSanitizer
 {
@@ -30,6 +34,22 @@ public static class TextSanitizer
         var n = 0;
         foreach (var _ in text.EnumerateRunes()) n++;
         return n;
+    }
+
+    /// <summary>
+    /// True when the text has at least one letter, number, symbol or punctuation code point: required names must not render
+    /// blank (review M-5; marks with no base, spaces and kept format characters alone do not count).
+    /// </summary>
+    public static bool HasVisible(string text)
+    {
+        foreach (var r in text.EnumerateRunes())
+        {
+            var c = Rune.GetUnicodeCategory(r);
+            if (c is (>= UnicodeCategory.UppercaseLetter and <= UnicodeCategory.OtherLetter) or (>= UnicodeCategory.DecimalDigitNumber and <= UnicodeCategory.OtherNumber)
+                or (>= UnicodeCategory.ConnectorPunctuation and <= UnicodeCategory.OtherSymbol))
+                return true;
+        }
+        return false;
     }
 
     public static string Clean(string? raw, bool multiline = false)
@@ -72,11 +92,55 @@ public static class TextSanitizer
             {
                 if (++marks > MaxStackedMarks) continue;
             }
-            else marks = 0;
+            // ZWJ, ZWNJ and the directional marks neither count nor reset the run, so they cannot be used to stack
+            // unlimited marks on one base (S2 fix, review I-4).
+            else if (!IsMarkTransparent(mapped)) marks = 0;
             output.Add(mapped);
+            if (mapped == 0x1F3F4) i = KeepFlagTags(cps, i, output);
+        }
+        return DropLooseJoiners(output);
+    }
+
+    /// <summary>
+    /// After U+1F3F4: keeps the following tag run only when it is a valid subdivision flag (2-6 tag characters from a-z/0-9,
+    /// then the cancel tag); any other run (hidden ASCII text, review M-4) is dropped whole. Returns the last index consumed.
+    /// </summary>
+    private static int KeepFlagTags(List<int> cps, int i, List<int> output)
+    {
+        var j = i + 1;
+        while (j < cps.Count && cps[j] is >= 0xE0020 and <= 0xE007F) j++;
+        var run = cps.GetRange(i + 1, j - i - 1);
+        var valid = run.Count is >= 3 and <= 7 && run[^1] == 0xE007F
+            && run.Take(run.Count - 1).All(c => c is (>= 0xE0030 and <= 0xE0039) or (>= 0xE0061 and <= 0xE007A));
+        if (valid) output.AddRange(run);
+        return j - 1;
+    }
+
+    /// <summary>
+    /// A joiner was judged against the next input code point; drop the ones whose next kept neighbour no longer qualifies (it
+    /// was capped or dropped), so cleaning is idempotent.
+    /// </summary>
+    private static List<int> DropLooseJoiners(List<int> cps)
+    {
+        var output = new List<int>(cps.Count);
+        for (var i = 0; i < cps.Count; i++)
+        {
+            var cp = cps[i];
+            if (cp is 0x200C or 0x200D && !JoinerFits(cp, output.Count > 0 ? output[^1] : -1, i + 1 < cps.Count ? cps[i + 1] : -1)) continue;
+            output.Add(cp);
         }
         return output;
     }
+
+    private static bool JoinerFits(int cp, int prev, int next)
+    {
+        var letters = IsJoinableLetter(prev) && IsJoinableLetter(next);
+        return cp == 0x200C ? letters : letters || (IsEmojiPart(prev) && IsEmoji(next));
+    }
+
+    private static bool IsMarkTransparent(int cp) => cp is 0x200C or 0x200D || IsDirectional(cp);
+
+    private static bool IsDirectional(int cp) => cp is 0x200E or 0x200F or 0x061C;
 
     /// <summary>The code point to emit for <paramref name="cp"/>, or -1 to drop it.</summary>
     private static int Map(int cp, int prev, int next, bool multiline)
@@ -85,10 +149,11 @@ public static class TextSanitizer
         if (IsSpace(cp)) return ' ';
         var category = Category(cp);
         if (category == UnicodeCategory.Control) return -1;
-        if (cp is 0x115F or 0x1160 or 0x3164 or 0xFFA0) return -1; // Hangul fillers render blank
-        if (cp == 0x200D) return (IsEmojiPart(prev) && IsEmoji(next)) || (IsJoinableLetter(prev) && IsJoinableLetter(next)) ? cp : -1;
-        if (cp == 0x200C) return IsJoinableLetter(prev) && IsJoinableLetter(next) ? cp : -1;
-        if (cp is >= 0xE0020 and <= 0xE007F) return prev == 0x1F3F4 || prev is >= 0xE0020 and <= 0xE007E ? cp : -1;
+        // Render blank: Hangul fillers, Braille blank, musical null notehead (review M-5).
+        if (cp is 0x115F or 0x1160 or 0x3164 or 0xFFA0 or 0x2800 or 0x1D159) return -1;
+        if (cp is 0x200C or 0x200D) return JoinerFits(cp, prev, next) ? cp : -1;
+        if (cp is >= 0xE0020 and <= 0xE007F) return -1; // kept only by KeepFlagTags, inside a valid flag
+        if (IsDirectional(cp) && IsDirectional(prev)) return -1;
         if (category == UnicodeCategory.Format) return KeepFormat(cp) ? cp : -1;
         return cp;
     }

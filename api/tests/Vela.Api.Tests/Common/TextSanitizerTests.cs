@@ -43,6 +43,7 @@ public class TextSanitizerTests
 
         Assert.Equal(v.Expected, cleaned);
         Assert.Equal(v.Length, TextSanitizer.Length(cleaned));
+        Assert.Equal(cleaned, TextSanitizer.Clean(cleaned, v.Multiline)); // idempotent, as the app's test checks
     }
 
     [Fact]
@@ -55,6 +56,18 @@ public class TextSanitizerTests
         Assert.Equal("ab", TextSanitizer.Clean("a\uD800b"));
         Assert.Equal("ab", TextSanitizer.Clean("a\uDC00b"));
     }
+
+    [Theory]
+    [InlineData("Ada", true)]
+    [InlineData("7", true)]
+    [InlineData("\u2764", true)]
+    [InlineData("!", true)]
+    [InlineData("", false)]
+    [InlineData(" ", false)]
+    [InlineData("\u0301", false)]
+    [InlineData("\u200e", false)]
+    public void Has_visible_needs_a_letter_number_symbol_or_punctuation(string text, bool expected) =>
+        Assert.Equal(expected, TextSanitizer.HasVisible(text));
 
     [Fact]
     public void Null_is_empty() => Assert.Equal("", TextSanitizer.Clean(null));

@@ -41,6 +41,17 @@ void main() {
     expect(cleanUserText('a\uD800b'), 'ab');
   });
 
+  test('hasVisibleText needs a letter, number, symbol or punctuation', () {
+    expect(hasVisibleText('Ada'), isTrue);
+    expect(hasVisibleText('7'), isTrue);
+    expect(hasVisibleText('\u2764'), isTrue);
+    expect(hasVisibleText('!'), isTrue);
+    expect(hasVisibleText(''), isFalse);
+    expect(hasVisibleText(' '), isFalse);
+    expect(hasVisibleText('\u0301'), isFalse);
+    expect(hasVisibleText('\u200e'), isFalse);
+  });
+
   test('null and empty are empty', () {
     expect(cleanUserText(null), '');
     expect(cleanUserText(''), '');

@@ -19,6 +19,7 @@ public static partial class ProfileValidator
     {
         var name = Clean("displayName", value ?? "", multiline: false);
         Length("displayName", name, 1, 60);
+        if (!Common.TextSanitizer.HasVisible(name)) throw ProfileException.Validation("displayName", "must be 1-60 characters.");
         return name;
     }
 

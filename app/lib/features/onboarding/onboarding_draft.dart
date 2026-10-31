@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/text/text_sanitizer.dart';
 import 'avatar_picker.dart';
 import 'handle_availability.dart';
 import 'handle_rules.dart';
@@ -45,9 +46,11 @@ class OnboardingDraft {
   /// The profile step can be submitted: name, a free handle and both
   /// confirmations.
   bool canContinue(HandleCheck check) {
-    final name = displayName.trim();
-    return name.isNotEmpty &&
-        name.length <= maxDisplayNameLength &&
+    // Counted and checked like the server: cleaned code points, and
+    // something visible (S2 fix M-5, M-6).
+    final name = cleanUserText(displayName);
+    return hasVisibleText(name) &&
+        name.runes.length <= maxDisplayNameLength &&
         ageConfirmed &&
         termsAccepted &&
         !handleRejected &&
