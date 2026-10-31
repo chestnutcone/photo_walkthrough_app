@@ -28,6 +28,8 @@ param viewerHost string = ''
 @description('Email sending domain, e.g. mail.vela.example.')
 param emailSendingDomain string
 param emailSenderLocalPart string = 'donotreply'
+@description('Defender for Storage malware scanning on uploads. Defaults to on in prod only (about 10 USD/month plus 0.15 USD/GB scanned; docs/deploy.md).')
+param malwareScanning bool = environment == 'prod'
 @description('Set true after the sending domain shows Verified in the portal.')
 param linkEmailDomain bool = false
 
@@ -115,6 +117,7 @@ module storage 'modules/storage.bicep' = {
     // Both the default hostname and the custom host may serve the viewer.
     viewerOrigins: union(['https://${web.outputs.defaultHostname}'], empty(viewerHost) ? [] : ['https://${viewerHost}'])
     apiPrincipalId: identity.outputs.principalId
+    malwareScanningEnabled: malwareScanning
   }
 }
 
@@ -184,6 +187,7 @@ module app 'modules/containerapp.bicep' = if (deployApp) {
     appAttestAppId: appAttestAppId
     reviewMode: reviewMode
     reviewEmails: reviewEmails
+    malwareMode: malwareScanning ? 'defender' : 'off'
   }
   dependsOn: [postgres, email]
 }

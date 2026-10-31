@@ -41,6 +41,9 @@ param trustedProxyHops int = 1
 // App review
 param reviewMode bool = false
 param reviewEmails array = []
+@description('Malware verdict source for uploads: defender (Defender for Storage index tags) or off.')
+@allowed(['defender', 'off'])
+param malwareMode string = 'defender'
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: logAnalyticsName
@@ -104,6 +107,7 @@ var settings = [
   { name: 'Admin__BanPepper', secretRef: 'ban-pepper' }
   { name: 'ContentSafety__Endpoint', value: contentSafetyEndpoint }
   { name: 'ContentSafety__Key', secretRef: 'content-safety-key' }
+  { name: 'Malware__Mode', value: malwareMode }
   { name: 'Branding__Domain', value: brandingDomain }
   { name: 'Web__ViewerUrl', value: viewerUrl }
   { name: 'Links__AppleTeamId', value: links.appleTeamId }

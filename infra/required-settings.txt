@@ -33,3 +33,4 @@ Auth__ReviewMode
 Auth__ReviewCode
 Auth__ReviewEmails
 Database__MigrateOnStartup
+Malware__Mode

@@ -15,6 +15,10 @@ param viewerOrigins array
 param apiPrincipalId string
 @description('Days after which data-export archives are deleted.')
 param exportRetentionDays int = 7
+@description('Defender for Storage on-upload malware scanning (S2-1). On in prod, off in dev; cost in docs/deploy.md.')
+param malwareScanningEnabled bool = false
+@description('Monthly scan cap in GB; scanning stops (and the API fails open) once it is reached.')
+param malwareScanningCapGBPerMonth int = 10
 
 var publicContainers = ['works', 'avatars']
 var privateContainers = ['originals', 'exports', 'evidence', 'dataprotection']
@@ -118,6 +122,28 @@ resource delegator 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
+// Defender for Storage, malware scanning on upload only (no sensitive-data discovery, no activity monitoring beyond the plan's
+// base). Each new or overwritten blob is scanned and the verdict is written to its index tag "Malware Scanning scan result",
+// which the API reads before decoding a sealed upload (api/src/Vela.Api/Moderation/MalwareCheck.cs). Blobs are never deleted
+// by Defender here: the API blocks the work and keeps the file privately for review.
+resource defender 'Microsoft.Security/defenderForStorageSettings@2022-12-01-preview' = if (malwareScanningEnabled) {
+  name: 'current'
+  scope: account
+  properties: {
+    isEnabled: true
+    overrideSubscriptionLevelSettings: true
+    malwareScanning: {
+      onUpload: {
+        isEnabled: true
+        capGBPerMonth: malwareScanningCapGBPerMonth
+      }
+    }
+    sensitiveDataDiscovery: {
+      isEnabled: false
+    }
+  }
+}
+
 resource vault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
 }
@@ -131,4 +157,5 @@ resource connectionSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
 }
 
 output accountName string = account.name
+output malwareScanningEnabled bool = malwareScanningEnabled
 output blobEndpoint string = account.properties.primaryEndpoints.blob
