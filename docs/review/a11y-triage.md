@@ -16,7 +16,8 @@ to regenerate the file.
 - Story top bar: artist button, Story / Explore items, More and Close are 48 pt (visuals unchanged: the pill is still drawn
   36 pt). When the controls leave the artist less than 120 pt (large font scales, 320 pt screens) the artist moves to its own
   line, and the two pill labels stop growing at 1.3x.
-- Phones are locked to portrait (Android manifest, iPhone `Info.plist`); iPad keeps all orientations.
+- Phones are locked to portrait (Android manifest, iPhone `Info.plist`); iPad keeps all orientations. Android 16+ ignores the
+  lock on large screens (tablets, foldables), so those can still rotate.
 - System Back from a story opened by deep link goes to the feed.
 
 Tests: `test/features/feed/feed_a11y_test.dart` and `test/features/a11y_tap_targets_test.dart` (guideline checks on feed guest and

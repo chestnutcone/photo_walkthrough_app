@@ -128,6 +128,11 @@ setting to `false` and run an `dotnet ef migrations bundle` from a machine allow
 - Data Protection keys are stored unencrypted in the private `dataprotection` container (account key protects them); add a Key Vault
   key wrap if that is not acceptable.
 - Apple sign-in token revocation on account deletion is not implemented.
+- Instant hide on an `illegal_content` report from a fresh account (R-2): owner decision, options in `docs/security/threat-model.md`
+  section 7.
+- Portrait lock: Android's `screenOrientation="portrait"` applies to every Android device and is ignored on large screens
+  (tablets, foldables) from Android 16 with targetSdk 36, so those get landscape anyway; do not promise portrait-only there.
+  Android lint flags the lock (`LockedOrientationActivity`/`DiscouragedApi`) by design.
 
 ## Security settings added at the S1 review gate
 
@@ -174,16 +179,21 @@ See `docs/security/` for the threat model, checklists and findings.
 
 - **Malware scanning (S2-1).** `malwareScanning` (Bicep; default `true` only when `environment == 'prod'`) enables Defender for
   Storage on-upload malware scanning on the storage account and sets `Malware__Mode=defender` on the app; elsewhere it is `off`.
-  At publish the API seals the upload, then waits up to `Malware__VerdictTimeoutSeconds` (default 20, polling every
+  At publish the API seals the upload, then waits up to `Malware__VerdictTimeoutSeconds` (default 10, polling every
   `Malware__PollMilliseconds`, default 1000) for the index tag `Malware Scanning scan result` on the sealed copy.
   `Malicious`: the work is blocked before anything decodes it, the sealed copy is kept privately, and an `auto:malware:7` item
-  is queued; admin pages never render that file (review it in an isolated environment if at all). No verdict in time, or a tag
-  read error: the publish continues (fail-open) and a warning with the work id only is logged (`No malware verdict ...`); the
+  is queued in the same transaction. No admin page shows an image of a work that ever had a malware flag, whichever queue item
+  is open (a DMCA notice or user report on the same work included), an evidence hold does not copy its original, and Restore is
+  refused unless a rescan now reports the file clean (review it in an isolated environment if at all). No verdict in time, a
+  scan that finished without one (`Error`, `Not scanned`: no wait), or a tag read error: the publish continues (fail-open) and a warning with the work id only is logged (`No malware verdict ...`); the
   publish sweep reads the tag again before it publishes and blocks a late `Malicious`. Watch for that warning: a steady stream
   means the cap was reached or Defender is off. Reading tags needs tag-read permission: the account key in
   `storage-connection-string` has it; if the API moves to its managed identity, `Storage Blob Data Contributor` is **not**
   enough (add `Storage Blob Data Owner` or a custom role with `.../blobs/tags/read`). Local dev and tests use
-  `Malware__Mode=fake`, which flags any file containing the EICAR test string (refused outside Development/Test).
+  `Malware__Mode=fake`, which flags any file containing the EICAR test string (refused outside Development/Test). Keep the wait
+  well under the app's 20 s default receive timeout (publish itself allows 45 s); a publish retried after a lost answer gets the
+  work as it is now (200), and an aborted request stops waiting. A verdict that arrives after the publish sweep has published
+  is not acted on.
 - **Content type (S2-4).** An upload whose bytes are not the JPEG, PNG or WebP that its PUT declared is refused as `invalid_image`
   (works at publish, avatars at profile update) and deleted. Every blob the API writes carries `Content-Disposition: inline` (public
   `works`, `avatars`, images only) or `attachment` (everything private). Blob storage cannot store `X-Content-Type-Options`, so add
@@ -192,7 +202,9 @@ See `docs/security/` for the threat model, checklists and findings.
   admin views) rely on the stored Content-Type and `attachment` disposition.
 - **Report threshold (S2-5).** `Reports__HideAfterDistinctReporters` (default 3) and `Reports__EstablishedAccountDays` (default 7):
   an `illegal_content` report hides the item at once; other reasons hide it once that many distinct accounts have pending reports
-  on it, or when the reporter's account is older than that many days. Below the threshold reports wait in the queue.
+  on it, or when the reporter's account is older than that many days. Reporters suspended or deleted since do not count. Below
+  the threshold reports wait in the queue. Because the reason is user-chosen, one fresh account can still hide a story with
+  `illegal_content` (owner decision, `docs/security/threat-model.md` section 7).
 - **Text (S2-2) and inquiry mail (S2-3).** No settings. User text is cleaned (NFC, invisible and control characters stripped,
   stacked marks capped, spaces collapsed) before it is stored; rows written earlier are unchanged. Inquiry mails use a fixed
   template with an "unverified user message" banner and disarmed links.
