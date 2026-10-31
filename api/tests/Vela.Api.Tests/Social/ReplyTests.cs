@@ -83,18 +83,27 @@ public class ReplyTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
-    public async Task Control_characters_other_than_newline_are_refused_and_newline_is_kept()
+    public async Task Control_characters_are_stripped_and_newlines_kept_s2()
     {
         var h = Host(); var owner = await User(h); var fan = await User(h); var work = await SeedWork(h, owner.Id);
+        var cases = new (string In, string Out)[]
+        {
+            ("a\u0000b", "ab"), ("a\tb", "a b"), ("a\rb", "a\nb"), ("a\u001bb", "ab"), ("a\u0085b", "a b"),
+            ("x\u200By\uFEFF", "xy"), ("  line one\n\n\n\nline  two  ", "line one\n\nline two"),
+        };
 
-        foreach (var bad in new[] { "a\u0000b", "a\tb", "a\rb", "a\u001bb", "a\u0085b" })
+        foreach (var (input, expected) in cases)
+        {
+            h.Clock.Advance(TimeSpan.FromSeconds(1));
+            var ok = await fan.Post(Url(work), new { body = input });
+            Assert.Equal(HttpStatusCode.Created, ok.Status);
+            Assert.Equal(expected, ok.Data.GetProperty("body").GetString());
+            Assert.Equal(expected, (await Stored(h, ok.Data.GetProperty("id").GetGuid())).Text);
+        }
+        var lone = await fan.Post(Url(work), "{\"body\":\"lone \\ud800 surrogate\"}");
+        Assert.Equal("validation_failed", lone.ErrorCode); // the JSON reader refuses invalid UTF-16 before the sanitizer sees it
+        foreach (var bad in new[] { "\u200B\u200D", "a\u202Eb", "a\u2066b" })
             Assert.Equal("validation_failed", (await fan.Post(Url(work), new { body = bad })).ErrorCode);
-        Assert.Equal("validation_failed", (await fan.Post(Url(work), "{\"body\":\"lone \\ud800 surrogate\"}")).ErrorCode);
-        var ok = await fan.Post(Url(work), new { body = "  line one\n\nline  two  " });
-
-        Assert.Equal(HttpStatusCode.Created, ok.Status);
-        Assert.Equal("line one\n\nline  two", ok.Data.GetProperty("body").GetString());
-        Assert.Equal("line one\n\nline  two", (await Stored(h, ok.Data.GetProperty("id").GetGuid())).Text);
     }
 
     [Fact]

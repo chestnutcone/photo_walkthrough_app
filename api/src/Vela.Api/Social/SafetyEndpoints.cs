@@ -67,8 +67,10 @@ public static class SafetyEndpoints
         string? note = null;
         if (root.TryGetProperty("note", out var n) && n.ValueKind != JsonValueKind.Null)
         {
-            if (n.ValueKind != JsonValueKind.String || n.GetString()!.Length > MaxNote) throw Invalid($"note must be at most {MaxNote} characters.");
-            note = n.GetString();
+            if (n.ValueKind != JsonValueKind.String || Common.UnsafeText.ContainsDisallowed(n.GetString())) throw Invalid($"note must be text of at most {MaxNote} characters.");
+            var clean = Common.TextSanitizer.Clean(n.GetString(), multiline: true); // S2-2
+            if (Common.TextSanitizer.Length(clean) > MaxNote) throw Invalid($"note must be at most {MaxNote} characters.");
+            note = clean.Length == 0 ? null : clean;
         }
         return (type, id, reason, note);
     }

@@ -14,7 +14,7 @@ public sealed class WorkService(
 
     public async Task<WorkDto> UpdateAsync(Guid userId, Guid workId, UpdateWorkRequest req)
     {
-        WorkValidator.Validate(req);
+        req = WorkValidator.Validate(req);
         await using var tx = await db.Database.BeginTransactionAsync();
         var work = await LockOwnedAsync(userId, workId);
         if (work.Status != WorkStatus.Draft) throw NotEditable();

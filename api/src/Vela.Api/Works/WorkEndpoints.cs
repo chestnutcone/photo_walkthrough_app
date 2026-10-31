@@ -14,7 +14,6 @@ public sealed record CreateDraftResult(Guid WorkId, string UploadUrl, DateTimeOf
 public static class WorkEndpoints
 {
     public static readonly TimeSpan UploadUrlLifetime = TimeSpan.FromMinutes(15);
-    private const int MaxTitleLength = 200;
     private static readonly string[] ContentTypes = ["image/jpeg", "image/png", "image/webp"];
 
     public static IServiceCollection AddWorks(this IServiceCollection services) =>
@@ -84,6 +83,7 @@ public static class WorkEndpoints
             throw ProfileException.Validation("contentType", "must be image/jpeg, image/png or image/webp.");
         if (!body.TryGetProperty("title", out var t) || t.ValueKind == JsonValueKind.Null) return null;
         if (t.ValueKind != JsonValueKind.String) throw ProfileException.Validation("title", "must be text.");
-        return t.GetString()!.Length <= MaxTitleLength ? t.GetString() : throw ProfileException.Validation("title", $"allows at most {MaxTitleLength} characters.");
+        try { return WorkValidator.DraftTitle(t.GetString()); }
+        catch (WorkException e) { throw new ProfileException(e.Status, e.Code, e.Message); }
     }
 }

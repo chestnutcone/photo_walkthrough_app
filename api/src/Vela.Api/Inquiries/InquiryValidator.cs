@@ -1,5 +1,3 @@
-using System.Buffers;
-using System.Text;
 using System.Text.RegularExpressions;
 using Vela.Api.Social;
 
@@ -35,18 +33,9 @@ public static partial class InquiryValidator
     private static string ValidMessage(string? raw)
     {
         if (raw is null) throw Invalid("message must be text.");
-        var text = raw.Trim();
-        var count = 0;
-        for (var i = 0; i < text.Length;)
-        {
-            if (Rune.DecodeFromUtf16(text.AsSpan(i), out var rune, out var used) != OperationStatus.Done)
-                throw Invalid("message must be valid text.");
-            if (Rune.IsControl(rune) && rune.Value != '\n') throw Invalid("message must not contain control characters other than new lines.");
-            if (Common.UnsafeText.IsDisallowed(rune.Value)) throw Invalid("message must not contain text-direction control characters.");
-            i += used;
-            count++;
-        }
-        return count is >= 1 and <= MaxMessageLength ? text : throw Invalid($"message must be 1 to {MaxMessageLength} characters.");
+        if (Common.UnsafeText.ContainsDisallowed(raw)) throw Invalid("message must not contain text-direction control characters.");
+        var text = Common.TextSanitizer.Clean(raw, multiline: true); // S2-2
+        return Common.TextSanitizer.Length(text) is >= 1 and <= MaxMessageLength ? text : throw Invalid($"message must be 1 to {MaxMessageLength} characters.");
     }
 
     public static SafetyException Invalid(string message) => new(StatusCodes.Status400BadRequest, "validation_failed", message);

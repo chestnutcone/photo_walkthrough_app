@@ -121,7 +121,7 @@ public class InquiryTests(PostgresFixture pg) : IDisposable
             (Body(email: "no-at-sign"), "email"), (Body(email: "a@b"), "email"), (Body(email: "a b@c.test"), "email"),
             (Body(email: "x@" + new string('d', 250) + ".test"), "email"), (Body(email: "a@b.test\r\nBcc: x@y.test"), "email"),
             (Body(message: ""), "message"), (Body(message: "  \n\t "), "message"), (Body(message: new string('m', 2001)), "message"),
-            (Body(message: "bad\u0007bell"), "message"), (Body(message: "tab\there"), "message"),
+            (Body(message: "\u200B\u0007"), "message"), (Body(message: "rtl\u202Eoverride"), "message"),
             (new { type = "Commission", email = "a@b.test" }, "message"), ("not json", "body"),
         };
 

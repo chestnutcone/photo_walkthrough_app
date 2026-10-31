@@ -108,14 +108,45 @@ public class WorkTests(PostgresFixture pg) : IDisposable
         { "title", Update(title: "   ") },
         { "intro", Update(intro: new string('a', 1001)) },
         { "altText", Update(altText: new string('a', 301)) },
-        { "title", Update(title: "bad\u0007title") },
+        { "title", Update(title: "\u200B\u200D\uFEFF") }, // S2-2: only invisible characters is empty once cleaned
+        { "title", Update(title: "bad\u202Etitle") },
         { "title", Update(chapters: [Chapter(title: "")]) },
         { "title", Update(chapters: [Chapter(title: new string('a', 121))]) },
         { "body", Update(chapters: [Chapter(body: new string('a', 1001))]) },
         { "meta", Update(chapters: [Chapter(meta: new string('a', 81))]) },
         { "altText", Update(chapters: [Chapter(altText: new string('a', 301))]) },
-        { "body", Update(chapters: [Chapter(body: "nul\0byte")]) },
     };
+
+    [Fact]
+    public async Task Update_stores_cleaned_text_s2()
+    {
+        var u = await Artist();
+        var id = await Draft(_host, u);
+        var zalgo = "Z" + new string('\u0336', 30);
+
+        var r = await u.Put($"/v1/works/{id}", Update(title: "  bad\u0007ti\u200Btle  ", intro: "a\r\n\r\n\r\nb",
+            chapters: [Chapter(title: zalgo, body: "nul\0byte\n\n\n\nnext", meta: "e\u0301t\u00E9")]));
+
+        Assert.Equal(HttpStatusCode.OK, r.Status);
+        await using var db = _host.Db();
+        var w = await db.Works.SingleAsync(x => x.Id == id);
+        Assert.Equal(("badtitle", "a\n\nb"), (w.Title, w.Intro));
+        var c = await db.Chapters.SingleAsync(x => x.WorkId == id);
+        Assert.Equal("Z" + new string('\u0336', Vela.Api.Common.TextSanitizer.MaxStackedMarks), c.Title);
+        Assert.Equal("nulbyte\n\nnext", c.Body);
+        Assert.Equal("\u00E9t\u00E9", c.Meta);
+    }
+
+    [Fact]
+    public async Task Title_limit_counts_code_points_so_emoji_fit_s2()
+    {
+        var u = await Artist();
+        var id = await Draft(_host, u);
+
+        var r = await u.Put($"/v1/works/{id}", Update(title: string.Concat(Enumerable.Repeat("\U0001F3A8", Vela.Api.Works.WorkValidator.MaxTitle))));
+
+        Assert.Equal(HttpStatusCode.OK, r.Status);
+    }
 
     [Theory]
     [MemberData(nameof(BadUpdates))]

@@ -54,7 +54,7 @@ public sealed class ProfileService(VelaDbContext db, ArtistQueries artists, Work
         var profile = await db.Profiles.SingleOrDefaultAsync(p => p.UserId == userId);
         if (profile is null || user.AgeConfirmedAt is null || user.TermsAcceptedAt is null)
             throw new ProfileException(409, "onboarding_required", "Finish onboarding first.");
-        ProfileValidator.ValidateUpdate(req);
+        req = ProfileValidator.ValidateUpdate(req);
         await ApplyHandleAsync(profile, req.Handle);
         Apply(profile, req);
         if (req.AvatarUploaded) profile.AvatarBlob = await GenerateAvatarAsync(userId);
@@ -95,7 +95,7 @@ public sealed class ProfileService(VelaDbContext db, ArtistQueries artists, Work
 
     private static void Apply(Profile p, UpdateProfileRequest r)
     {
-        p.DisplayName = r.DisplayName is null ? p.DisplayName : r.DisplayName.Trim();
+        p.DisplayName = r.DisplayName ?? p.DisplayName;
         p.Bio = r.Bio ?? p.Bio;
         p.City = r.City ?? p.City;
         p.Discipline = r.Discipline ?? p.Discipline;

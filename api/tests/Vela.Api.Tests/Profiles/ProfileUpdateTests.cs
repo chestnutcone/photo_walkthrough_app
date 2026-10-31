@@ -91,7 +91,8 @@ public class ProfileUpdateTests(PostgresFixture pg) : IDisposable
     [InlineData("publicEmail", "nope")]
     [InlineData("publicEmail", "a b@c.test")]
     [InlineData("availability", 61)]
-    [InlineData("bio", "bad\u0007control")]
+    [InlineData("bio", "bad\u202Econtrol")]
+    [InlineData("displayName", "\u3164\u200B")]
     public async Task Invalid_field_is_refused_naming_the_field(string field, object value)
     {
         var (u, _) = await Onboarded();
@@ -127,6 +128,23 @@ public class ProfileUpdateTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
+    public async Task Hostile_name_and_bio_are_stored_cleaned_s2()
+    {
+        var (u, _) = await Onboarded();
+
+        var r = await u.Patch("/v1/me/profile", new
+        {
+            displayName = "  Ad\u200Dmin\u00A0\u00A0Team  ", bio = "q" + new string('\u0301', 20) + "\r\n\r\n\r\nhi <b>x</b>", city = "Lisbo\u0061\u0303",
+        });
+
+        Assert.Equal(HttpStatusCode.OK, r.Status);
+        var p = r.Data.GetProperty("profile");
+        Assert.Equal("Admin Team", p.GetProperty("displayName").GetString());
+        Assert.Equal("q" + new string('\u0301', 4) + "\n\nhi <b>x</b>", p.GetProperty("bio").GetString());
+        Assert.Equal("Lisbo\u00E3", p.GetProperty("city").GetString());
+    }
+
+    [Fact]
     public async Task Services_and_shows_are_stored_and_limits_enforced()
     {
         var (u, _) = await Onboarded();
@@ -148,7 +166,7 @@ public class ProfileUpdateTests(PostgresFixture pg) : IDisposable
         var longDesc = await u.Patch("/v1/me/profile", new { services = new[] { new { title = "t", description = new string('x', 301), price = "1" } } });
         Assert.Equal("validation_failed", longDesc.ErrorCode);
         var ctrl = await u.Patch("/v1/me/profile", new { services = new[] { new { title = "t", description = "a\u0000b", price = "1" } } });
-        Assert.Equal("validation_failed", ctrl.ErrorCode);
+        Assert.Equal("ab", ctrl.Data.GetProperty("profile").GetProperty("services")[0].GetProperty("description").GetString()); // S2-2: stripped
     }
 
     [Fact]
