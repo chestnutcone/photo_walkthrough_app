@@ -11,6 +11,10 @@ public sealed class ReportOptions
 {
     public const string Section = "Reports";
     public int MaxPerUserPerDay { get; set; } = 10;
+    /// <summary>Distinct reporters (any account age) whose pending reports hide an item (S2 ruling).</summary>
+    public int HideAfterDistinctReporters { get; set; } = 3;
+    /// <summary>A reporter whose account is older than this hides the item with one report (S2 ruling).</summary>
+    public int EstablishedAccountDays { get; set; } = 7;
 }
 
 public interface IReportService
@@ -23,6 +27,8 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
     public const string SourceUser = "user_report";
     public const string SourceAutoFlag = "auto_flag";
     public const string Pending = "pending";
+    /// <summary>The report reason that hides the item at once, whoever reports it.</summary>
+    public const string IllegalContent = "illegal_content";
 
     public async Task CreateAsync(Guid reporterId, string targetType, Guid targetId, string reason, string? note)
     {
@@ -47,8 +53,10 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
         try
         {
             await using var tx = await db.Database.BeginTransactionAsync();
+            // One report decision at a time per target, so parallel reporters cannot all count below the threshold.
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended('report:' || {targetId.ToString()}, 0))");
             await db.SaveChangesAsync();
-            await HideAsync(targetType, targetId);
+            if (await ShouldHideAsync(reporterId, targetType, targetId, reason, now)) await HideAsync(targetType, targetId);
             await tx.CommitAsync();
             VelaMetrics.ReportCreated(targetType);
         }
@@ -93,6 +101,23 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
                 .Select(u => (Guid?)u.Id).FirstOrDefaultAsync(),
             _ => null,
         };
+    }
+
+    /// <summary>
+    /// S2 ruling (report brigading, R-2): an illegal-content report hides at once; any other reason hides once
+    /// <see cref="ReportOptions.HideAfterDistinctReporters"/> distinct accounts have pending reports on the item, or the reporter's
+    /// account is older than <see cref="ReportOptions.EstablishedAccountDays"/>. Below that the report only waits in the queue.
+    /// </summary>
+    private async Task<bool> ShouldHideAsync(Guid reporterId, string targetType, Guid targetId, string reason, DateTimeOffset now)
+    {
+        if (reason == IllegalContent) return true;
+        var o = options.Value;
+        var establishedBefore = now - TimeSpan.FromDays(o.EstablishedAccountDays);
+        if (await db.Users.AnyAsync(u => u.Id == reporterId && u.CreatedAt < establishedBefore)) return true;
+        var reporters = await db.Reports
+            .Where(r => r.TargetType == targetType && r.TargetId == targetId && r.Source == SourceUser && r.Status == Pending && r.ReporterId != null)
+            .Select(r => r.ReporterId).Distinct().CountAsync();
+        return reporters >= o.HideAfterDistinctReporters;
     }
 
     private async Task HideAsync(string targetType, Guid id)

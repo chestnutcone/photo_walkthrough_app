@@ -192,7 +192,7 @@ public class ModerationActionTests(PostgresFixture pg) : IAsyncLifetime
         var autoFlag = await _s.AutoFlagId("reply", auto);
         Assert.Equal(HiddenBy.Auto, (await _s.LoadReply(auto)).HiddenBy);
         var reported = await _s.ReplyOn(fan, work, "meh");
-        var reportRow = await _s.Report(reporter, "reply", reported);
+        var reportRow = await _s.Report(reporter, "reply", reported, "illegal_content"); // S2: hides with one report
         Assert.Equal(HiddenBy.Report, (await _s.LoadReply(reported)).HiddenBy);
         var byAdmin = await _s.ReplyOn(fan, work, "rude");
         var third = await _s.NewUser();
@@ -212,7 +212,7 @@ public class ModerationActionTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Restoring_a_report_hidden_work_lifts_the_hide_without_republishing()
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work);
+        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content"); // S2: hides with one report
         Assert.True((await WorkTestKit.Load(_s.Host, work)).ReportHidden);
         RecordingHandler.Seen.Clear();
 

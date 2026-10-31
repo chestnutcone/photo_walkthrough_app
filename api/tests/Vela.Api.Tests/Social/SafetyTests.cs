@@ -45,6 +45,12 @@ public class SafetyTests(PostgresFixture pg) : IDisposable
     private static object Rep(string type, Guid id, string reason = "spam", string? note = null) =>
         new { targetType = type, targetId = id, reason, note };
 
+    private static async Task Established(ProfileTestHost h, Guid userId)
+    {
+        await using var db = h.Db();
+        await db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.CreatedAt, ProfileTestHost.Now.AddDays(-30)));
+    }
+
     private static async Task Follow(ProfileTestHost h, Guid a, Guid b)
     {
         await using var db = h.Db();
@@ -314,6 +320,7 @@ public class SafetyTests(PostgresFixture pg) : IDisposable
     {
         var h = Host(); var artist = await User(h); var author = await User(h); var rep = await User(h);
         var rid = await SeedReply(h, await SeedWork(h, artist.Id), author.Id);
+        await Established(h, rep.Id); // S2: one report hides only from an account older than 7 days
 
         var r = await rep.Post("/v1/reports", Rep("reply", rid, "harassment", "mean"));
 
@@ -345,6 +352,7 @@ public class SafetyTests(PostgresFixture pg) : IDisposable
     {
         var h = Host(); var artist = await User(h); var rep = await User(h);
         var wid = await SeedWork(h, artist.Id);
+        await Established(h, rep.Id); // S2: one report hides only from an account older than 7 days
 
         Assert.Equal(HttpStatusCode.OK, (await rep.Post("/v1/reports", Rep("work", wid, "copyright"))).Status);
         Assert.Equal(HttpStatusCode.OK, (await rep.Post("/v1/reports", Rep("user", artist.Id))).Status);

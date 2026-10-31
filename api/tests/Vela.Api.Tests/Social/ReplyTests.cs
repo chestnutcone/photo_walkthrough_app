@@ -187,7 +187,7 @@ public class ReplyTests(PostgresFixture pg) : IDisposable
         var work = await SeedWork(h, owner.Id);
         var id = (await author.Post(Url(work), new { body = "borderline" })).Data.GetProperty("id").GetGuid();
 
-        var report = await reporter.Post("/v1/reports", new { targetType = "reply", targetId = id, reason = "spam" });
+        var report = await reporter.Post("/v1/reports", new { targetType = "reply", targetId = id, reason = "illegal_content" }); // S2: hides with one report
 
         Assert.Equal(HttpStatusCode.OK, report.Status);
         Assert.Empty(Bodies(await other.Get(Url(work))));
