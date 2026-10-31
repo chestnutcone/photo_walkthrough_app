@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Vela.Api.Auth;
+using Vela.Api.Common;
 
 namespace Vela.Api.Social;
 
@@ -18,7 +19,7 @@ public static class SafetyEndpoints
     {
         app.MapPut("/v1/blocks/{userId}", (string userId, ICurrentUser me, IBlockService svc, HttpContext ctx) =>
             Run(ctx, async () => { await svc.BlockAsync(me.UserId!.Value, Target(userId)); return Common.Results.Ok<object?>(null); }))
-            .RequireAuthorization().WithName("block");
+            .RequireAuthorization().RequireOnboarded().WithName("block");
 
         app.MapDelete("/v1/blocks/{userId}", (string userId, ICurrentUser me, IBlockService svc, HttpContext ctx) =>
             Run(ctx, async () => { await svc.UnblockAsync(me.UserId!.Value, Target(userId)); return Common.Results.Ok<object?>(null); }))
@@ -30,7 +31,7 @@ public static class SafetyEndpoints
                 var (type, id, reason, note) = await ParseReportAsync(ctx);
                 await svc.CreateAsync(me.UserId!.Value, type, id, reason, note);
                 return Common.Results.Ok<object?>(null);
-            })).RequireAuthorization().WithName("report");
+            })).RequireAuthorization().RequireOnboarded().WithName("report");
 
         return app;
     }

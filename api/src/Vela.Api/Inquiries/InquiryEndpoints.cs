@@ -26,7 +26,7 @@ public static class InquiryEndpoints
                 if (e.RetryAfter is { } wait) ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(wait.TotalSeconds)).ToString();
                 return Common.Results.Fail(e.Status, e.Code, e.Message);
             }
-        }).RequireAuthorization().RequirePublicFormLimit().WithName("sendInquiry");
+        }).RequireAuthorization().RequirePublicFormLimit().RequireOnboarded().WithName("sendInquiry");
         return app;
     }
 

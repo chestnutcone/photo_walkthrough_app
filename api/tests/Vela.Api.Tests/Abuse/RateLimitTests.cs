@@ -145,7 +145,7 @@ public class RateLimitTests(PostgresFixture pg) : IDisposable
         var h = await NewHost();
         var first = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
         var second = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
-        var buyer = await h.SignIn();
+        var buyer = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
         var ip = NewIp();
         var body = System.Text.Json.JsonSerializer.Serialize(new { type = "Commission", email = "b@example.test", message = "hi" });
         // The inquiry service allows 3 per sender per artist, so spread five sends over two artists.
