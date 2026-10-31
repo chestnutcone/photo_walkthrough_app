@@ -18,7 +18,7 @@ void main() {
       // TODO
     });
 
-    // Trimmed; no control characters other than new lines
+    // Cleaned by the shared text sanitizer (multi-line), then 1 to 2000 code points; bidirectional override characters are refused
     // String message
     test('to test the property `message`', () async {
       // TODO

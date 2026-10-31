@@ -791,7 +791,7 @@ paths:
       operationId: addReply
       tags: [Replies]
       summary: "Reply to a chapter"
-      description: "Body is trimmed, 1 to 1000 characters; control characters other than newline are refused. A reply the safety scan flags is still returned to its author, with hiddenForOthers true."
+      description: "Body is cleaned by the shared text sanitizer (contract/text-sanitizer-vectors.json: NFC, control and invisible characters stripped, at most 4 stacked marks, spaces collapsed, at most one blank line) and must then be 1 to 1000 code points; bidirectional override characters are refused. A reply the safety scan flags is still returned to its author, with hiddenForOthers true."
       security:
         - bearerAuth: []
       parameters:
@@ -971,6 +971,7 @@ paths:
       operationId: report
       tags: [Safety]
       summary: "Report a work or reply"
+      description: "An illegal_content report hides the item at once. Any other reason hides it only once 3 distinct accounts have pending reports on it, or when the reporter's account is older than 7 days; until then it waits for review. The note is cleaned by the shared text sanitizer."
       security:
         - bearerAuth: []
       requestBody:
@@ -1628,7 +1629,7 @@ components:
       properties:
         type: {type: string, enum: [Commission, Buy a print, Licensing, Collaboration, Just saying hi]}
         email: {type: string, format: email, maxLength: 254, description: Sender's reply email}
-        message: {type: string, minLength: 1, maxLength: 2000, description: "Trimmed; no control characters other than new lines"}
+        message: {type: string, minLength: 1, maxLength: 2000, description: "Cleaned by the shared text sanitizer (multi-line), then 1 to 2000 code points; bidirectional override characters are refused"}
         workId: {type: string, format: uuid, nullable: true}
     CreateDraftRequest:
       type: object

@@ -19,7 +19,7 @@ Method | HTTP request | Description
 
 Reply to a chapter
 
-Body is trimmed, 1 to 1000 characters; control characters other than newline are refused. A reply the safety scan flags is still returned to its author, with hiddenForOthers true.
+Body is cleaned by the shared text sanitizer (contract/text-sanitizer-vectors.json: NFC, control and invisible characters stripped, at most 4 stacked marks, spaces collapsed, at most one blank line) and must then be 1 to 1000 code points; bidirectional override characters are refused. A reply the safety scan flags is still returned to its author, with hiddenForOthers true.
 
 ### Example
 ```dart

@@ -96,7 +96,7 @@ _responseData = rawData == null ? null : deserialize<Envelope, Envelope>(rawData
   }
 
   /// Report a work or reply
-  /// 
+  /// An illegal_content report hides the item at once. Any other reason hides it only once 3 distinct accounts have pending reports on it, or when the reporter&#39;s account is older than 7 days; until then it waits for review. The note is cleaned by the shared text sanitizer.
   ///
   /// Parameters:
   /// * [reportRequest] 

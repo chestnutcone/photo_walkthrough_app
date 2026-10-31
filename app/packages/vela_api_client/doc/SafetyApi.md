@@ -60,6 +60,8 @@ Name | Type | Description  | Notes
 
 Report a work or reply
 
+An illegal_content report hides the item at once. Any other reason hides it only once 3 distinct accounts have pending reports on it, or when the reporter's account is older than 7 days; until then it waits for review. The note is cleaned by the shared text sanitizer.
+
 ### Example
 ```dart
 import 'package:vela_api_client/api.dart';

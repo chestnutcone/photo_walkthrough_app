@@ -52,7 +52,7 @@ class SendInquiryRequest {
 
 
 
-      /// Trimmed; no control characters other than new lines
+      /// Cleaned by the shared text sanitizer (multi-line), then 1 to 2000 code points; bidirectional override characters are refused
   @JsonKey(
     
     name: r'message',
