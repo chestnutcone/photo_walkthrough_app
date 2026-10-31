@@ -140,8 +140,8 @@ public class ModerationQueryTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal([b.Id], (await _s.Mod(m => m.FindUsersAsync("quincy", null))).Items.Select(u => u.UserId));
         Assert.Equal([a.Id], (await _s.Mod(m => m.FindUsersAsync(a.Id.ToString(), null))).Items.Select(u => u.UserId));
         Assert.Equal([c.Id], (await _s.Mod(m => m.FindUsersAsync("100%", null))).Items.Select(u => u.UserId));
-        Assert.Empty((await _s.Mod(m => m.FindUsersAsync("%", null))).Items.Where(u => u.UserId != c.Id));
-        Assert.Empty((await _s.Mod(m => m.FindUsersAsync("zeta_", null))).Items.Where(u => u.UserId == c.Id));
+        Assert.All((await _s.Mod(m => m.FindUsersAsync("%", null))).Items, u => Assert.Equal(c.Id, u.UserId));
+        Assert.DoesNotContain((await _s.Mod(m => m.FindUsersAsync("zeta_", null))).Items, u => u.UserId == c.Id);
         Assert.Empty((await _s.Mod(m => m.FindUsersAsync("", null))).Items);
     }
 

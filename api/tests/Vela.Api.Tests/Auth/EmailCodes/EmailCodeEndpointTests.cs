@@ -268,7 +268,7 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
     public async Task Console_sender_prints_only_the_code_never_the_address()
     {
         var output = new StringWriter();
-        new ConsoleEmailSender(output).SendAsync("secret@example.test", "Subject", "Your code is 123456. It expires in 10 minutes.");
+        await new ConsoleEmailSender(output).SendAsync("secret@example.test", "Subject", "Your code is 123456. It expires in 10 minutes.");
         Assert.Contains("123456", output.ToString());
         Assert.DoesNotContain("secret", output.ToString());
         Assert.DoesNotContain("example.test", output.ToString());
@@ -300,7 +300,7 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
         Assert.Equal(TimeSpan.FromSeconds(3600), r.Headers.RetryAfter?.Delta);
     }
 
-    private sealed class CaptureLogger(List<string> sink, LogLevel[] levels) : ILogger
+    private sealed class CaptureLogger(List<string> sink) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
         public bool IsEnabled(LogLevel logLevel) => true;
@@ -312,7 +312,7 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
 
     private sealed class CaptureProvider(List<string> sink) : ILoggerProvider
     {
-        public ILogger CreateLogger(string categoryName) => new CaptureLogger(sink, []);
+        public ILogger CreateLogger(string categoryName) => new CaptureLogger(sink);
         public void Dispose() { }
     }
 

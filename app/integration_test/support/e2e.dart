@@ -1,10 +1,8 @@
 // Shared harness for the on-device end-to-end tests. They run against the real
 // local API (scripts/run-local-api.sh) and the host helper (tools/e2e_host_helper.py).
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -125,7 +123,7 @@ Future<void> pumpUntil(
     await tester.pump(const Duration(milliseconds: 200));
     if (finder.evaluate().isNotEmpty) return;
   }
-  fail('Timed out waiting for ${reason ?? finder.description}');
+  fail('Timed out waiting for ${reason ?? finder}');
 }
 
 Future<void> pumpUntilGone(
@@ -138,7 +136,7 @@ Future<void> pumpUntilGone(
     await tester.pump(const Duration(milliseconds: 200));
     if (finder.evaluate().isEmpty) return;
   }
-  fail('Timed out waiting for ${finder.description} to disappear');
+  fail('Timed out waiting for $finder to disappear');
 }
 
 /// Lets animations and quick requests finish without waiting on spinners.
@@ -173,7 +171,7 @@ Future<void> enterKey(WidgetTester tester, String key, String text) async {
 }
 
 /// Marker the runner (scripts/run-e2e.sh) turns into an adb screenshot saved to
-/// docs/review/screenshots/<flow>/<NN-name>.png.
+/// `docs/review/screenshots/<flow>/<NN-name>.png`.
 Future<void> shot(WidgetTester tester, String flow, String name) async {
   await settle(tester, 700);
   // ignore: avoid_print

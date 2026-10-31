@@ -14,7 +14,8 @@ public static class ImageOrientation
         var dest = new SKBitmap(swap ? src.Height : src.Width, swap ? src.Width : src.Height);
         using var canvas = new SKCanvas(dest);
         canvas.SetMatrix(MatrixFor(origin, w, h));
-        canvas.DrawBitmap(src, 0, 0);
+        using (var image = SKImage.FromBitmap(src))
+            canvas.DrawImage(image, 0, 0, SKSamplingOptions.Default, null);
         src.Dispose();
         return dest;
     }

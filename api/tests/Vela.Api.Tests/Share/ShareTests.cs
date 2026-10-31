@@ -98,7 +98,7 @@ public class ShareTests(PostgresFixture pg) : IDisposable
         Assert.NotEmpty(Nonce(a));
         Assert.NotEqual(Nonce(a), Nonce(b));
         Assert.Contains($"<style nonce=\"{Nonce(a)}\">", a.Body);
-        Assert.Equal(1, Regex.Matches(a.Body, "<style").Count);
+        Assert.Single(Regex.Matches(a.Body, "<style"));
         Assert.Equal(
             $"default-src 'none'; img-src https:; style-src 'nonce-{Nonce(a)}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
             a.Header("Content-Security-Policy"));

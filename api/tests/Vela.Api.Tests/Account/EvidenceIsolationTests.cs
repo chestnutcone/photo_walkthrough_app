@@ -94,7 +94,7 @@ public class EvidenceIsolationTests(PostgresFixture pg)
         foreach (var u in new[] { viewer, reporter, owner })
             foreach (var url in urls)
             {
-                var text = (await u.Client.GetAsync(url)).Content.ReadAsStringAsync().Result;
+                var text = await (await u.Client.GetAsync(url)).Content.ReadAsStringAsync();
                 Assert.DoesNotContain(Marker, text);
                 Assert.DoesNotContain(hold.ToString(), text);
                 Assert.DoesNotContain("evidence/", text);

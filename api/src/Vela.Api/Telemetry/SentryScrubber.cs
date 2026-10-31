@@ -52,7 +52,7 @@ public static class SentryScrubber
         ScrubCommon(t);
         t.Description = PiiScrubber.Scrub(t.Description);
         foreach (var span in t.Spans) span.Description = PiiScrubber.Scrub(span.Description);
-        foreach (var key in t.Extra.Keys.ToList()) t.SetExtra(key, SensitiveMask);
+        foreach (var key in t.Data.Keys.ToList()) t.SetData(key, SensitiveMask);
         return t;
     }
 

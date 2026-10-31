@@ -417,6 +417,23 @@ public class SentryTransactionScrubTests
     }
 
     [Fact]
+    public void Transaction_data_is_masked_whichever_api_set_it()
+    {
+        var t = new SentryTransaction("POST /v1/works/x/replies", "http.server");
+        t.SetData("body", "my private reply");
+#pragma warning disable CS0618 // the obsolete Extra API must stay covered: SDK integrations may still call it
+        t.SetExtra("note", "jane@example.com");
+#pragma warning restore CS0618
+
+        var r = SentryScrubber.ApplyTransaction(t)!;
+
+        var dump = string.Join(",", r.Data.Select(d => d.Key + "=" + d.Value));
+        Assert.DoesNotContain("my private reply", dump);
+        Assert.DoesNotContain("jane@example.com", dump);
+        Assert.Contains("body=", dump);
+    }
+
+    [Fact]
     public void Scrubber_fails_closed_when_a_regex_times_out()
     {
         var result = PiiScrubber.ScrubGuarded("secret jane@example.com", _ => throw new System.Text.RegularExpressions.RegexMatchTimeoutException());

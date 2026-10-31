@@ -52,9 +52,10 @@ public sealed class AdminSessionValidator(VelaDbContext db, IAdminAllowList allo
 {
     public async Task<bool> IsValidAsync(ClaimsPrincipal? principal)
     {
+        if (principal is null) return false;
         var id = AdminAuth.UserId(principal);
-        var email = principal?.FindFirstValue(AdminAuth.EmailClaim);
-        if (id is null || email is null || principal!.FindFirstValue(AdminAuth.AdminClaim) != "1") return false;
+        var email = principal.FindFirstValue(AdminAuth.EmailClaim);
+        if (id is null || email is null || principal.FindFirstValue(AdminAuth.AdminClaim) != "1") return false;
         if (!Guid.TryParse(principal.FindFirstValue(AdminAuth.StampClaim), out var stamp)) return false;
         if (!allow.Contains(email))
         {
