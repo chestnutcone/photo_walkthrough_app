@@ -9,6 +9,8 @@ void main() {
   group(ArtistsApi, () {
     // Follow an artist
     //
+    // Idempotent: following an artist you already follow returns 200 and changes nothing.
+    //
     //Future<Envelope> follow(String id) async
     test('test follow', () async {
       // TODO
@@ -50,6 +52,8 @@ void main() {
     });
 
     // Unfollow an artist
+    //
+    // Idempotent: unfollowing an artist you do not follow returns 200 and changes nothing.
     //
     //Future<Envelope> unfollow(String id) async
     test('test unfollow', () async {

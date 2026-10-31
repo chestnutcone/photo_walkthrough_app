@@ -15,10 +15,7 @@ Notification _$NotificationFromJson(
   );
   final val = Notification(
     id: $checkedConvert('id', (v) => v as String),
-    type: $checkedConvert(
-      'type',
-      (v) => $enumDecode(_$NotificationTypeEnumEnumMap, v),
-    ),
+    type: $checkedConvert('type', (v) => v as String),
     actor: $checkedConvert(
       'actor',
       (v) => Profile.fromJson(v as Map<String, dynamic>),
@@ -41,7 +38,7 @@ Notification _$NotificationFromJson(
 Map<String, dynamic> _$NotificationToJson(Notification instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'type': _$NotificationTypeEnumEnumMap[instance.type]!,
+      'type': instance.type,
       'actor': instance.actor.toJson(),
       'workId': ?instance.workId,
       'workTitle': ?instance.workTitle,
@@ -52,11 +49,3 @@ Map<String, dynamic> _$NotificationToJson(Notification instance) =>
       'count': ?instance.count,
       'ids': ?instance.ids,
     };
-
-const _$NotificationTypeEnumEnumMap = {
-  NotificationTypeEnum.follow: 'follow',
-  NotificationTypeEnum.reply: 'reply',
-  NotificationTypeEnum.newStory: 'new_story',
-  NotificationTypeEnum.inquiry: 'inquiry',
-  NotificationTypeEnum.moderation: 'moderation',
-};

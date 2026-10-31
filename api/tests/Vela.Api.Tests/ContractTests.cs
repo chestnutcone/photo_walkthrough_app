@@ -98,23 +98,6 @@ public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task Any_remaining_stub_returns_501_not_implemented_envelope()
-    {
-        var client = _factory.CreateClient();
-
-        // Every operation is implemented now, so this loop is empty; it keeps guarding any stub added later.
-        foreach (var (method, route, operationId) in Vela.Api.Stubs.ContractStubs.Pending)
-        {
-            var response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), route.Replace("{id}", Guid.NewGuid().ToString())));
-
-            Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
-            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            Assert.False(body.RootElement.GetProperty("success").GetBoolean(), operationId);
-            Assert.Equal("not_implemented", body.RootElement.GetProperty("error").GetProperty("code").GetString());
-        }
-    }
-
-    [Fact]
     public async Task Export_and_delete_operations_are_real_endpoints_that_require_sign_in()
     {
         var client = _factory.CreateClient();
@@ -170,5 +153,67 @@ public class ContractTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(["work", "reply", "user"], EnumValues(doc, "ReportRequest", "targetType"));
         Assert.Equal(500, report.Properties!["note"].MaxLength);
         Assert.DoesNotContain("note", report.Required!);
+    }
+
+    [Fact]
+    public async Task No_operation_declares_a_501_and_no_not_implemented_response_exists()
+    {
+        var (doc, _) = await LoadContract();
+
+        Assert.All(Operations(doc), o => Assert.False(o.Op.Responses!.ContainsKey("501"), $"{o.Op.OperationId} still declares 501"));
+        Assert.False(doc.Components!.Responses!.ContainsKey("NotImplemented"));
+        Assert.DoesNotContain("not_implemented", await File.ReadAllTextAsync(ContractPath()));
+    }
+
+    [Theory]
+    [InlineData("follow")]
+    [InlineData("unfollow")]
+    public async Task Follow_and_unfollow_are_documented_as_idempotent(string operationId)
+    {
+        var (doc, _) = await LoadContract();
+        var op = Operations(doc).Single(o => o.Op.OperationId == operationId).Op;
+
+        Assert.Contains("idempotent", op.Description ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Notification_type_is_an_open_string_that_lists_the_known_values()
+    {
+        var (doc, _) = await LoadContract();
+        var type = doc.Components!.Schemas!["Notification"].Properties!["type"];
+
+        Assert.True(type.Enum is null || type.Enum.Count == 0, "Notification.type must not be a closed enum");
+        foreach (var known in new[] { "follow", "reply", "new_story", "inquiry", "moderation" })
+            Assert.Contains($"`{known}`", type.Description ?? "");
+    }
+
+    [Theory]
+    [InlineData("CompleteOnboardingRequest", "displayName", 1, 60)]
+    [InlineData("UpdateProfileRequest", "displayName", 1, 60)]
+    [InlineData("CreateDraftRequest", "title", null, Vela.Api.Works.WorkValidator.MaxTitle)]
+    [InlineData("UpdateWorkRequest", "title", 1, Vela.Api.Works.WorkValidator.MaxTitle)]
+    [InlineData("UpdateWorkRequest", "intro", null, Vela.Api.Works.WorkValidator.MaxIntro)]
+    [InlineData("UpdateWorkRequest", "altText", null, Vela.Api.Works.WorkValidator.MaxAltText)]
+    [InlineData("Chapter", "title", 1, Vela.Api.Works.WorkValidator.MaxChapterTitle)]
+    [InlineData("Chapter", "body", null, Vela.Api.Works.WorkValidator.MaxChapterBody)]
+    [InlineData("Chapter", "meta", null, Vela.Api.Works.WorkValidator.MaxChapterMeta)]
+    [InlineData("Chapter", "altText", null, Vela.Api.Works.WorkValidator.MaxAltText)]
+    [InlineData("AddReplyRequest", "body", 1, Vela.Api.Social.ReplyText.MaxLength)]
+    [InlineData("SendInquiryRequest", "message", 1, Vela.Api.Inquiries.InquiryValidator.MaxMessageLength)]
+    public async Task Text_length_limits_in_the_contract_match_the_server(string schema, string property, int? min, int max)
+    {
+        var (doc, _) = await LoadContract();
+        var p = doc.Components!.Schemas![schema].Properties![property];
+
+        Assert.Equal(max, p.MaxLength);
+        if (min is not null) Assert.Equal(min, p.MinLength);
+    }
+
+    [Fact]
+    public async Task Contract_states_how_text_lengths_are_counted()
+    {
+        var (doc, _) = await LoadContract();
+
+        Assert.Contains("code points", doc.Info!.Description ?? "");
     }
 }

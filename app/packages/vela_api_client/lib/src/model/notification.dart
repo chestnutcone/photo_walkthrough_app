@@ -54,6 +54,7 @@ class Notification {
 
 
 
+      /// Open string: known values are `follow`, `reply`, `new_story`, `inquiry`, `moderation`. New values may be added without a version change; clients must show or skip an unknown type, never fail.
   @JsonKey(
     
     name: r'type',
@@ -62,7 +63,7 @@ class Notification {
   )
 
 
-  final NotificationTypeEnum type;
+  final String type;
 
 
 
@@ -218,26 +219,4 @@ class Notification {
   }
 
 }
-
-
-enum NotificationTypeEnum {
-@JsonValue(r'follow')
-follow(r'follow'),
-@JsonValue(r'reply')
-reply(r'reply'),
-@JsonValue(r'new_story')
-newStory(r'new_story'),
-@JsonValue(r'inquiry')
-inquiry(r'inquiry'),
-@JsonValue(r'moderation')
-moderation(r'moderation');
-
-const NotificationTypeEnum(this.value);
-
-final String value;
-
-@override
-String toString() => value;
-}
-
 

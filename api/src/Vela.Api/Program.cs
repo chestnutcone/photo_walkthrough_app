@@ -19,7 +19,6 @@ using Vela.Api.Account;
 using Vela.Api.Works;
 using Vela.Api.Search;
 using Vela.Api.Social;
-using Vela.Api.Stubs;
 using Vela.Api.Admin;
 using Vela.Api.Telemetry;
 
@@ -142,7 +141,6 @@ app.MapWellKnown();
 app.MapLegalPages();
 app.MapDmcaEndpoints();
 app.MapAccountEndpoints();
-app.MapContractStubs();
 app.MapAdmin();
 
 app.Run();

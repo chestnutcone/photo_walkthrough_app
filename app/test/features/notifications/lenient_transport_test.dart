@@ -7,9 +7,9 @@ import 'package:vela_app/features/notifications/notifications_controller.dart';
 import '../../core/support/fakes.dart';
 import 'support/fake_notifications_api.dart';
 
-/// The generated client has a closed `type` enum, so one notification type
-/// the app has never heard of would fail the whole page. The controller
-/// falls back to a tolerant parse of the same response.
+/// `Notification.type` is an open string in the contract; the controller
+/// parses the page tolerantly so a type the app has never heard of (or one
+/// unreadable row) never fails the whole page.
 void main() {
   test('a_page_with_an_unknown_type_still_loads_the_known_rows', () async {
     final adapter = FakeAdapter(

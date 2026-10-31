@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vela_api_client/vela_api_client.dart' as api;
 import 'package:vela_app/features/notifications/notification_item.dart';
 
 import '../search/support/fake_search_api.dart' show searchProfile;
@@ -55,6 +56,21 @@ void main() {
       final i = item(notifJson('n', type: 'mystery'));
       expect(i.kind, NotificationKind.unknown);
       expect(i.text, 'Ines a1 has an update for you');
+    });
+  });
+
+  group('contract', () {
+    // The contract's Notification.type is an open string (cleanup task):
+    // the generated model must accept a type the app has never heard of.
+    test('generated_model_accepts_an_unknown_type', () {
+      final n = api.Notification.fromJson(
+        Map<String, dynamic>.from(notifJson('n', type: 'brand_new_kind')),
+      );
+      expect(n.type, 'brand_new_kind');
+      expect(
+        NotificationItem.tryFromJson(n.toJson())!.kind,
+        NotificationKind.unknown,
+      );
     });
   });
 

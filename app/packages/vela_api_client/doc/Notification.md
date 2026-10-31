@@ -9,7 +9,7 @@ import 'package:vela_api_client/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **String** |  | 
-**type** | **String** |  | 
+**type** | **String** | Open string: known values are `follow`, `reply`, `new_story`, `inquiry`, `moderation`. New values may be added without a version change; clients must show or skip an unknown type, never fail. | 
 **actor** | [**Profile**](Profile.md) |  | 
 **workId** | **String** |  | [optional] 
 **workTitle** | **String** | Title of the story the notification is about | [optional] 

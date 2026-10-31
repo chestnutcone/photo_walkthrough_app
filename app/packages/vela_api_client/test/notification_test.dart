@@ -12,6 +12,7 @@ void main() {
       // TODO
     });
 
+    // Open string: known values are `follow`, `reply`, `new_story`, `inquiry`, `moderation`. New values may be added without a version change; clients must show or skip an unknown type, never fail.
     // String type
     test('to test the property `type`', () async {
       // TODO

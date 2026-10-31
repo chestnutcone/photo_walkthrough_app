@@ -23,6 +23,8 @@ Method | HTTP request | Description
 
 Follow an artist
 
+Idempotent: following an artist you already follow returns 200 and changes nothing.
+
 ### Example
 ```dart
 import 'package:vela_api_client/api.dart';
@@ -280,6 +282,8 @@ No authorization required
 > Envelope unfollow(id)
 
 Unfollow an artist
+
+Idempotent: unfollowing an artist you do not follow returns 200 and changes nothing.
 
 ### Example
 ```dart

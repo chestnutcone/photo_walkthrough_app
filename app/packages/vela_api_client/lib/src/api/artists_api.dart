@@ -23,7 +23,7 @@ class ArtistsApi {
   const ArtistsApi(this._dio);
 
   /// Follow an artist
-  /// 
+  /// Idempotent: following an artist you already follow returns 200 and changes nothing.
   ///
   /// Parameters:
   /// * [id] - Resource id
@@ -515,7 +515,7 @@ _responseData = rawData == null ? null : deserialize<ProfileListEnvelope, Profil
   }
 
   /// Unfollow an artist
-  /// 
+  /// Idempotent: unfollowing an artist you do not follow returns 200 and changes nothing.
   ///
   /// Parameters:
   /// * [id] - Resource id

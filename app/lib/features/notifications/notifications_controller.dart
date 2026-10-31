@@ -95,8 +95,8 @@ typedef NotificationsFetcher = Future<Object?> Function(
 );
 
 /// The app reads this endpoint itself (not through the generated client,
-/// whose closed `type` enum would fail a whole page over one type this
-/// version does not know) and parses every row tolerantly.
+/// whose list parse would fail a whole page over one unreadable row) and
+/// parses every row tolerantly; `type` is an open string in the contract.
 final notificationsFetcherProvider = Provider<NotificationsFetcher>((ref) {
   return (cursor, token) async =>
       (await ref

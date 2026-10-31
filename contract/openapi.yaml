@@ -5,7 +5,9 @@ info:
   description: >
     Source of truth for the Vela API. Every response, success or failure, uses the
     standard envelope (success, data, error, page). Lists use cursor pagination and
-    return page.nextCursor.
+    return page.nextCursor. Text fields are cleaned by the shared text sanitizer
+    (NFC, invisible and control characters removed) before validation; minLength and
+    maxLength count Unicode code points of the cleaned text, the same way the app counts.
 servers:
   - url: http://localhost:5080
     description: Local development
@@ -54,8 +56,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/auth/email/request:
@@ -89,8 +89,6 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/auth/email/verify:
@@ -122,8 +120,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/auth/refresh:
@@ -155,8 +151,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/auth/logout:
@@ -184,8 +178,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/me:
@@ -206,8 +198,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
     delete:
@@ -228,8 +218,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/me/onboarding:
@@ -262,8 +250,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/me/profile:
@@ -297,8 +283,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '503':
           $ref: '#/components/responses/Busy'
         '500':
@@ -321,8 +305,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/me/export:
@@ -345,8 +327,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/me/export/{id}:
@@ -373,8 +353,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/artists/suggested:
@@ -395,8 +373,6 @@ paths:
                 $ref: '#/components/schemas/ProfileListEnvelope'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/artists/{handle}:
@@ -418,8 +394,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/artists/{handle}/works:
@@ -443,8 +417,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/artists/{id}/follow:
@@ -452,6 +424,7 @@ paths:
       operationId: follow
       tags: [Artists]
       summary: "Follow an artist"
+      description: "Idempotent: following an artist you already follow returns 200 and changes nothing."
       security:
         - bearerAuth: []
       parameters:
@@ -471,14 +444,13 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
     delete:
       operationId: unfollow
       tags: [Artists]
       summary: "Unfollow an artist"
+      description: "Idempotent: unfollowing an artist you do not follow returns 200 and changes nothing."
       security:
         - bearerAuth: []
       parameters:
@@ -496,8 +468,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/artists/{id}/followers:
@@ -524,8 +494,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/artists/{id}/inquiries:
@@ -562,8 +530,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/feed:
@@ -588,8 +554,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/works:
@@ -628,8 +592,6 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/works/{id}:
@@ -651,8 +613,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
     put:
@@ -690,8 +650,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
     delete:
@@ -723,8 +681,6 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/works/{id}/publish:
@@ -761,8 +717,6 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '503':
           $ref: '#/components/responses/Busy'
         '500':
@@ -789,8 +743,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
     post:
@@ -828,8 +780,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/replies/{id}:
@@ -862,8 +812,6 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/notifications:
@@ -887,8 +835,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/notifications/unread-count:
@@ -909,8 +855,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/notifications/read:
@@ -941,8 +885,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/search:
@@ -968,8 +910,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/reports:
@@ -1003,8 +943,6 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/blocks/{userId}:
@@ -1029,8 +967,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
     delete:
@@ -1052,8 +988,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/legal/dmca-notices:
@@ -1086,8 +1020,6 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/works/{id}/counter-notice:
@@ -1131,8 +1063,6 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '429':
           $ref: '#/components/responses/RateLimited'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
         '500':
           $ref: '#/components/responses/InternalError'
 components:
@@ -1300,12 +1230,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Envelope'
-    NotImplemented:
-      description: "Not implemented yet (code not_implemented)"
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Envelope'
   schemas:
     ErrorBody:
       type: object
@@ -1332,7 +1256,7 @@ components:
       properties:
         id: {type: string, format: uuid}
         handle: {type: string, minLength: 3, maxLength: 20, pattern: '^[a-z0-9_]{3,20}$'}
-        displayName: {type: string}
+        displayName: {type: string, maxLength: 60}
         bio: {type: string, maxLength: 280}
         avatarUrl: {type: string, nullable: true}
         followerCount: {type: integer}
@@ -1394,10 +1318,10 @@ components:
         x: {type: number, format: double, minimum: 0, maximum: 1}
         y: {type: number, format: double, minimum: 0, maximum: 1}
         zoom: {type: number, format: double, nullable: true, description: Null means stay put; 2.4 when set by default}
-        title: {type: string}
-        body: {type: string}
-        meta: {type: string, nullable: true}
-        altText: {type: string, nullable: true}
+        title: {type: string, minLength: 1, maxLength: 120}
+        body: {type: string, maxLength: 1000}
+        meta: {type: string, nullable: true, maxLength: 80}
+        altText: {type: string, nullable: true, maxLength: 300}
         replyCount: {type: integer, description: "Server-computed, ignored on input. Visible replies for the viewer."}
     ArtistSummary:
       type: object
@@ -1452,7 +1376,9 @@ components:
       required: [id, type, actor, createdAt, read]
       properties:
         id: {type: string, format: uuid}
-        type: {type: string, enum: [follow, reply, new_story, inquiry, moderation]}
+        type:
+          type: string
+          description: "Open string: known values are `follow`, `reply`, `new_story`, `inquiry`, `moderation`. New values may be added without a version change; clients must show or skip an unknown type, never fail."
         actor: {$ref: '#/components/schemas/Profile'}
         workId: {type: string, format: uuid, nullable: true}
         workTitle: {type: string, nullable: true, description: Title of the story the notification is about}
@@ -1553,8 +1479,8 @@ components:
       type: object
       required: [displayName, handle, ageConfirmed, termsAccepted, followArtistIds]
       properties:
-        displayName: {type: string}
-        handle: {type: string, pattern: '^[a-z0-9_]{3,20}$'}
+        displayName: {type: string, minLength: 1, maxLength: 60}
+        handle: {type: string, minLength: 3, maxLength: 20, pattern: '^[a-z0-9_]{3,20}$'}
         ageConfirmed: {type: boolean}
         termsAccepted: {type: boolean}
         followArtistIds:
@@ -1565,7 +1491,7 @@ components:
       type: object
       properties:
         displayName: {type: string, minLength: 1, maxLength: 60}
-        handle: {type: string, pattern: '^[a-z0-9_]{3,20}$'}
+        handle: {type: string, minLength: 3, maxLength: 20, pattern: '^[a-z0-9_]{3,20}$'}
         bio: {type: string, maxLength: 280}
         city: {type: string, maxLength: 80}
         discipline: {type: string, maxLength: 60}
@@ -1641,7 +1567,7 @@ components:
       type: object
       required: [contentType]
       properties:
-        title: {type: string, nullable: true}
+        title: {type: string, nullable: true, maxLength: 200}
         contentType: {type: string, enum: [image/jpeg, image/png, image/webp]}
     UpdateWorkRequest:
       type: object
@@ -1658,7 +1584,7 @@ components:
       type: object
       required: [body]
       properties:
-        body: {type: string}
+        body: {type: string, minLength: 1, maxLength: 1000}
     MarkReadRequest:
       type: object
       properties:
