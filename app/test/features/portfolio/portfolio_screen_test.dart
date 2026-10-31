@@ -66,6 +66,39 @@ void main() {
       expect(find.text('Teo Marsh'), findsOneWidget);
     });
 
+    testWidgets('followed_by_line_never_names_the_viewer', (t) async {
+      // meJson() is profile a9 ("Ines a9"); the viewer follows this artist.
+      await pumpPortfolio(
+        t,
+        me: meJson(),
+        works: works([workJson('w1')]),
+        followers: (_) => jsonResponse(
+          200,
+          listPage([
+            profileJson(id: 'a9', handle: 'me', name: 'Viewer Self'),
+            profileJson(id: 'f1', handle: 'teo', name: 'Teo Marsh'),
+          ]),
+        ),
+      );
+      expect(find.text('Followed by Teo and 11 others'), findsOneWidget);
+      expect(find.textContaining('Viewer'), findsNothing);
+    });
+
+    testWidgets('followed_by_line_is_hidden_when_only_the_viewer_follows', (
+      t,
+    ) async {
+      await pumpPortfolio(
+        t,
+        me: meJson(),
+        works: works([workJson('w1')]),
+        followers: (_) => jsonResponse(
+          200,
+          listPage([profileJson(id: 'a9', handle: 'me', name: 'Viewer Self')]),
+        ),
+      );
+      expect(find.byKey(const ValueKey('followed-by-row')), findsNothing);
+    });
+
     testWidgets('own_profile_shows_edit_and_new_story', (t) async {
       final h = await pumpPortfolio(
         t,

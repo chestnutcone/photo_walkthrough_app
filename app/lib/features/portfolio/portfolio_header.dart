@@ -505,11 +505,15 @@ class _FollowedBy extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final signedIn = ref.watch(meProvider).value != null;
-    if (!signedIn) return const SizedBox.shrink();
-    final list = ref.watch(
-      followersControllerProvider(profile.id).select((s) => s.items),
-    );
+    final me = ref.watch(meProvider).value;
+    if (me == null) return const SizedBox.shrink();
+    // The viewer is never named to themself (still counted in the total).
+    final list = [
+      for (final p in ref.watch(
+        followersControllerProvider(profile.id).select((s) => s.items),
+      ))
+        if (p.id != me.profile?.id) p,
+    ];
     if (list.isEmpty) return const SizedBox.shrink();
     final shown = list.take(3).toList();
     final line = followedByLine([for (final p in list) p.displayName], total);
