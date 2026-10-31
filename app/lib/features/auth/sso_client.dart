@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import '../../core/auth/local_data.dart';
 import '../../core/config.dart';
 
 /// The user closed the Apple or Google sheet. Not an error.
@@ -51,6 +52,21 @@ String appleNonceClaim(String rawNonce) =>
 class RealSsoClient implements SsoClient {
   const RealSsoClient();
 
+  /// google_sign_in throws on any call before initialize().
+  static bool _googleInitialized = false;
+
+  /// Forgets the Google account chosen in this run, so the next person on a
+  /// shared device gets the account picker. Best effort; Apple keeps no
+  /// app-side session.
+  static Future<void> signOutProviders() async {
+    if (!_googleInitialized) return;
+    try {
+      await GoogleSignIn.instance.signOut();
+    } on Object {
+      // Sign-out of the SDK must never block ending the Vela session.
+    }
+  }
+
   @override
   Future<String> idToken(String provider, String nonce) => switch (provider) {
     'apple' => _apple(nonce),
@@ -92,6 +108,7 @@ class RealSsoClient implements SsoClient {
         serverClientId: _orNull(AppConfig.googleServerClientId),
         nonce: nonce,
       );
+      _googleInitialized = true;
       final account = await GoogleSignIn.instance.authenticate();
       final token = account.authentication.idToken;
       if (token == null || token.isEmpty) {
@@ -151,9 +168,18 @@ class DevFakeSsoClient implements SsoClient {
   ).join();
 }
 
-final ssoClientProvider = Provider<SsoClient>(
-  (_) => AppConfig.fakeSso ? DevFakeSsoClient() : const RealSsoClient(),
-);
+/// Building the real client registers the SDK sign-out as an `onSignOut`
+/// cleaner: the SDKs are only used after this provider was built.
+final ssoClientProvider = Provider<SsoClient>((ref) {
+  if (AppConfig.fakeSso) return DevFakeSsoClient();
+  registerLocalDataCleaner(
+    ref,
+    'sso-provider-session',
+    RealSsoClient.signOutProviders,
+    onSignOut: true,
+  );
+  return const RealSsoClient();
+});
 
 /// Apple's button is offered on iOS only. Tests override this.
 final appleSignInAvailableProvider = Provider<bool>(

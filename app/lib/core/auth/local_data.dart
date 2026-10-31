@@ -73,18 +73,17 @@ void registerLocalDataCleaner(
     .read(localDataRegistryProvider)
     .register(name, cleaner, onSignOut: onSignOut);
 
-/// Account deletion only: runs every registered cleaner (a failing one never
-/// stops the rest), then ends the session, which deletes the stored tokens
-/// and bumps the epoch so per-user providers rebuild empty.
+/// Account deletion only: ends the session with `clear(wipeAll: true)`,
+/// which runs every registered cleaner (a failing one never stops the rest),
+/// drops in-memory caches, deletes the stored tokens and bumps the epoch so
+/// per-user providers rebuild empty.
 ///
-/// Policy: plain sign-out (`signOutProvider`) clears the session and only the
-/// cleaners registered with `onSignOut`; deleting the account erases
-/// everything.
+/// Policy: every other sign-out (`signOutProvider`, a rejected refresh, a
+/// retried 401, account_suspended) runs only the cleaners registered with
+/// `onSignOut` (`SessionNotifier.clear`); deleting the account, here or as
+/// an account_deleted answer from the server, erases everything.
 final wipeLocalDataProvider = Provider<Future<void> Function()>((ref) {
   return () async {
-    await LocalDataRegistry.runAll(
-      ref.read(localDataRegistryProvider).cleaners,
-    );
-    await ref.read(sessionProvider.notifier).clear();
+    await ref.read(sessionProvider.notifier).clear(wipeAll: true);
   };
 });

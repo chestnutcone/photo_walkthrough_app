@@ -120,7 +120,10 @@ void main() {
           .read(localDataRegistryProvider)
           .register('cache', () async => wiped.add('cache'));
       await confirmDelete(tester);
-      expect(wiped, ['cache']);
+      // The interceptor wipes on account_deleted, then the flow wipes again
+      // (cleaners are idempotent).
+      expect(wiped, isNotEmpty);
+      expect(wiped.toSet(), {'cache'});
       expect(h.storage.value, isNull);
       expect(h.location, '/');
       expect(key('delete-error'), findsNothing);

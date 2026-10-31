@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vela_api_client/vela_api_client.dart';
 
 import '../../core/api/api_providers.dart';
-import '../../core/auth/local_data.dart';
 
 /// Revokes the refresh token on a best-effort basis, then always clears the
 /// session; the router sends a guest back to the feed. Device data (see
@@ -25,9 +24,7 @@ final signOutProvider = Provider<Future<void> Function()>((ref) {
     } on Object {
       // Offline or already revoked: signing out locally still works.
     }
-    await LocalDataRegistry.runAll(
-      ref.read(localDataRegistryProvider).signOutCleaners,
-    );
+    // clear() runs the onSignOut cleaners and drops in-memory caches.
     await notifier.clear();
   };
 });

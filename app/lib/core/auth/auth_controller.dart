@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vela_api_client/vela_api_client.dart';
 
 import '../api/api_providers.dart';
+import 'local_data.dart';
 import 'session_store.dart';
 
 /// Why the server ended the account. B14 maps this to SuspendedScreen.
@@ -55,6 +57,25 @@ class SessionEpoch extends Notifier<int> {
   int build() => 0;
 
   void bump() => state++;
+}
+
+/// Drops in-memory caches that may hold the signed-in account's data
+/// (decoded private, pending and blocked work images, avatars). Runs on every
+/// sign-out, voluntary or not. Tests override it.
+final inMemoryCachesClearerProvider = Provider<void Function()>(
+  (_) => clearImageCache,
+);
+
+/// Empties Flutter's decoded-image cache, including live images. A no-op
+/// before the binding exists (plain unit tests).
+void clearImageCache() {
+  try {
+    PaintingBinding.instance.imageCache
+      ..clear()
+      ..clearLiveImages();
+  } on Object {
+    // No binding yet: nothing has been decoded.
+  }
 }
 
 final clockProvider = Provider<DateTime Function()>((_) => DateTime.now);
@@ -110,15 +131,31 @@ class SessionNotifier extends AsyncNotifier<Session?> {
     await _bestEffort(() => _storage.write(session.encode()));
   }
 
-  Future<void> clear() async {
+  /// Ends the session. Every sign-out goes through here, voluntary or not
+  /// (sign-out button, rejected refresh token, a retried 401, a blocked
+  /// account), so the device is left in the same state either way: the
+  /// cleaners registered `onSignOut` run (all of them when [wipeAll], for a
+  /// deleted account), in-memory caches are dropped, the epoch is bumped and
+  /// the stored tokens are deleted. A failing cleaner never stops the clear.
+  Future<void> clear({bool wipeAll = false}) async {
+    final registry = ref.read(localDataRegistryProvider);
+    await LocalDataRegistry.runAll(
+      wipeAll ? registry.cleaners : registry.signOutCleaners,
+    );
+    try {
+      ref.read(inMemoryCachesClearerProvider)();
+    } on Object {
+      // Best effort, like the cleaners.
+    }
     ref.read(sessionEpochProvider.notifier).bump();
     state = const AsyncData(null);
     await _bestEffort(_storage.delete);
   }
 
   /// Clears the session and records why, for the suspended-account screen.
+  /// A deleted account erases all local data, as deleting it here would.
   Future<void> blockAccount(AccountBlock reason) async {
-    await clear();
+    await clear(wipeAll: reason == AccountBlock.deleted);
     ref.read(accountBlockProvider.notifier).set(reason);
   }
 
@@ -174,9 +211,12 @@ class SessionNotifier extends AsyncNotifier<Session?> {
     }
   }
 
+  /// 401 (invalid_refresh_token) or a 403 that names the account
+  /// (account_suspended / account_deleted). Any other 403, for example from
+  /// a WAF or a future rate/attestation rule, keeps the session.
   static bool _isDefinitiveRejection(DioException e) {
     final status = e.response?.statusCode;
-    return status == 401 || status == 403;
+    return status == 401 || accountBlockFor(e) != null;
   }
 
   Session _fromPair(String access, String refresh, int expiresIn) => Session(
