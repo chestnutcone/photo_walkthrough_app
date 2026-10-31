@@ -51,8 +51,12 @@ final avatarPreparerProvider = Provider<Future<AvatarPick> Function()>((ref) {
     final Uint8List bytes;
     try {
       bytes = await ref.read(photoNormalizerProvider)(picked.bytes);
-    } on Object {
-      return const AvatarPick(error: "Couldn't use that photo. Try another.");
+    } on Object catch (e) {
+      return AvatarPick(
+        error:
+            photoPrepareErrorMessage(e) ??
+            "Couldn't use that photo. Try another.",
+      );
     }
     if (bytes.length > maxUploadBytes) {
       return const AvatarPick(error: tooLargeMessage);

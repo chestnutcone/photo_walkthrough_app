@@ -2,6 +2,7 @@ import '../../core/api/api_exception.dart';
 
 import 'package:vela_api_client/vela_api_client.dart';
 
+import 'photo_info.dart';
 import 'pin_draft.dart';
 
 const maxPinsMessage = 'A story can have at most $maxPins chapters.';
@@ -13,7 +14,19 @@ const stillProcessingMessage =
     "This story is still processing. Check back later; it will appear in your portfolio when it's ready.";
 const unsupportedTypeMessage = 'Choose a JPEG, PNG or WebP photo.';
 const tooManyPixelsMessage =
-    'That photo is too large to use (over 60 megapixels). Choose a smaller one.';
+    'That photo is too large to use (over 24 megapixels). Choose a smaller one.';
+const photoUnreadableMessage = "Couldn't read that photo. Choose another one.";
+const photoPrepareTimeoutMessage =
+    'Preparing that photo took too long. Choose a smaller one.';
+
+/// The message for a photo the normalizer refused, or null for any other
+/// failure.
+String? photoPrepareErrorMessage(Object e) => switch (e) {
+  PhotoTooLargeException() => tooManyPixelsMessage,
+  PhotoUnreadableException() => photoUnreadableMessage,
+  PhotoPrepareTimeout() => photoPrepareTimeoutMessage,
+  _ => null,
+};
 const photoAccessDeniedMessage =
     'Allow access to your photos or camera in Settings, then try again.';
 const tooLargeMessage = 'That photo is too large. Choose one under 20 MB.';

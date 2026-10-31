@@ -8,9 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('google_sign_in_web resolves to the local no-op package', () {
     final lock = File('pubspec.lock').readAsStringSync();
-    final entry = RegExp(
-      r'\n  google_sign_in_web:\n(?:    .*\n|      .*\n)+',
-    ).firstMatch(lock)?.group(0);
+    final entry = RegExp(r'\n  google_sign_in_web:\n(?:    .*\n|      .*\n)+')
+        .firstMatch(lock)
+        ?.group(0);
     expect(entry, isNotNull);
     expect(entry, contains('source: path'));
     expect(entry, contains('google_sign_in_web_none'));

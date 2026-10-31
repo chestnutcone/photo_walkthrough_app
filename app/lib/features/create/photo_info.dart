@@ -1,7 +1,8 @@
+import 'dart:async';
+import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
 
@@ -160,26 +161,69 @@ int _exifOrientation(Uint8List b, int start, int end) {
   return 1;
 }
 
-/// The server refuses originals over this many pixels (`MaxPixels`).
-const int maxPhotoPixels = 60000000;
+/// The client refuses photos over this many pixels (the server's own limit,
+/// `VariantGenerator.MaxPixels`, is 60 MP). A rotated JPEG is decoded and
+/// re-encoded in pure Dart, which needs roughly 10 bytes per pixel at peak,
+/// so 24 MP stays near 250 MB on a 3 GB phone; 60 MP would not. The platform
+/// picker already scales photos to at most 4096 px a side (16.8 MP) and
+/// bakes in their orientation, so only a photo the picker returned
+/// untouched can reach this cap.
+const int maxPhotoPixels = 24000000;
+
+/// How long preparing one photo may take before the author is told to choose
+/// a smaller one. The isolate doing the work is killed, freeing its memory.
+const Duration photoPrepareTimeout = Duration(seconds: 30);
+
+/// The photo is over [maxPhotoPixels].
+class PhotoTooLargeException implements Exception {
+  const PhotoTooLargeException();
+  @override
+  String toString() => 'PhotoTooLargeException';
+}
+
+/// A rotated JPEG whose pixels could not be decoded. Uploading it with only
+/// the metadata cut would drop the orientation tag and show it sideways, so
+/// it is refused instead.
+class PhotoUnreadableException implements Exception {
+  const PhotoUnreadableException();
+  @override
+  String toString() => 'PhotoUnreadableException';
+}
+
+/// Preparing the photo took longer than [photoPrepareTimeout].
+class PhotoPrepareTimeout implements Exception {
+  const PhotoPrepareTimeout();
+  @override
+  String toString() => 'PhotoPrepareTimeout';
+}
 
 /// Prepares the bytes that are uploaded: pixels in the orientation the author
 /// saw, and no metadata at all (EXIF, GPS, XMP, comments), so the displayed
 /// image, the pin fractions and the stored original agree and nothing about
 /// where the photo was taken leaves the phone.
 ///
-/// A rotated JPEG is re-encoded (unavoidable). Everything else keeps its
-/// pixels byte for byte and only has its metadata segments cut out, so quality
-/// is not lost. A photo with no metadata is returned unchanged.
+/// A rotated JPEG is re-encoded (unavoidable); one over [maxPhotoPixels]
+/// throws [PhotoTooLargeException] before any decode, and one that cannot be
+/// decoded throws [PhotoUnreadableException] (never uploaded sideways).
+/// Everything else keeps its pixels byte for byte and only has its metadata
+/// segments cut out, so quality is not lost. A photo with no metadata is
+/// returned unchanged.
 Uint8List bakePhotoOrientation(Uint8List bytes) {
   final meta = readPhotoMeta(bytes);
   if (meta == null) return bytes;
   if (meta.contentType == 'image/jpeg' && meta.orientation != 1) {
-    final decoded = img.decodeJpg(bytes);
-    if (decoded != null) {
-      final upright = img.bakeOrientation(decoded)..exif = img.ExifData();
-      return Uint8List.fromList(img.encodeJpg(upright, quality: 92));
+    if (meta.width * meta.height > maxPhotoPixels) {
+      throw const PhotoTooLargeException();
     }
+    final img.Image? decoded;
+    try {
+      decoded = img.decodeJpg(bytes);
+    } on Object {
+      throw const PhotoUnreadableException();
+    }
+    if (decoded == null) throw const PhotoUnreadableException();
+    final upright = img.bakeOrientation(decoded)..exif = img.ExifData();
+    return Uint8List.fromList(img.encodeJpg(upright, quality: 92));
   }
   return stripPhotoMetadata(bytes);
 }
@@ -271,5 +315,57 @@ typedef PhotoNormalizer = Future<Uint8List> Function(Uint8List bytes);
 
 final photoNormalizerProvider = Provider<PhotoNormalizer>(
   (_) =>
-      (bytes) => compute(bakePhotoOrientation, bytes),
+      (bytes) => normalizePhotoInIsolate(bytes, timeout: photoPrepareTimeout),
 );
+
+/// Runs [bakePhotoOrientation] in a new isolate. After [timeout] the isolate
+/// is killed (unlike `compute`, whose work would keep running and holding
+/// memory) and [PhotoPrepareTimeout] is thrown. The photo's exceptions
+/// ([PhotoTooLargeException], [PhotoUnreadableException]) are rethrown here.
+Future<Uint8List> normalizePhotoInIsolate(
+  Uint8List bytes, {
+  required Duration timeout,
+}) async {
+  final port = ReceivePort();
+  Isolate? isolate;
+  try {
+    isolate = await Isolate.spawn(
+      _normalizeEntry,
+      (port.sendPort, TransferableTypedData.fromList([bytes])),
+      onExit: port.sendPort,
+      errorsAreFatal: true,
+    );
+    final Object? msg;
+    try {
+      msg = await port.first.timeout(timeout);
+    } on TimeoutException {
+      throw const PhotoPrepareTimeout();
+    }
+    return switch (msg) {
+      TransferableTypedData data => data.materialize().asUint8List(),
+      'too_large' => throw const PhotoTooLargeException(),
+      'unreadable' => throw const PhotoUnreadableException(),
+      // Exited without an answer (out of memory, crash).
+      _ => throw const PhotoUnreadableException(),
+    };
+  } finally {
+    isolate?.kill(priority: Isolate.immediate);
+    port.close();
+  }
+}
+
+void _normalizeEntry((SendPort, TransferableTypedData) args) {
+  final (reply, data) = args;
+  final Object answer;
+  try {
+    final out = bakePhotoOrientation(data.materialize().asUint8List());
+    answer = TransferableTypedData.fromList([out]);
+  } on PhotoTooLargeException {
+    reply.send('too_large');
+    return;
+  } on Object {
+    reply.send('unreadable');
+    return;
+  }
+  reply.send(answer);
+}

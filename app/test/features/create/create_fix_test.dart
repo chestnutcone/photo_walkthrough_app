@@ -9,6 +9,7 @@ import 'package:vela_app/features/create/blob_uploader.dart';
 import 'package:vela_app/features/create/create_controller.dart';
 import 'package:vela_app/features/create/create_messages.dart';
 import 'package:vela_app/features/create/create_state.dart';
+import 'package:vela_app/features/create/photo_info.dart';
 import 'package:vela_app/features/create/photo_picker.dart';
 import 'package:vela_app/core/text/text_sanitizer.dart';
 import 'package:vela_app/core/text/user_text_formatter.dart';
@@ -237,6 +238,24 @@ void main() {
       expect(h.calls('POST', '/v1/works'), isEmpty);
       expect(read(h).phase, CreatePhase.pick);
     });
+
+    for (final (name, error, message) in [
+      ('timeout', const PhotoPrepareTimeout(), photoPrepareTimeoutMessage),
+      ('unreadable', const PhotoUnreadableException(), photoUnreadableMessage),
+      ('too large', const PhotoTooLargeException(), tooManyPixelsMessage),
+    ]) {
+      testWidgets(
+        'a_normalizer_${name}_shows_its_message_and_creates_nothing',
+        (t) async {
+          final h = await pumpCreate(t, normalizer: (_) async => throw error);
+          await pickAndAnnotate(t);
+          expect(find.text(message), findsOneWidget);
+          expect(h.calls('POST', '/v1/works'), isEmpty);
+          expect(read(h).phase, CreatePhase.pick);
+          expect(read(h).busy, isFalse);
+        },
+      );
+    }
 
     testWidgets('denied_photo_access_has_its_own_message', (t) async {
       final h = await pumpCreate(t);

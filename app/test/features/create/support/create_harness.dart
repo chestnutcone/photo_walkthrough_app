@@ -134,6 +134,7 @@ Future<CreateHarness> pumpCreate(
   Future<void> Function(Duration)? pollDelay,
   FutureOr<ResponseBody>? Function(RequestOptions)? intercept,
   List<Override> overrides = const [],
+  PhotoNormalizer? normalizer,
 }) async {
   tester.view.physicalSize = phone;
   tester.view.devicePixelRatio = 1;
@@ -215,7 +216,7 @@ Future<CreateHarness> pumpCreate(
         photoPickerProvider.overrideWithValue(picker),
         blobUploaderProvider.overrideWithValue(uploader),
         photoNormalizerProvider.overrideWithValue(
-          (b) async => bakePhotoOrientation(b),
+          normalizer ?? (b) async => bakePhotoOrientation(b),
         ),
         backgroundRetryDelayProvider.overrideWithValue((_) async {}),
         pollDelayProvider.overrideWithValue((d) {

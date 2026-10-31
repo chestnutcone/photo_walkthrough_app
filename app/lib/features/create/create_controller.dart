@@ -126,7 +126,15 @@ class CreateController extends Notifier<CreateState> {
       return null;
     }
     // Always: bakes in orientation and strips EXIF (GPS included).
-    bytes = await ref.read(photoNormalizerProvider)(bytes);
+    try {
+      bytes = await ref.read(photoNormalizerProvider)(bytes);
+    } on Exception catch (e) {
+      if (_stale(gen)) return null;
+      final message = photoPrepareErrorMessage(e);
+      if (message == null) rethrow;
+      state = state.copyWith(busy: false, error: message);
+      return null;
+    }
     if (_stale(gen)) return null;
     meta = readPhotoMeta(bytes) ?? meta;
     if (bytes.length > maxUploadBytes) {
