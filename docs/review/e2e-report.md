@@ -68,6 +68,11 @@ Severity: Blocker (cannot complete a core flow), Major (wrong or inaccessible bu
 
 ### Open (not fixed)
 
+S2 update (2026-10-31): fixed since this run: the report threshold (illegal content hides at once, otherwise 3 distinct
+reporters or one account older than 7 days), the per-install fake SSO account (random id kept on the install;
+`VELA_FAKE_SSO_SUBJECT` pins one), the story top bar at 2.0 / 320 pt, portrait lock, 48 pt targets, `faint` contrast and Back
+from a deep-linked story. See [a11y-triage.md](a11y-triage.md). The rows below are kept as found.
+
 | Sev | Gap | Proposed fix |
 |---|---|---|
 | Major | One report from any account hides the story from everyone until an admin reviews (spec: "User-reported content is hidden pending review"). My own probe hid a seeded story by accident. A throwaway account can take down any artist's story | require N distinct reporters or an account age/behaviour threshold before auto-hide, except `illegal_content`; keep the 10/day limit |
