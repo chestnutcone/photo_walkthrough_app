@@ -7,7 +7,7 @@ import 'pin_draft.dart';
 
 /// Height of the photo area (README: photo 390x420).
 const double photoAreaHeight = 420;
-const double _hit = 44;
+const double _hit = kMinTapTarget;
 const double _badge = 28;
 
 /// The photograph with its pins. The photo is contained (never cropped) and

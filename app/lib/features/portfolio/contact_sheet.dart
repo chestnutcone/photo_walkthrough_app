@@ -351,7 +351,7 @@ class _TypeChip extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 44),
+        constraints: const BoxConstraints(minHeight: kMinTapTarget),
         child: Center(
           widthFactor: 1,
           child: Container(

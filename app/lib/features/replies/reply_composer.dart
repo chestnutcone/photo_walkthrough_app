@@ -164,7 +164,7 @@ class _ReplyComposerState extends ConsumerState<ReplyComposer> {
                 disabledForegroundColor: VelaColors.faint,
                 shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                minimumSize: const Size(64, 44),
+                minimumSize: const Size(64, kMinTapTarget),
               ),
               child: Semantics(
                 label: sending ? 'Sending reply' : 'Send reply',

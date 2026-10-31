@@ -58,6 +58,20 @@ class StoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final screen = _content(context, ref);
+    if (standalone) return screen;
+    // Opened from a deep link there is no page underneath: system Back would
+    // leave the app (E1). Go to the feed instead, as the close button does.
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/');
+      },
+      child: screen,
+    );
+  }
+
+  Widget _content(BuildContext context, WidgetRef ref) {
     final work = ref.watch(workProvider(workId));
     return work.when(
       data: (w) {

@@ -208,8 +208,8 @@ class _Header extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTap: onBack,
             child: const SizedBox(
-              width: 44,
-              height: 44,
+              width: kMinTapTarget,
+              height: kMinTapTarget,
               child: Icon(Icons.arrow_back, color: VelaColors.ink, size: 22),
             ),
           ),

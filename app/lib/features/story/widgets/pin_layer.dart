@@ -8,7 +8,7 @@ import '../camera_math.dart';
 import '../motion.dart';
 
 /// Hit area of a pin on screen.
-const double pinHitSize = 44;
+const double pinHitSize = kMinTapTarget;
 const double _badgeSize = 28;
 
 /// A chapter pin: its fractional position in the camera layer and a label for
@@ -63,7 +63,8 @@ class PinLayer extends StatelessWidget {
         screen.dy >= 0 &&
         screen.dy <= viewport.height;
     if (!onScreen) return layer;
-    final maxY = math.max(half, math.min(viewport.height, safeBottom) - half);
+    // 1pt clear of the card, so rounding never lets the hit box touch it.
+    final maxY = math.max(half, math.min(viewport.height, safeBottom) - half - 1);
     final safe = Offset(
       screen.dx.clamp(half, viewport.width - half).toDouble(),
       screen.dy.clamp(half, maxY).toDouble(),

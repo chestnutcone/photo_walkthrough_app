@@ -112,7 +112,9 @@ class PortfolioHeader extends ConsumerWidget {
         return TextButton(
           key: const ValueKey('portfolio-me-retry'),
           onPressed: () => ref.invalidate(meProvider),
-          style: TextButton.styleFrom(minimumSize: const Size(44, 48)),
+          style: TextButton.styleFrom(
+            minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+          ),
           child: const Text("Couldn't load your account. Retry"),
         );
       case ViewerStatus.ready:
@@ -309,7 +311,10 @@ class _Pill extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+        constraints: const BoxConstraints(
+          minHeight: kMinTapTarget,
+          minWidth: kMinTapTarget,
+        ),
         child: Center(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(99),
@@ -343,7 +348,10 @@ class _Menu extends ConsumerWidget {
         key: const ValueKey('portfolio-menu'),
         tooltip: 'More',
         color: VelaColors.sheet,
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+        constraints: const BoxConstraints(
+          minWidth: kMinTapTarget,
+          minHeight: kMinTapTarget,
+        ),
         icon: const Icon(Icons.more_horiz, color: VelaColors.ink),
         onSelected: (_) async {
           if (!await requireSignIn(context, ref) || !context.mounted) return;
@@ -515,7 +523,7 @@ class _FollowedBy extends ConsumerWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
+          constraints: const BoxConstraints(minHeight: kMinTapTarget),
           child: Row(
             children: [
               SizedBox(

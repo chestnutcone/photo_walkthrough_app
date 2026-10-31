@@ -111,7 +111,7 @@ class _ArtistRow extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
+          constraints: const BoxConstraints(minHeight: kMinTapTarget),
           child: Row(
             children: [
               Container(
@@ -174,7 +174,10 @@ class _FollowPill extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+        constraints: const BoxConstraints(
+          minHeight: kMinTapTarget,
+          minWidth: kMinTapTarget,
+        ),
         child: Center(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

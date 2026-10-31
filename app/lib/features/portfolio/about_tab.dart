@@ -248,7 +248,7 @@ class _ContactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Container(
-      constraints: const BoxConstraints(minHeight: 44),
+      constraints: const BoxConstraints(minHeight: kMinTapTarget),
       padding: const EdgeInsets.symmetric(vertical: 13),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: VelaColors.hairline)),

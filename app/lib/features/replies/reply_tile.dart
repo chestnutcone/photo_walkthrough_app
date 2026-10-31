@@ -105,7 +105,10 @@ class ReplyTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         onTap: () => onAction(delete ? ReplyAction.delete : ReplyAction.report),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          constraints: const BoxConstraints(
+            minWidth: kMinTapTarget,
+            minHeight: kMinTapTarget,
+          ),
           child: Center(
             widthFactor: 1,
             child: Padding(

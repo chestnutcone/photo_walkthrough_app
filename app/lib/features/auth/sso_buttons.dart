@@ -26,7 +26,7 @@ class SsoButtons extends StatelessWidget {
         FilledButton.icon(
           key: const ValueKey('sso-apple'),
           style: velaFilledButtonStyle().copyWith(
-            minimumSize: const WidgetStatePropertyAll(Size(44, 52)),
+            minimumSize: const WidgetStatePropertyAll(Size(kMinTapTarget, 52)),
           ),
           onPressed: enabled ? onApple : null,
           icon: const Icon(Icons.apple, size: 22),

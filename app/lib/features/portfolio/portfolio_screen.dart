@@ -193,7 +193,10 @@ class _TabLabel extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 48, minWidth: 44),
+        constraints: const BoxConstraints(
+          minHeight: kMinTapTarget,
+          minWidth: kMinTapTarget,
+        ),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           border: Border(
@@ -236,7 +239,9 @@ class _NotFound extends StatelessWidget {
             TextButton(
               onPressed: () =>
                   context.canPop() ? context.pop() : context.go('/'),
-              style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+              ),
               child: const Text('Back to feed'),
             ),
           ],
@@ -277,7 +282,9 @@ class _LoadError extends StatelessWidget {
             TextButton(
               key: const ValueKey('portfolio-retry'),
               onPressed: onRetry,
-              style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+              ),
               child: const Text('Retry'),
             ),
           ],

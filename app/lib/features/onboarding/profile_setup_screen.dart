@@ -90,7 +90,7 @@ class _ProfileSetupState extends ConsumerState<ProfileSetupScreen> {
       footer: FilledButton(
         key: const ValueKey('profile-continue'),
         style: velaFilledButtonStyle().copyWith(
-          minimumSize: const WidgetStatePropertyAll(Size(44, 52)),
+          minimumSize: const WidgetStatePropertyAll(Size(kMinTapTarget, 52)),
         ),
         onPressed: draft.canContinue(check)
             ? () => notifier.goTo(OnboardingStep.follow)

@@ -205,7 +205,10 @@ class _ZoomChoice extends StatelessWidget {
         customBorder: const StadiumBorder(),
         onTap: onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+          constraints: const BoxConstraints(
+            minHeight: kMinTapTarget,
+            minWidth: kMinTapTarget,
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Center(

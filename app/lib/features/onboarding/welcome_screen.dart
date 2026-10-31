@@ -23,7 +23,7 @@ class WelcomeScreen extends ConsumerWidget {
         FilledButton(
           key: const ValueKey('welcome-continue'),
           style: velaFilledButtonStyle().copyWith(
-            minimumSize: const WidgetStatePropertyAll(Size(44, 52)),
+            minimumSize: const WidgetStatePropertyAll(Size(kMinTapTarget, 52)),
           ),
           onPressed: () => ref
               .read(onboardingDraftProvider.notifier)

@@ -221,7 +221,10 @@ class _PublishPill extends StatelessWidget {
         customBorder: const StadiumBorder(),
         onTap: enabled ? onTap : null,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+          constraints: const BoxConstraints(
+            minHeight: kMinTapTarget,
+            minWidth: kMinTapTarget,
+          ),
           child: Center(
             child: Text(
               'Publish',
@@ -512,7 +515,7 @@ class _ChapterRow extends StatelessWidget {
               key: ValueKey('chapter-row-$index'),
               onTap: onEdit,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
+                constraints: const BoxConstraints(minHeight: kMinTapTarget),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -555,7 +558,10 @@ class _ChapterRow extends StatelessWidget {
         IconButton(
           key: ValueKey('remove-$index'),
           tooltip: 'Remove chapter ${index + 1}',
-          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          constraints: const BoxConstraints(
+            minWidth: kMinTapTarget,
+            minHeight: kMinTapTarget,
+          ),
           icon: const Icon(Icons.close, color: VelaColors.faint, size: 20),
           onPressed: onRemove,
         ),

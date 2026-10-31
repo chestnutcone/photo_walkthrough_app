@@ -9,7 +9,7 @@ ButtonStyle velaFilledButtonStyle() => FilledButton.styleFrom(
   foregroundColor: VelaColors.background,
   disabledBackgroundColor: VelaColors.input,
   disabledForegroundColor: VelaColors.faint,
-  minimumSize: const Size(44, 48),
+  minimumSize: const Size(kMinTapTarget, kMinTapTarget),
   padding: const EdgeInsets.symmetric(horizontal: 20),
   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
   textStyle: VelaText.sans15m,
@@ -18,7 +18,7 @@ ButtonStyle velaFilledButtonStyle() => FilledButton.styleFrom(
 /// 1px outline button (Follow pill outline colour).
 ButtonStyle velaOutlinedButtonStyle() => OutlinedButton.styleFrom(
   foregroundColor: VelaColors.ink,
-  minimumSize: const Size(44, 52),
+  minimumSize: const Size(kMinTapTarget, 52),
   padding: const EdgeInsets.symmetric(horizontal: 20),
   side: const BorderSide(color: VelaColors.outline),
   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -27,7 +27,7 @@ ButtonStyle velaOutlinedButtonStyle() => OutlinedButton.styleFrom(
 
 ButtonStyle velaTextButtonStyle() => TextButton.styleFrom(
   foregroundColor: VelaColors.secondary,
-  minimumSize: const Size(44, 44),
+  minimumSize: const Size(kMinTapTarget, kMinTapTarget),
   textStyle: VelaText.sans13m,
 );
 

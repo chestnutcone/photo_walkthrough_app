@@ -129,7 +129,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               TextButton(
                 key: const ValueKey('recent-clear'),
                 onPressed: ref.read(recentSearchesProvider.notifier).clear,
-                style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+                ),
                 child: Text(
                   'Clear',
                   style: VelaText.sans13m.copyWith(color: VelaColors.accent),
@@ -340,8 +342,8 @@ class _IconTap extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: SizedBox(
-        width: 44,
-        height: 44,
+        width: kMinTapTarget,
+        height: kMinTapTarget,
         child: Icon(icon, color: VelaColors.ink, size: 22),
       ),
     ),
@@ -391,7 +393,10 @@ class _TabLabel extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+          constraints: const BoxConstraints(
+            minHeight: kMinTapTarget,
+            minWidth: kMinTapTarget,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 8),
           alignment: Alignment.center,
           child: Container(
@@ -432,7 +437,7 @@ class _RecentRow extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 44),
+        constraints: const BoxConstraints(minHeight: kMinTapTarget),
         child: Row(
           children: [
             const Icon(Icons.history, size: 18, color: VelaColors.faint),

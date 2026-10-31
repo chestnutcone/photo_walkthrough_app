@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vela_app/core/theme/tokens.dart';
 import 'package:vela_app/features/story/camera_math.dart';
 import 'package:vela_app/features/story/inquiry_sheet_hook.dart';
 import 'package:vela_app/features/story/replies_sheet_hook.dart';
@@ -109,7 +110,7 @@ void main() {
       final card = t.getRect(find.byKey(const ValueKey('bottom-card')));
       for (var i = 0; i < 3; i++) {
         final hit = t.getRect(pin(i));
-        expect(hit.size, const Size(44, 44));
+        expect(hit.size, const Size(kMinTapTarget, kMinTapTarget));
         expect(
           hit.overlaps(card),
           isFalse,
@@ -137,7 +138,11 @@ void main() {
       await t.tap(pin(0));
       await t.pumpAndSettle();
       final card = t.getRect(find.byKey(const ValueKey('bottom-card')));
-      expect(t.getRect(pin(0)).overlaps(card), isFalse);
+      expect(
+        t.getRect(pin(0)).overlaps(card),
+        isFalse,
+        reason: '${t.getRect(pin(0))} vs $card',
+      );
     });
   });
 
@@ -166,9 +171,9 @@ void main() {
           await _begin(t);
           final ring = _ring(t);
           final badge = t.getCenter(_badge(0));
-          // Edge pins are pulled inward by up to 22pt (documented tradeoff);
-          // these edge cases sit 2-3pt from the edge.
-          final tol = e.key.contains('edge') ? 3.0 : 0.5;
+          // Edge pins are pulled inward by up to 24pt (half the 48pt target,
+          // documented tradeoff); these edge cases sit 4-5pt from the edge.
+          final tol = e.key.contains('edge') ? 5.0 : 0.5;
           expect(ring.dx, closeTo(badge.dx, tol));
           expect(ring.dy, closeTo(badge.dy, tol));
           expect(const Rect.fromLTWH(0, 0, 390, 844).contains(ring), isTrue);
@@ -213,9 +218,10 @@ void main() {
   group('layout deltas', () {
     testWidgets('top_bar_rows_match_prototype_y', (t) async {
       await pumpStory(t);
-      // Story mode: segments at 52, row at 67.
+      // Story mode: segments at 52, row at 67. The close key is on the 48pt
+      // target, whose 36pt visual starts 6pt lower.
       expect(
-        t.getTopLeft(find.byKey(const ValueKey('close'))).dy,
+        t.getTopLeft(find.byKey(const ValueKey('close'))).dy + 6,
         closeTo(67 + 0, 4),
       );
       final seg = t.getRect(find.byKey(const ValueKey('segment-0')));
@@ -224,7 +230,7 @@ void main() {
       await t.pumpAndSettle();
       // Explore: row at 52 (36pt close button top edge).
       expect(
-        t.getTopLeft(find.byKey(const ValueKey('close'))).dy,
+        t.getTopLeft(find.byKey(const ValueKey('close'))).dy + 6,
         closeTo(52, 4),
       );
     });

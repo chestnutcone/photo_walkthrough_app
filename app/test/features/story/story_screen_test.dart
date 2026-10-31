@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vela_app/core/theme/tokens.dart';
 import 'package:vela_app/features/story/camera_math.dart';
 import 'package:vela_app/features/story/inquiry_sheet_hook.dart';
 import 'package:vela_app/features/story/replies_sheet_hook.dart';
@@ -217,7 +218,7 @@ void main() {
           ),
         );
         expect(_within(screen, r), isTrue, reason: 'badge $i $r');
-        expect(t.getRect(pin(i)).size, const Size(44, 44));
+        expect(t.getRect(pin(i)).size, const Size(kMinTapTarget, kMinTapTarget));
         expect(_within(screen, t.getRect(pin(i))), isTrue, reason: 'hit $i');
       }
     });

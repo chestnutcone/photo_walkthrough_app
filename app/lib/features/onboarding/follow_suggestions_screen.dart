@@ -104,7 +104,9 @@ class _FollowState extends ConsumerState<FollowSuggestionsScreen> {
           FilledButton(
             key: const ValueKey('follow-finish'),
             style: velaFilledButtonStyle().copyWith(
-              minimumSize: const WidgetStatePropertyAll(Size(44, 52)),
+              minimumSize: const WidgetStatePropertyAll(
+                Size(kMinTapTarget, 52),
+              ),
             ),
             onPressed: enough && !_busy ? () => _submit(draft.follows) : null,
             child: Text(_busy ? 'Setting up…' : 'Finish'),

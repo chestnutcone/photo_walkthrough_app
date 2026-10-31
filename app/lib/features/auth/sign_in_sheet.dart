@@ -135,7 +135,10 @@ class _SignInSheetState extends ConsumerState<SignInSheet> {
           IconButton(
             key: const ValueKey('sheet-close'),
             tooltip: 'Close',
-            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            constraints: const BoxConstraints(
+              minWidth: kMinTapTarget,
+              minHeight: kMinTapTarget,
+            ),
             onPressed: _busy ? null : () => Navigator.of(context).pop(false),
             icon: const Icon(Icons.close, color: VelaColors.ink),
           ),

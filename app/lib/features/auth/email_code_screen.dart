@@ -348,7 +348,10 @@ class _StepHeader extends StatelessWidget {
     children: [
       IconButton(
         tooltip: 'Back',
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+        constraints: const BoxConstraints(
+          minWidth: kMinTapTarget,
+          minHeight: kMinTapTarget,
+        ),
         onPressed: onBack,
         icon: const Icon(Icons.arrow_back, color: VelaColors.ink),
       ),

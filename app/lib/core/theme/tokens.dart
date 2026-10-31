@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
 /// Colour tokens from the design handoff README ("Design Tokens").
+/// Smallest touch target: Android's 48 dp accessibility guideline (E1 audit,
+/// docs/review/a11y-violations.txt). Use it for every tappable control.
+const double kMinTapTarget = 48;
+
 abstract final class VelaColors {
   static const background = Color(0xFF0F0E0D);
   static const ink = Color(0xFFF2EEE6);
   static const secondary = Color(0xFFD6D1C8);
   static const muted = Color(0xFFA39D93);
-  static const faint = Color(0xFF8A847B);
+
+  /// 4.67:1 on [input], the darkest surface it is used on (E1: was 4.49).
+  static const faint = Color(0xFF8D877E);
   static const accent = Color(0xFFE5AE63);
   static const sheet = Color(0xFF161513);
   static const input = Color(0xFF201E1B);

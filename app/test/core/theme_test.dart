@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -33,12 +35,45 @@ void main() {
     expect(VelaColors.ink, const Color(0xFFF2EEE6));
     expect(VelaColors.secondary, const Color(0xFFD6D1C8));
     expect(VelaColors.muted, const Color(0xFFA39D93));
-    expect(VelaColors.faint, const Color(0xFF8A847B));
+    // Lightened from the handoff's 0xFF8A847B to reach 4.5:1 on input (E1).
+    expect(VelaColors.faint, const Color(0xFF8D877E));
     expect(VelaColors.accent, const Color(0xFFE5AE63));
     expect(VelaColors.sheet, const Color(0xFF161513));
     expect(VelaColors.input, const Color(0xFF201E1B));
     expect(VelaColors.hairline, const Color(0x14F2EEE6));
   });
+
+  test('every_text_token_reaches_4_5_to_1_on_every_surface', () {
+    double ratio(Color a, Color b) {
+      final la = a.computeLuminance(), lb = b.computeLuminance();
+      return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+    }
+
+    const texts = {
+      'ink': VelaColors.ink,
+      'secondary': VelaColors.secondary,
+      'muted': VelaColors.muted,
+      'faint': VelaColors.faint,
+      'accent': VelaColors.accent,
+      'danger': VelaColors.danger,
+    };
+    const surfaces = {
+      'background': VelaColors.background,
+      'sheet': VelaColors.sheet,
+      'input': VelaColors.input,
+    };
+    for (final t in texts.entries) {
+      for (final s in surfaces.entries) {
+        expect(
+          ratio(t.value, s.value),
+          greaterThanOrEqualTo(4.5),
+          reason: '${t.key} on ${s.key}',
+        );
+      }
+    }
+  });
+
+  test('minimum_tap_target_is_48', () => expect(kMinTapTarget, 48));
 
   test('theme_uses_background_and_ink', () {
     final theme = buildTheme();

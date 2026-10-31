@@ -138,7 +138,7 @@ class _Featured extends ConsumerWidget {
                 onTap: open,
                 behavior: HitTestBehavior.opaque,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 44),
+                  constraints: const BoxConstraints(minHeight: kMinTapTarget),
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -424,7 +424,9 @@ class _Message extends StatelessWidget {
         TextButton(
           key: actionKey,
           onPressed: onAction,
-          style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+          style: TextButton.styleFrom(
+            minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+          ),
           child: Text(action),
         ),
       ],

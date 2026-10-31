@@ -17,7 +17,7 @@ const _avatarColors = [
 /// Coloured circle with the artist's initial (avatar images are not part of
 /// the story chrome).
 /// Minimum tap target; the visuals stay 36pt inside it.
-const double _minTap = 44;
+const double _minTap = kMinTapTarget;
 
 class ArtistAvatar extends StatelessWidget {
   const ArtistAvatar({
@@ -101,35 +101,107 @@ class StoryTopBar extends StatelessWidget {
               onJump: onJump,
             ),
           ),
-        // The 44pt tap targets make the row 8pt taller than the 36pt visuals;
-        // lift it 4pt so the visuals stay where the handoff puts them.
+        // The 48pt tap targets make the row 12pt taller than the 36pt visuals;
+        // lift it 6pt so the visuals stay where the handoff puts them.
         Transform.translate(
           offset: Offset(0, hasTarget ? -(_minTap - 36) / 2 : 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: _ArtistButton(work: work, onTap: onArtist),
-                ),
-              ),
-              const SizedBox(width: 10),
-              _ModePill(mode: mode, onMode: onMode),
-              if (onReport case final report?) ...[
-                const SizedBox(width: 10),
-                _MoreMenu(onReport: report),
-              ],
-              if (onClose case final close?) ...[
-                const SizedBox(width: 10),
-                _CloseButton(onTap: close),
-              ],
-            ],
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final artist = _ArtistButton(work: work, onTap: onArtist);
+              // At large font scales or on narrow screens the controls leave
+              // the artist no room (E1: name dropped at 2.0 on 320pt), so the
+              // artist gets its own line under them.
+              final left = box.maxWidth - 10 - _controlsWidth(context);
+              if (left < _minArtistWidth) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _controls(context, wrap: true),
+                    ),
+                    Align(alignment: Alignment.centerLeft, child: artist),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: artist,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _controls(context),
+                ],
+              );
+            },
           ),
         ),
       ],
     );
   }
+
+  /// Width [_controls] lays out at, from the pill labels at the current
+  /// text scale.
+  double _controlsWidth(BuildContext context) {
+    final scaler = _pillScaler(context);
+    double item(String label) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: VelaText.sans12m),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+      )..layout();
+      final w = painter.width + 24;
+      painter.dispose();
+      return w < _minTap ? _minTap : w;
+    }
+
+    var width = item('Story') + item('Explore') + 6;
+    if (onReport != null) width += 10 + _minTap;
+    if (onClose != null) width += 10 + _minTap;
+    return width;
+  }
+
+  /// On the two-line layout the controls may wrap too, so nothing overflows
+  /// at the largest font scales.
+  Widget _controls(BuildContext context, {bool wrap = false}) {
+    final children = [
+      MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: _pillScaler(context)),
+        child: _ModePill(mode: mode, onMode: onMode),
+      ),
+      if (onReport case final report?) _MoreMenu(onReport: report),
+      if (onClose case final close?) _CloseButton(onTap: close),
+    ];
+    if (wrap) {
+      return Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10,
+        children: children,
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          children[i],
+        ],
+      ],
+    );
+  }
+
+  /// The two short pill labels stop growing at 1.3x so the controls fit
+  /// beside the artist; all other text follows the system scale (ruling S2-6).
+  static TextScaler _pillScaler(BuildContext context) =>
+      MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.3);
 }
+
+/// When the controls leave the artist less than this, it moves to its own line.
+const double _minArtistWidth = 120;
 
 class _ArtistButton extends StatelessWidget {
   const _ArtistButton({required this.work, required this.onTap});
@@ -146,34 +218,40 @@ class _ArtistButton extends StatelessWidget {
     child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ArtistAvatar(name: work.author.displayName, seed: work.author.handle),
-          const SizedBox(width: 9),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  work.author.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: VelaText.sans13m,
-                ),
-                Text(
-                  work.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: VelaText.sans11.copyWith(
-                    color: VelaColors.ink.withValues(alpha: 0.75),
-                  ),
-                ),
-              ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: _minTap),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ArtistAvatar(
+              name: work.author.displayName,
+              seed: work.author.handle,
             ),
-          ),
-        ],
+            const SizedBox(width: 9),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    work.author.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: VelaText.sans13m,
+                  ),
+                  Text(
+                    work.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: VelaText.sans11.copyWith(
+                      color: VelaColors.ink.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -185,18 +263,30 @@ class _ModePill extends StatelessWidget {
   final StoryMode mode;
   final ValueChanged<StoryMode> onMode;
 
+  /// The pill is drawn 36pt tall (handoff); each item's tap target is the
+  /// full 48pt row height around it.
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(99),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-      child: Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: const Color(0x990F0E0D),
+  Widget build(BuildContext context) => Stack(
+    children: [
+      Positioned.fill(
+        top: (_minTap - 36) / 2,
+        bottom: (_minTap - 36) / 2,
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0x1FF2EEE6)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0x990F0E0D),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: const Color(0x1FF2EEE6)),
+              ),
+            ),
+          ),
         ),
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -213,7 +303,7 @@ class _ModePill extends StatelessWidget {
           ],
         ),
       ),
-    ),
+    ],
   );
 }
 
@@ -238,16 +328,25 @@ class _ModeItem extends StatelessWidget {
     child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? VelaColors.ink : Colors.transparent,
-          borderRadius: BorderRadius.circular(99),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: _minTap,
+          minWidth: _minTap,
         ),
-        child: Text(
-          label,
-          style: VelaText.sans12m.copyWith(
-            color: active ? VelaColors.background : VelaColors.ink,
+        child: Center(
+          widthFactor: 1,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: active ? VelaColors.ink : Colors.transparent,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              label,
+              style: VelaText.sans12m.copyWith(
+                color: active ? VelaColors.background : VelaColors.ink,
+              ),
+            ),
           ),
         ),
       ),
@@ -267,7 +366,7 @@ class _MoreMenu extends StatelessWidget {
     key: const ValueKey('story-menu'),
     tooltip: 'More',
     color: VelaColors.sheet,
-    // 44pt target around a 36pt icon, like the close button.
+    // 48pt target around a 36pt icon, like the close button.
     padding: EdgeInsets.zero,
     style: IconButton.styleFrom(
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,

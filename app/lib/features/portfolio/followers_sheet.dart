@@ -93,7 +93,9 @@ class _FollowersSheetState extends ConsumerState<FollowersSheet> {
         child: TextButton(
           key: const ValueKey('followers-retry'),
           onPressed: ctl.reload,
-          style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+          style: TextButton.styleFrom(
+            minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+          ),
           child: const Text("Couldn't load followers. Retry"),
         ),
       );
@@ -264,7 +266,10 @@ class _FollowerRow extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: () => onToggle(following),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+                constraints: const BoxConstraints(
+                  minHeight: kMinTapTarget,
+                  minWidth: kMinTapTarget,
+                ),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(

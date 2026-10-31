@@ -112,7 +112,10 @@ class _TabLabel extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+          constraints: const BoxConstraints(
+            minHeight: kMinTapTarget,
+            minWidth: kMinTapTarget,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 8),
           alignment: Alignment.center,
           child: Container(
@@ -161,8 +164,8 @@ class _IconAction extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: SizedBox(
-        width: 44,
-        height: 44,
+        width: kMinTapTarget,
+        height: kMinTapTarget,
         child: Stack(
           alignment: Alignment.center,
           children: [

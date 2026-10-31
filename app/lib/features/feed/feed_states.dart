@@ -94,7 +94,7 @@ class FeedMessage extends StatelessWidget {
             key: actionKey,
             onPressed: onAction,
             style: TextButton.styleFrom(
-              minimumSize: const Size(44, 44),
+              minimumSize: const Size(kMinTapTarget, kMinTapTarget),
               foregroundColor: VelaColors.background,
               backgroundColor: VelaColors.ink,
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -164,7 +164,9 @@ class FeedMoreFooter extends StatelessWidget {
             TextButton(
               key: const ValueKey('more-retry'),
               onPressed: onRetry,
-              style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+              ),
               child: Text(
                 'Retry',
                 style: VelaText.sans13m.copyWith(color: VelaColors.accent),
