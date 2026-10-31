@@ -41,9 +41,11 @@ public sealed class WorkService(
     /// a short transaction that validates and claims the draft, the image work under the decode gate, then a short transaction
     /// that moves the draft to pending only if the claim is still ours. Any failure releases the claim.
     /// </summary>
-    public async Task<WorkDto> RequestPublishAsync(Guid userId, Guid workId)
+    public async Task<WorkDto> RequestPublishAsync(Guid userId, Guid workId, CancellationToken ct = default)
     {
-        var claim = await ClaimForPublishAsync(userId, workId);
+        // S2 fix (review I-3): a retry after the first request got through (its answer was lost, or the app timed out) is
+        // answered with the story as it is now, not 409, so the app carries on.
+        if (await ClaimForPublishAsync(userId, workId) is not { } claim) return (await reader.GetAsync(workId, userId))!;
         SealedOriginal? seal = null;
         try
         {
@@ -54,10 +56,10 @@ public sealed class WorkService(
                 // S1b-3: copy the upload to a server-owned name once; the variants and every later reader use only that copy.
                 seal = await originals.SealAsync(workId);
                 // S2-1: the verdict on the sealed copy decides before anything decodes the file.
-                if (await malware.AwaitVerdictAsync(workId, seal.Blob) == Moderation.MalwareVerdict.Malicious)
+                if (await malware.AwaitVerdictAsync(workId, seal.Blob, ct) == Moderation.MalwareVerdict.Malicious)
                 {
+                    // The block and its queue item commit together (review M-2): never a blocked work no admin can see.
                     await CompletePublishAsync(userId, workId, claim.Until, null, seal);
-                    await reports.CreateAutoFlagAsync("work", workId, Moderation.MalwareCheck.Category, Moderation.MalwareCheck.Severity);
                     Telemetry.VelaMetrics.Takedown("malware_block");
                     await DeleteQuietlyAsync(BlobNames.WorkOriginal(workId));
                     return (await reader.GetAsync(workId, userId))!;
@@ -88,12 +90,13 @@ public sealed class WorkService(
 
     private sealed record PublishClaim(string Source, DateTimeOffset Until);
 
-    private async Task<PublishClaim> ClaimForPublishAsync(Guid userId, Guid workId)
+    /// <summary>Null when the work is no longer a draft (an earlier publish of it went through).</summary>
+    private async Task<PublishClaim?> ClaimForPublishAsync(Guid userId, Guid workId)
     {
         var now = clock.GetUtcNow();
         await using var tx = await db.Database.BeginTransactionAsync();
         var work = await LockOwnedAsync(userId, workId);
-        if (work.Status != WorkStatus.Draft) throw NotEditable();
+        if (work.Status != WorkStatus.Draft) return null;
         if (work.PublishClaimedUntil is { } held && held > now)
             throw new WorkException(StatusCodes.Status409Conflict, "not_editable", "This story is already being published.");
         if (work.ExpiresAt is { } expires && expires <= now)
@@ -136,6 +139,7 @@ public sealed class WorkService(
         {
             work.Status = WorkStatus.Blocked;
             work.TakedownDoneAt = now; // nothing public was ever made
+            reports.AddAutoFlag("work", workId, Moderation.MalwareCheck.Category, Moderation.MalwareCheck.Severity);
         }
         else
         {

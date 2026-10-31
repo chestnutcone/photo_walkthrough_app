@@ -350,13 +350,28 @@ public class WorkTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
-    public async Task Publish_twice_is_not_editable()
+    public async Task Publish_again_after_it_went_through_returns_the_current_state()
+    {
+        // S2 fix (review I-3): a retry after the app's own timeout must not fail when the first request got through.
+        var u = await Artist();
+        var id = await ReadyDraft(_host, u);
+        await u.Post($"/v1/works/{id}/publish", new { });
+
+        var again = await u.Post($"/v1/works/{id}/publish", new { });
+
+        Assert.Equal(HttpStatusCode.OK, again.Status);
+        Assert.Equal("pending", again.Data.GetProperty("status").GetString());
+        Assert.Equal(WorkStatus.Pending, (await Load(_host, id)).Status);
+    }
+
+    [Fact]
+    public async Task Publish_of_someone_elses_published_work_is_still_not_found()
     {
         var u = await Artist();
         var id = await ReadyDraft(_host, u);
         await u.Post($"/v1/works/{id}/publish", new { });
 
-        Assert.Equal("not_editable", (await u.Post($"/v1/works/{id}/publish", new { })).ErrorCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await (await Artist()).Post($"/v1/works/{id}/publish", new { })).Status);
     }
 
     [Fact]

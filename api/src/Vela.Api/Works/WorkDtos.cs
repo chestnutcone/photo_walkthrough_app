@@ -18,7 +18,7 @@ public sealed record WorkDto(
 public interface IWorkService
 {
     Task<WorkDto> UpdateAsync(Guid userId, Guid workId, UpdateWorkRequest req);
-    Task<WorkDto> RequestPublishAsync(Guid userId, Guid workId);
+    Task<WorkDto> RequestPublishAsync(Guid userId, Guid workId, CancellationToken ct = default);
     Task DeleteAsync(Guid userId, Guid workId);
     Task<WorkDto?> GetAsync(Guid workId, Guid? viewerId);
 }

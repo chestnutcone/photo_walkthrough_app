@@ -190,6 +190,6 @@ internal sealed class ExplodingWorkService(Vela.Api.Works.IWorkService inner, Ex
     private InvalidOperationException Boom() => new("boom-secret-detail at /home/oliver/vela/api/src/Secret.cs:line 42 Host=db Password=hunter2");
     public Task<Vela.Api.Works.WorkDto?> GetAsync(Guid workId, Guid? viewerId) => armed.On ? throw Boom() : inner.GetAsync(workId, viewerId);
     public Task<Vela.Api.Works.WorkDto> UpdateAsync(Guid userId, Guid workId, Vela.Api.Works.UpdateWorkRequest request) => armed.On ? throw Boom() : inner.UpdateAsync(userId, workId, request);
-    public Task<Vela.Api.Works.WorkDto> RequestPublishAsync(Guid userId, Guid workId) => armed.On ? throw Boom() : inner.RequestPublishAsync(userId, workId);
+    public Task<Vela.Api.Works.WorkDto> RequestPublishAsync(Guid userId, Guid workId, CancellationToken ct = default) => armed.On ? throw Boom() : inner.RequestPublishAsync(userId, workId, ct);
     public Task DeleteAsync(Guid userId, Guid workId) => armed.On ? throw Boom() : inner.DeleteAsync(userId, workId);
 }

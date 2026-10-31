@@ -198,6 +198,8 @@ No authorization required
 
 Publish a draft
 
+Seals the upload, waits briefly (about 10 s at most) for the malware verdict, makes the variants and moves the draft to `pending` (or `blocked` when the file is malicious). Idempotent for the owner: when an earlier publish of the same work already went through (its answer was lost or the client timed out), the work is returned as it is now with 200. 409 `not_editable` means another publish of this draft is still running; 409 `draft_expired` that the draft expired. Clients should allow at least 45 s for the answer.
+
 ### Example
 ```dart
 import 'package:vela_api_client/api.dart';

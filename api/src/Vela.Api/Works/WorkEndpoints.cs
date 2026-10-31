@@ -30,8 +30,8 @@ public static class WorkEndpoints
         app.MapPut("/v1/works/{id}", (string id, HttpContext ctx, ICurrentUser me, IWorkService svc) =>
             Run(async () => Results.Ok(await svc.UpdateAsync(me.UserId!.Value, ParseId(id), await ReadUpdateAsync(ctx)))))
             .RequireAuthorization().WithName("updateWork");
-        app.MapPost("/v1/works/{id}/publish", (string id, ICurrentUser me, IWorkService svc) =>
-            Run(async () => Results.Ok(await svc.RequestPublishAsync(me.UserId!.Value, ParseId(id))))).RequireAuthorization().WithName("publishWork");
+        app.MapPost("/v1/works/{id}/publish", (string id, HttpContext ctx, ICurrentUser me, IWorkService svc) =>
+            Run(async () => Results.Ok(await svc.RequestPublishAsync(me.UserId!.Value, ParseId(id), ctx.RequestAborted)))).RequireAuthorization().WithName("publishWork");
         app.MapDelete("/v1/works/{id}", (string id, ICurrentUser me, IWorkService svc) =>
             Run(async () => { await svc.DeleteAsync(me.UserId!.Value, ParseId(id)); return Results.Ok<object?>(null); })).RequireAuthorization().WithName("deleteWork");
         return app;

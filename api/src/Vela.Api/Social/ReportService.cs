@@ -66,6 +66,17 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
         }
     }
 
+    /// <summary>
+    /// Adds an auto-flag to the caller's unit of work without saving, so it commits in the caller's transaction together with
+    /// the block (a fresh draft has no earlier flag, so no duplicate check is needed).
+    /// </summary>
+    public void AddAutoFlag(string targetType, Guid targetId, string category, int severity) =>
+        db.Reports.Add(new Report
+        {
+            Id = Guid.NewGuid(), Source = SourceAutoFlag, Reason = $"auto:{category}:{severity}", Status = Pending,
+            TargetType = targetType, TargetId = targetId, ReporterId = null, CreatedAt = clock.GetUtcNow(),
+        });
+
     /// <summary>Queues an auto-flag for admin review; the caller applies the automatic block. Idempotent while pending.</summary>
     public async Task CreateAutoFlagAsync(string targetType, Guid targetId, string category, int severity)
     {

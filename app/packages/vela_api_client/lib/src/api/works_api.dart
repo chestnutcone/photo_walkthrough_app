@@ -354,7 +354,7 @@ _responseData = rawData == null ? null : deserialize<WorkEnvelope, WorkEnvelope>
   }
 
   /// Publish a draft
-  /// 
+  /// Seals the upload, waits briefly (about 10 s at most) for the malware verdict, makes the variants and moves the draft to &#x60;pending&#x60; (or &#x60;blocked&#x60; when the file is malicious). Idempotent for the owner: when an earlier publish of the same work already went through (its answer was lost or the client timed out), the work is returned as it is now with 200. 409 &#x60;not_editable&#x60; means another publish of this draft is still running; 409 &#x60;draft_expired&#x60; that the draft expired. Clients should allow at least 45 s for the answer.
   ///
   /// Parameters:
   /// * [id] - Resource id
