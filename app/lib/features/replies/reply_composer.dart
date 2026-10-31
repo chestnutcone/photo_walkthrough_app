@@ -1,5 +1,6 @@
+import '../../core/text/user_text_formatter.dart';
+
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,8 +14,8 @@ import 'replies_controller.dart';
 const int _counterFrom = 900;
 const Color _errorInk = Color(0xFFE59A8A);
 
-/// Truncates to [kReplyMaxLength] code points, never splitting a surrogate
-/// pair. Paste over the limit is cut, typing past it is refused.
+/// Truncates to [kReplyMaxLength] characters counted as the server counts
+/// them (cleaned code points), never splitting a surrogate pair. Paste over the limit is cut, typing past it is refused.
 class CodePointLimiter extends TextInputFormatter {
   const CodePointLimiter();
 
@@ -24,14 +25,10 @@ class CodePointLimiter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     if (codePointCount(newValue.text) <= kReplyMaxLength) return newValue;
-    final cut = String.fromCharCodes(newValue.text.runes.take(kReplyMaxLength));
-    return TextEditingValue(
-      text: cut,
-      selection: TextSelection.collapsed(
-        offset: math.min(newValue.selection.end, cut.length),
-      ),
-    );
+    return _limit.formatEditUpdate(oldValue, newValue);
   }
+
+  static final _limit = UserTextFormatter(kReplyMaxLength, multiline: true);
 }
 
 final _controlChars = RegExp(r'[\u0000-\u0009\u000B-\u001F\u007F-\u009F]');

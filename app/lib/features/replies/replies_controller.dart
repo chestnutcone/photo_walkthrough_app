@@ -1,3 +1,5 @@
+import '../../core/text/text_sanitizer.dart';
+
 import 'dart:async';
 
 import 'package:dio/dio.dart';
@@ -11,7 +13,9 @@ import '../../core/api/api_providers.dart';
 /// Server limit, counted in Unicode code points (not UTF-16 units).
 const int kReplyMaxLength = 1000;
 
-int codePointCount(String s) => s.runes.length;
+/// Length as the server counts a reply: code points after the shared
+/// multi-line sanitizer (S2-2).
+int codePointCount(String s) => userTextLength(s, multiline: true);
 
 typedef RepliesKey = ({String workId, int chapterIndex});
 
@@ -200,9 +204,10 @@ class RepliesController extends Notifier<RepliesState> {
     return loadMore();
   }
 
-  /// Posts [raw] (trimmed). The server's reply is appended on success.
+  /// Posts [raw], cleaned as the server cleans it. The server's reply is
+  /// appended on success.
   Future<SendOutcome> send(String raw) async {
-    final text = raw.trim();
+    final text = cleanUserText(raw, multiline: true);
     if (state.sending ||
         text.isEmpty ||
         codePointCount(text) > kReplyMaxLength) {

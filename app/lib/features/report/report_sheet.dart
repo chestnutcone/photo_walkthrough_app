@@ -7,7 +7,7 @@ import '../../core/api/api_exception.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/theme/form_styles.dart';
 import '../../core/theme/tokens.dart';
-import '../create/utf16_limit.dart';
+import '../../core/text/user_text_formatter.dart';
 import '../onboarding/legal_links.dart';
 import 'report_messages.dart';
 import 'report_reasons.dart';
@@ -167,7 +167,9 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
         enabled: !_sending,
         minLines: 2,
         maxLines: 4,
-        inputFormatters: [Utf16LengthFormatter(reportNoteMaxLength)],
+        inputFormatters: [
+          UserTextFormatter(reportNoteMaxLength, multiline: true),
+        ],
         style: VelaText.sans15,
         decoration: velaInputDecoration(hint: 'Add details (optional)'),
       ),

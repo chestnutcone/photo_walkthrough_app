@@ -38,7 +38,7 @@ class BioCounter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final n = codePointCount(text);
+    final n = codePointCount(text, multiline: true);
     final over = n > bioMax;
     return Align(
       alignment: Alignment.centerRight,

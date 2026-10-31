@@ -12,7 +12,7 @@ import 'create_state.dart';
 import 'photo_picker.dart';
 import 'pin_draft.dart';
 import 'pin_editor.dart';
-import 'utf16_limit.dart';
+import '../../core/text/user_text_formatter.dart';
 
 /// Create a story: pick a photograph, place and write chapters, publish.
 /// The route requires sign-in (`requireSignIn` runs at the call sites).
@@ -454,7 +454,7 @@ class _StoryFieldsState extends ConsumerState<_StoryFields> {
         TextField(
           key: const ValueKey('story-title'),
           controller: _title,
-          inputFormatters: [Utf16LengthFormatter(maxStoryTitle)],
+          inputFormatters: [UserTextFormatter(maxStoryTitle)],
           style: VelaText.serif28,
           textCapitalization: TextCapitalization.sentences,
           onChanged: ctl.setTitle,
@@ -472,7 +472,7 @@ class _StoryFieldsState extends ConsumerState<_StoryFields> {
         TextField(
           key: const ValueKey('story-alt'),
           controller: _alt,
-          inputFormatters: [Utf16LengthFormatter(maxStoryAlt)],
+          inputFormatters: [UserTextFormatter(maxStoryAlt)],
           style: VelaText.sans14,
           onChanged: ctl.setAltText,
           decoration: velaInputDecoration(

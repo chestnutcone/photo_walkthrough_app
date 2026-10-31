@@ -10,7 +10,8 @@ import 'package:vela_app/features/create/create_controller.dart';
 import 'package:vela_app/features/create/create_messages.dart';
 import 'package:vela_app/features/create/create_state.dart';
 import 'package:vela_app/features/create/photo_picker.dart';
-import 'package:vela_app/features/create/utf16_limit.dart';
+import 'package:vela_app/core/text/text_sanitizer.dart';
+import 'package:vela_app/core/text/user_text_formatter.dart';
 
 import '../../core/support/fakes.dart';
 import 'support/create_harness.dart';
@@ -260,29 +261,28 @@ void main() {
   });
 
   group('limits', () {
-    test('utf16_formatter_never_exceeds_the_server_length', () {
-      final f = Utf16LengthFormatter(120);
-      final emoji = '😀' * 100; // 200 UTF-16 units
+    test('formatter_counts_code_points_like_the_server_s2', () {
+      final f = UserTextFormatter(120);
+      final emoji = '😀' * 130;
       final out = f.formatEditUpdate(
         TextEditingValue.empty,
         TextEditingValue(text: emoji),
       );
-      expect(out.text.length, lessThanOrEqualTo(120));
+      expect(out.text.runes.length, 120);
       expect(out.text.length.isEven, isTrue, reason: 'no split surrogate');
+      final fits = 'a' * 119 + '😀';
       expect(
-        'a' * 119 + '😀',
-        isNot(
-          f
-              .formatEditUpdate(
-                TextEditingValue.empty,
-                TextEditingValue(text: 'a' * 119 + '😀'),
-              )
-              .text,
-        ),
+        f
+            .formatEditUpdate(
+              TextEditingValue.empty,
+              TextEditingValue(text: fits),
+            )
+            .text,
+        fits,
       );
     });
 
-    testWidgets('chapter_title_field_counts_utf16_units', (t) async {
+    testWidgets('chapter_title_field_counts_code_points', (t) async {
       final h = await pumpCreate(t);
       await pickAndAnnotate(t);
       await tapPhotoAt(t, 0.5, 0.5);
@@ -294,7 +294,7 @@ void main() {
       await t.ensureVisible(find.byKey(const ValueKey('add-chapter')));
       await t.tap(find.byKey(const ValueKey('add-chapter')));
       await t.pumpAndSettle();
-      expect(read(h).pins.single.title.length, lessThanOrEqualTo(120));
+      expect(userTextLength(read(h).pins.single.title), lessThanOrEqualTo(120));
     });
 
     test('validation_failed_names_the_field_without_user_text', () {

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:vela_api_client/vela_api_client.dart';
 
+import '../../core/text/text_sanitizer.dart';
 import '../onboarding/handle_rules.dart';
 
 const int bioMax = 280;
@@ -15,12 +16,11 @@ const int serviceDescriptionMax = 300;
 const int servicePriceMax = 40;
 const int showTextMax = 200;
 
-/// Length the way the server counts it: Unicode code points (an emoji is 1).
-/// The server's `EnumerateRunes().Count()` is the reference.
-int codePointCount(String s) => s.runes.length;
-
-bool _hasControl(String s) =>
-    s.runes.any((r) => (r < 0x20 || (r >= 0x7F && r < 0xA0)) && r != 0x0A);
+/// Length the way the server counts it: code points of the text after the
+/// shared sanitizer (S2-2), so stripped invisible characters do not count and
+/// an emoji is 1. `Common/TextSanitizer.cs` is the reference.
+int codePointCount(String s, {bool multiline = false}) =>
+    userTextLength(s, multiline: multiline);
 
 final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@.]+$');
 final _yearPattern = RegExp(r'^[0-9]{4}$');
@@ -125,6 +125,7 @@ Map<String, String> validateForm(ProfileForm raw, {ProfileForm? original}) {
   final f = raw.normalized;
   final errors = <String, String>{};
   final nameLen = codePointCount(f.displayName);
+  // Only invisible characters, such as a Hangul filler, is no name at all.
   if (nameLen < 1) {
     errors['displayName'] = 'Enter a name.';
   }
@@ -140,11 +141,9 @@ Map<String, String> validateForm(ProfileForm raw, {ProfileForm? original}) {
     errors['handle'] = HandleRules.message(handleProblem);
   }
 
-  final bioLen = codePointCount(f.bio);
+  final bioLen = codePointCount(f.bio, multiline: true);
   if (bioLen > bioMax) {
     errors['bio'] = 'Bio is ${bioLen - bioMax} over the $bioMax limit.';
-  } else if (_hasControl(f.bio)) {
-    errors['bio'] = 'Bio has characters that are not allowed.';
   }
   if (codePointCount(f.city) > cityMax) {
     errors['city'] = 'Use at most $cityMax characters.';
@@ -181,17 +180,14 @@ bool _validWebsite(String v) {
 
 /// Problem with one service, or null.
 String? serviceProblem(String title, String description, String price) {
-  if (title.trim().isEmpty) {
+  if (codePointCount(title) == 0) {
     return 'Enter a title.';
   }
-  if (codePointCount(title.trim()) > serviceTitleMax) {
+  if (codePointCount(title) > serviceTitleMax) {
     return 'Title: at most $serviceTitleMax characters.';
   }
-  if (codePointCount(description) > serviceDescriptionMax) {
+  if (codePointCount(description, multiline: true) > serviceDescriptionMax) {
     return 'Description: at most $serviceDescriptionMax characters.';
-  }
-  if (_hasControl(description)) {
-    return 'Description has characters that are not allowed.';
   }
   if (codePointCount(price) > servicePriceMax) {
     return 'Price: at most $servicePriceMax characters.';

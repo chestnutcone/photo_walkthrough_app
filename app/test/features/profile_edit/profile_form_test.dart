@@ -37,9 +37,21 @@ void main() {
     expect(validateForm(base.copyWith(bio: '😀' * 281)).keys, ['bio']);
   });
 
-  test('bio_rejects_control_characters_but_allows_newlines', () {
+  test('bio_control_characters_are_stripped_by_the_server_s2', () {
     expect(validateForm(base.copyWith(bio: 'a\nb')), isEmpty);
-    expect(validateForm(base.copyWith(bio: 'a\tb')).keys, ['bio']);
+    expect(validateForm(base.copyWith(bio: 'a\tb')), isEmpty);
+  });
+
+  test('bio_limit_counts_cleaned_text_s2', () {
+    final invisible = '\u200B' * 500;
+    expect(validateForm(base.copyWith(bio: 'x' * bioMax + invisible)), isEmpty);
+    expect(validateForm(base.copyWith(bio: 'x' * (bioMax + 1))).keys, ['bio']);
+  });
+
+  test('name_of_only_invisible_characters_is_empty_s2', () {
+    expect(validateForm(base.copyWith(displayName: '\u3164\u200B')).keys, [
+      'displayName',
+    ]);
   });
 
   test('website_must_be_https', () {
