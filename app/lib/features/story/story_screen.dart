@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vela_api_client/vela_api_client.dart';
@@ -241,6 +242,42 @@ class _StoryViewState extends ConsumerState<_StoryView> {
     final pinsVisible = state.mode == StoryMode.explore || state.step == 0;
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureCard());
+    // Keyboard: Begin, the tap zones and the pins are gesture detectors that
+    // focus never reaches, so the arrow keys step through the story (web
+    // viewer, hardware keyboards, Switch Access). Space is left alone: it
+    // activates whichever button has focus.
+    final storyMode = state.mode == StoryMode.story;
+    return CallbackShortcuts(
+      bindings: {
+        if (storyMode)
+          const SingleActivator(LogicalKeyboardKey.arrowRight): _ctl.next,
+        if (storyMode)
+          const SingleActivator(LogicalKeyboardKey.arrowLeft): _ctl.prev,
+      },
+      child: Focus(
+        autofocus: true,
+        child: _scaffold(
+          state,
+          media,
+          viewport,
+          frame,
+          camera,
+          chapterIdx,
+          pinsVisible,
+        ),
+      ),
+    );
+  }
+
+  Widget _scaffold(
+    StoryState state,
+    MediaQueryData media,
+    Size viewport,
+    PhotoFrame frame,
+    CameraState camera,
+    int chapterIdx,
+    bool pinsVisible,
+  ) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(

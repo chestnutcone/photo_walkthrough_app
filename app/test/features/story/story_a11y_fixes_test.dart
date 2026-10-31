@@ -1,6 +1,7 @@
 import 'dart:ui' show SemanticsFlag;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/story_harness.dart';
@@ -87,5 +88,21 @@ void main() {
     await t.pumpAndSettle();
     expect(cardLabel(), 'Explore, 3 points');
     handle.dispose();
+  });
+
+  // GALLERY web viewer pass: Begin, the tap zones and the pins are gesture
+  // detectors, which keyboard focus never reaches, so a keyboard-only reader
+  // of a shared story could not leave the intro.
+  testWidgets('arrow_keys_step_through_chapters', (t) async {
+    await pumpStory(t);
+    await t.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await t.pumpAndSettle();
+    expect(kicker(1, 3), findsOneWidget);
+    await t.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await t.pumpAndSettle();
+    expect(kicker(2, 3), findsOneWidget);
+    await t.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await t.pumpAndSettle();
+    expect(kicker(1, 3), findsOneWidget);
   });
 }
