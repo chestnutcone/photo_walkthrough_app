@@ -257,7 +257,7 @@ Every finding has a status. Fixed items name the commit subject and the pinning 
 
 | ID | Severity | Status | Note |
 |---|---|---|---|
-| S1b-1 | HIGH | Fixed | Header-only pixel check, reduced-size JPEG/WebP decode, 160 MB decode budget, `ImageDecodeGate` (default 2, then 503 `busy`), failed uploads deleted, publish holds no row lock while decoding. `Images/DecodeLimitTests.cs`, `Works/PublishBoundsTests.cs`. R-11 and F-A7-4 corrected |
+| S1b-1 | HIGH | Fixed | Header-only pixel check, reduced-size JPEG/WebP decode, 120 MB decode budget incl. progressive-JPEG coefficients (review round 1), `ImageDecodeGate` (default 2, then 503 `busy`), failed uploads deleted, publish holds no row lock while decoding. `Images/DecodeLimitTests.cs`, `Works/PublishBoundsTests.cs`. R-11 and F-A7-4 corrected |
 | S1b-2 | HIGH | Fixed in part | 409 `under_review` for work and reply deletion under review; account hard delete deferred up to 30 days. `Admin/UnderReviewDeleteTests.cs`, `Account/DeletionDeferralTests.cs`. **Open - owner decision:** ban or cooling-off on re-signup after deleting during review; identity reuse unchanged |
 | S1b-3 | HIGH | Fixed | Sealed original + SHA-256 at publish, used by variants, scan check, admin pages, evidence, restore, export and deletion; upload deleted. `Admin/SealedOriginalTests.cs` |
 | S1b-4 | MEDIUM | Open - deferred | Random variant names conflict with the fixed-name CDN purge fallback (`CloudflareCdnPurger` expands a prefix into thumb/feed/full), the take-down purge list and the evidence copy, and would not hide the URL from the uploader, who reads it from the owner view of the work. The real fix is the reviewer's private staging prefix copied to `works/` after a clean scan; next task |

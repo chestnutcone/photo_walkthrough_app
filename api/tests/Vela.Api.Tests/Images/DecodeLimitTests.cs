@@ -69,7 +69,7 @@ public class DecodeLimitTests
     {
         using var codec = SKCodec.Create(new MemoryStream(ImageFixtures.Jpeg(4800, 4800)))!;
 
-        var plan = VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge);
+        var plan = VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge, null);
 
         Assert.True(plan.Width < 4800 && plan.Width >= VariantGenerator.LargestVariantEdge, $"decoded at {plan.Width}x{plan.Height}");
         Assert.Equal(plan.Width, plan.Height);
@@ -81,7 +81,7 @@ public class DecodeLimitTests
         // 48 MP is under the 60 MP pixel cap, but Skia decodes PNG only at full size: 192 MB of pixels is over the budget.
         using var codec = SKCodec.Create(new MemoryStream(ImageFixtures.BombPng(8000, 6000)))!;
 
-        var e = Assert.Throws<InvalidImageException>(() => VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge));
+        var e = Assert.Throws<InvalidImageException>(() => VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge, null));
 
         Assert.Equal("too_many_pixels", e.Reason);
     }
@@ -171,7 +171,7 @@ public class DecodeLimitTests
         using var full = SKCodec.Create(new MemoryStream(_blobs.Bytes($"works/{work}/full.webp")))!;
         Assert.Equal(VariantGenerator.LargestVariantEdge, Math.Max(full.Info.Width, full.Info.Height));
         using var codec = SKCodec.Create(new MemoryStream(_blobs.Bytes(BlobNames.WorkOriginal(work))))!;
-        var plan = VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge);
+        var plan = VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge, null);
         Assert.InRange(Math.Max(plan.Width, plan.Height), VariantGenerator.LargestVariantEdge, Math.Max(w, h) / 2 + 8);
     }
 
@@ -182,6 +182,73 @@ public class DecodeLimitTests
     public void Png_between_40_and_60_megapixels_is_refused_because_skia_cannot_decode_png_at_reduced_size(int w, int h)
     {
         using var codec = SKCodec.Create(new MemoryStream(ImageFixtures.BombPng(w, h)))!;
-        Assert.Equal("too_many_pixels", Assert.Throws<InvalidImageException>(() => VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge)).Reason);
+        Assert.Equal("too_many_pixels", Assert.Throws<InvalidImageException>(() => VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge, null)).Reason);
+    }
+
+    // ---- Review round 1, F1: progressive JPEGs buffer the whole coefficient image, whatever the output size ----
+
+    /// <summary>
+    /// A small Skia baseline JPEG whose SOF header is rewritten to claim <paramref name="w"/> x <paramref name="h"/>, the given SOF
+    /// marker (0xC0 baseline, 0xC2 progressive) and 4:4:4 sampling. Only the header is ever read: the budget must refuse it first.
+    /// </summary>
+    public static byte[] JpegWithHeader(byte sof, int w, int h)
+    {
+        var d = ImageFixtures.Jpeg(64, 64);
+        for (var i = 2; i + 9 < d.Length;)
+        {
+            if (d[i] != 0xFF) { i++; continue; }
+            var marker = d[i + 1];
+            var len = (d[i + 2] << 8) | d[i + 3];
+            if (marker == 0xC0)
+            {
+                d[i + 1] = sof;
+                BinaryPrimitives.WriteUInt16BigEndian(d.AsSpan(i + 5), (ushort)h);
+                BinaryPrimitives.WriteUInt16BigEndian(d.AsSpan(i + 7), (ushort)w);
+                for (var c = 0; c < d[i + 9]; c++) d[i + 11 + 3 * c] = 0x11;
+                return d;
+            }
+            i += 2 + len;
+        }
+        throw new InvalidOperationException("no SOF0 in fixture");
+    }
+
+    [Fact]
+    public void The_coefficient_buffer_is_counted_for_progressive_jpeg_with_its_sampling()
+    {
+        Assert.Equal(0, VariantGenerator.JpegCoefficientBytes(JpegWithHeader(0xC0, 6000, 6000))); // one baseline scan: streamed
+        Assert.Equal(750L * 750 * 3 * 128, VariantGenerator.JpegCoefficientBytes(JpegWithHeader(0xC2, 6000, 6000)));
+    }
+
+    [Fact]
+    public async Task A_6000x6000_progressive_jpeg_is_refused_on_the_publish_path_before_decoding()
+    {
+        var work = Guid.NewGuid();
+        _blobs.Put(BlobNames.WorkOriginal(work), JpegWithHeader(0xC2, 6000, 6000)); // 216 MB of coefficients alone
+
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => new VariantGenerator(_blobs).GenerateAsync(BlobNames.WorkOriginal(work), work));
+
+        Assert.Equal("too_many_pixels", e.Reason);
+        Assert.DoesNotContain(_blobs.Names, n => n.StartsWith("works/", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_7745x7745_progressive_jpeg_is_refused_on_the_avatar_path_and_the_upload_is_removed()
+    {
+        var user = Guid.NewGuid();
+        _blobs.Put(BlobNames.AvatarOriginal(user), JpegWithHeader(0xC2, 7745, 7745));
+
+        var e = await Assert.ThrowsAsync<InvalidImageException>(() => new VariantGenerator(_blobs).GenerateAvatarAsync(BlobNames.AvatarOriginal(user), user));
+
+        Assert.Equal("too_many_pixels", e.Reason);
+        Assert.False(_blobs.Exists(BlobNames.AvatarOriginal(user)));
+    }
+
+    [Fact]
+    public void The_same_header_as_a_single_scan_baseline_jpeg_fits_the_budget()
+    {
+        var data = JpegWithHeader(0xC0, 6000, 6000);
+        using var codec = SKCodec.Create(new MemoryStream(data))!;
+        var plan = VariantGenerator.PlanDecode(codec, VariantGenerator.LargestVariantEdge, data);
+        Assert.True(plan.Width < 6000);
     }
 }

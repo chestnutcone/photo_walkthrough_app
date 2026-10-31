@@ -150,8 +150,10 @@ See `docs/security/` for the threat model, checklists and findings.
 ## Settings and behaviour added by the S1b fixes
 
 - `Images__MaxConcurrentDecodes` (default 2) and `Images__DecodeWaitSeconds` (default 5): image decodes allowed at once per
-  replica, and how long a request waits for a slot before it answers 503 `busy` with `Retry-After`. Each decode can use up to
-  160 MB of native memory, so with the 1 GiB container keep the limit at 2 unless the memory is raised.
+  replica, and how long a request waits for a slot before it answers 503 `busy` with `Retry-After`. Each decode is budgeted at
+  120 MB of native memory (output bitmaps plus the progressive-JPEG coefficient buffer). Measured whole-process peak with two
+  concurrent worst-case decodes: about 400 MB (with one: about 300 MB), so keep the limit at 2 on the 1 GiB container unless the
+  memory is raised. PNG over about 30 MP and progressive JPEG over about 25 MP (4:2:0) are refused as `invalid_image`.
 - Migrations `PublishClaim`, `SealedOriginal`, `DeletionDeferral` and `DmcaClaimantMailbox` add nullable columns only; they apply
   with `Database__MigrateOnStartup` like the others.
 - **Sealed originals (S1b-3).** Works published from now on read only `originals/sealed/{workId}/{random}`; the row keeps its
