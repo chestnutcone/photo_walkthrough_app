@@ -21,7 +21,17 @@ bool isLaunchableLegalUri(Uri uri, {bool isDebug = kDebugMode}) {
   return isDebug && uri.scheme == 'http' && local.contains(uri.host);
 }
 
+/// A profile website the app may open: https with a host and no user info,
+/// otherwise null (the row then only offers Copy). Never relaxed for debug.
+Uri? launchableWebsiteUri(String raw) {
+  final uri = Uri.tryParse(raw.trim());
+  if (uri == null || uri.scheme != 'https') return null;
+  if (uri.host.isEmpty || uri.userInfo.isNotEmpty) return null;
+  return uri;
+}
+
 /// Opens [uri] in the external browser; false when it cannot be opened.
+/// Shared by the legal links and the profile website row.
 typedef LegalUrlLauncher = Future<bool> Function(Uri uri);
 
 final legalUrlLauncherProvider = Provider<LegalUrlLauncher>(

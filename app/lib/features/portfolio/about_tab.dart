@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vela_api_client/vela_api_client.dart';
 
 import '../../core/theme/tokens.dart';
+import '../onboarding/legal_links.dart';
 import 'portfolio_format.dart';
 
 const _copiedFor = Duration(seconds: 2);
@@ -13,7 +15,7 @@ bool _has(String? s) => s != null && s.trim().isNotEmpty;
 
 /// About & contact. Shows only what the artist chose to publish: the public
 /// contact email is the one email ever shown, never the login email.
-class AboutTab extends StatefulWidget {
+class AboutTab extends ConsumerStatefulWidget {
   const AboutTab({
     super.key,
     required this.profile,
@@ -26,10 +28,10 @@ class AboutTab extends StatefulWidget {
   final VoidCallback onContact;
 
   @override
-  State<AboutTab> createState() => _AboutTabState();
+  ConsumerState<AboutTab> createState() => _AboutTabState();
 }
 
-class _AboutTabState extends State<AboutTab> {
+class _AboutTabState extends ConsumerState<AboutTab> {
   String? _copiedKey;
   Timer? _reset;
 
@@ -49,6 +51,42 @@ class _AboutTabState extends State<AboutTab> {
     });
   }
 
+  /// https only (same launcher as the legal links); a failure says so.
+  Future<void> _open(Uri uri) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final opened = await ref.read(legalUrlLauncherProvider)(uri);
+    if (!opened) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text("Couldn't open the page. Try again later."),
+        ),
+      );
+    }
+  }
+
+  Widget _websiteRow(String website) {
+    final uri = launchableWebsiteUri(website);
+    if (uri == null) {
+      return _ContactRow(
+        rowKey: const ValueKey('copy-website'),
+        label: 'Website',
+        value: website,
+        action: _copiedKey == 'website' ? 'Copied' : 'Copy',
+        highlight: _copiedKey == 'website',
+        semanticAction: 'Copy website address',
+        onTap: () => _copy('website', website),
+      );
+    }
+    return _ContactRow(
+      rowKey: const ValueKey('open-website'),
+      label: 'Website',
+      value: website,
+      action: 'Open',
+      semanticAction: 'Open website',
+      onTap: () => _open(uri),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = widget.profile;
@@ -65,16 +103,7 @@ class _AboutTabState extends State<AboutTab> {
           semanticAction: 'Copy email address',
           onTap: () => _copy('email', p.publicEmail!.trim()),
         ),
-      if (_has(p.website))
-        _ContactRow(
-          rowKey: const ValueKey('copy-website'),
-          label: 'Website',
-          value: p.website!.trim(),
-          action: _copiedKey == 'website' ? 'Copied' : 'Copy',
-          highlight: _copiedKey == 'website',
-          semanticAction: 'Copy website address',
-          onTap: () => _copy('website', p.website!.trim()),
-        ),
+      if (_has(p.website)) _websiteRow(p.website!.trim()),
       if (_has(p.social))
         _ContactRow(
           rowKey: const ValueKey('copy-social'),
