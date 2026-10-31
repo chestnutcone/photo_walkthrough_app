@@ -211,15 +211,23 @@ class _WalkThroughPill extends StatelessWidget {
     onTap: onTap,
     child: GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: VelaColors.ink,
-          borderRadius: BorderRadius.circular(99),
-        ),
-        child: Text(
-          'Walk through',
-          style: VelaText.sans13s.copyWith(color: VelaColors.background),
+      behavior: HitTestBehavior.opaque,
+      // The 37pt pill sits in a 48pt target (E1).
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: kMinTapTarget),
+        child: Center(
+          widthFactor: 1,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: VelaColors.ink,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              'Walk through',
+              style: VelaText.sans13s.copyWith(color: VelaColors.background),
+            ),
+          ),
         ),
       ),
     ),

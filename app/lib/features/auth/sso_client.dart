@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../core/config.dart';
@@ -111,16 +112,47 @@ class RealSsoClient implements SsoClient {
 
 /// Development stand-in (`--dart-define=VELA_FAKE_SSO=true`). The token format
 /// is the one the API's development-only FakeIdentityVerifier accepts.
+///
+/// Each install signs in as its own account (E1: every install used to share
+/// one `dev-google` account, so onboarding ran once per database): the subject
+/// carries a random id made on first use and kept in shared preferences.
+/// Clearing the app's data gives a new account; `VELA_FAKE_SSO_SUBJECT` pins
+/// one for scripted runs.
 class DevFakeSsoClient implements SsoClient {
-  const DevFakeSsoClient();
+  DevFakeSsoClient({Future<String> Function()? installId})
+    : _installId = installId ?? _storedInstallId;
+
+  final Future<String> Function() _installId;
+
+  static const _pinned = String.fromEnvironment('VELA_FAKE_SSO_SUBJECT');
+  static const _prefsKey = 'dev_fake_sso_install_id';
 
   @override
-  Future<String> idToken(String provider, String nonce) async =>
-      'fake:dev-$provider:dev-$provider@example.com';
+  Future<String> idToken(String provider, String nonce) async {
+    final subject = _pinned.isNotEmpty
+        ? _pinned
+        : 'dev-$provider-${await _installId()}';
+    return 'fake:$subject:$subject@example.com';
+  }
+
+  static Future<String> _storedInstallId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(_prefsKey);
+    if (existing != null && existing.isNotEmpty) return existing;
+    final id = newInstallId(Random.secure());
+    await prefs.setString(_prefsKey, id);
+    return id;
+  }
+
+  /// 12 lowercase hex characters.
+  static String newInstallId(Random random) => List.generate(
+    6,
+    (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+  ).join();
 }
 
 final ssoClientProvider = Provider<SsoClient>(
-  (_) => AppConfig.fakeSso ? const DevFakeSsoClient() : const RealSsoClient(),
+  (_) => AppConfig.fakeSso ? DevFakeSsoClient() : const RealSsoClient(),
 );
 
 /// Apple's button is offered on iOS only. Tests override this.

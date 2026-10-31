@@ -36,26 +36,22 @@ class FeedHeader extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 8, 8, 4),
           child: Row(
             children: [
-              Semantics(
-                header: true,
-                child: Text(Branding.appName, style: VelaText.serif40),
-              ),
-              const Spacer(),
+              // When space is short the wordmark scales down, never the tabs:
+              // scaling them shrank their touch targets below 48pt (E1).
               Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    children: [
-                      for (final t in tabs)
-                        _TabLabel(
-                          tab: t,
-                          selected: t == tab,
-                          onTap: () => onTab(t),
-                        ),
-                    ],
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Semantics(
+                      header: true,
+                      child: Text(Branding.appName, style: VelaText.serif40),
+                    ),
                   ),
                 ),
               ),
+              for (final t in tabs)
+                _TabLabel(tab: t, selected: t == tab, onTap: () => onTab(t)),
               _IconAction(
                 key: const ValueKey('search-button'),
                 icon: Icons.search,

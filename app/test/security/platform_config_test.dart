@@ -54,4 +54,21 @@ void main() {
       expect(purposes, {'NSCameraUsageDescription', 'NSPhotoLibraryUsageDescription'});
     });
   });
+
+  // E1: in landscape the bottom card covered half the photo and hid pins, so
+  // phones stay in portrait (S2-6). iPad keeps every orientation for
+  // multitasking; Android ignores the lock on large screens itself.
+  group('orientation', () {
+    test('android_activity_is_portrait', () {
+      expect(manifest, contains('android:screenOrientation="portrait"'));
+    });
+
+    test('iphone_supports_portrait_only', () {
+      final start = plist.indexOf('<key>UISupportedInterfaceOrientations</key>');
+      final end = plist.indexOf('</array>', start);
+      final iphone = plist.substring(start, end);
+      expect(iphone, contains('UIInterfaceOrientationPortrait'));
+      expect(iphone, isNot(contains('Landscape')));
+    });
+  });
 }
