@@ -5,9 +5,23 @@
 #   2. a parameter file holds a literal value under a password/secret/key-like name,
 #   3. a secret-like Bicep parameter is missing @secure(),
 #   3b. prod + deployApp has no Cloudflare allow-list, or the budget start date is not fixed,
+#   3c. a parameter file names a parameter main.bicep does not declare (typo = silently ignored default),
+#   3d. there is no prod parameter file, or a prod file scales to zero (minReplicas < 1: background deletion, export and
+#       retention jobs would not run), turns malware scanning off or leaves review mode on,
 #   4. a setting listed in infra/required-settings.txt is not wired into infra/modules/containerapp.bicep.
-# Usage: scripts/validate-infra.sh
+# With --deploy <parameter file> (run it right before a real deployment) it also fails when that file still holds a
+# REPLACE_ME placeholder, and, for prod with deployApp=true, when a launch-blocking value (DMCA agent, admin allow-list,
+# Cloudflare zone and image host, Content Safety endpoint) is empty.
+# Usage: scripts/validate-infra.sh [--deploy infra/parameters.prod.json]
 set -euo pipefail
+
+deploy_file=""
+if [ "${1:-}" = "--deploy" ]; then
+  deploy_file="${2:?--deploy needs a parameter file}"
+  [ -f "$deploy_file" ] || { echo "FAIL: $deploy_file not found" >&2; exit 1; }
+elif [ -n "${1:-}" ]; then
+  echo "usage: $0 [--deploy <parameter file>]" >&2; exit 2
+fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INFRA="$ROOT/infra"
@@ -118,6 +132,58 @@ if bad:
     for b in bad: print("FAIL: " + b, file=sys.stderr)
     sys.exit(1)
 PY
+
+# --- 3c. parameter names must exist in main.bicep; 3d. prod safety values ---
+python3 -I - "$INFRA" <<'PY' || fail=1
+import glob, json, re, sys
+infra = sys.argv[1]
+declared = set(re.findall(r"^param\s+(\w+)", open(infra + "/main.bicep").read(), re.M))
+bad, prod_files = [], []
+for path in sorted(glob.glob(infra + "/parameters*.json")):
+    p = (json.load(open(path)).get("parameters") or {})
+    for name in p:
+        if name not in declared:
+            bad.append(f"{path}: parameter '{name}' is not declared in main.bicep")
+    val = lambda k, d=None: (p.get(k) or {}).get("value", d)
+    if val("environment") != "prod":
+        continue
+    prod_files.append(path)
+    mr = val("minReplicas")
+    if not isinstance(mr, int) or mr < 1:
+        bad.append(f"{path}: prod needs minReplicas >= 1 set explicitly (background jobs only run while a replica is up)")
+    if val("malwareScanning", True) is not True:
+        bad.append(f"{path}: prod must keep malwareScanning on")
+    if val("reviewMode", False) is not False:
+        bad.append(f"{path}: reviewMode must be off in the committed prod file (turn it on only for the store review, then off)")
+if not prod_files:
+    bad.append("no parameter file with environment=prod (expected infra/parameters.prod.json)")
+if bad:
+    for b in bad: print("FAIL: " + b, file=sys.stderr)
+    sys.exit(1)
+PY
+
+# --- deploy mode: the file about to be deployed is filled in ---
+if [ -n "$deploy_file" ]; then
+python3 -I - "$deploy_file" <<'PY' || fail=1
+import json, sys
+path = sys.argv[1]
+p = (json.load(open(path)).get("parameters") or {})
+val = lambda k, d=None: (p.get(k) or {}).get("value", d)
+bad = []
+def walk(name, v):
+    if isinstance(v, str) and "REPLACE_ME" in v: bad.append(f"{path}: '{name}' is still a REPLACE_ME placeholder")
+    elif isinstance(v, list): [walk(name, x) for x in v]
+for name in p: walk(name, val(name))
+if val("environment") == "prod" and val("deployApp", False):
+    for k in ("dmcaAgentName", "dmcaAgentEmail", "dmcaAgentAddress", "adminEmails", "cloudflareZoneId", "imageHost", "contentSafetyEndpoint"):
+        if not val(k):
+            bad.append(f"{path}: prod with deployApp=true needs '{k}' (launch blocker, see docs/deploy.md production checklist)")
+if bad:
+    for b in bad: print("FAIL: " + b, file=sys.stderr)
+    sys.exit(1)
+print(f"validate-infra: {path} is ready to deploy")
+PY
+fi
 
 # --- 4. every setting the API needs in Production is wired into the container app ---
 list="$INFRA/required-settings.txt"

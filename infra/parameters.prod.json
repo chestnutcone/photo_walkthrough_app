@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": { "value": "prod" },
+    "location": { "value": "eastus2" },
+    "postgresAdminLogin": { "value": "velaadmin" },
+    "monthlyBudget": { "value": 60 },
+    "budgetStartDate": { "value": "2026-11-01" },
+    "budgetAlertEmails": { "value": ["REPLACE_ME-owner@your-domain"] },
+    "brandingDomain": { "value": "REPLACE_ME-your-domain" },
+    "imageHost": { "value": "REPLACE_ME-img.your-domain" },
+    "viewerHost": { "value": "" },
+    "emailSendingDomain": { "value": "REPLACE_ME-mail.your-domain" },
+    "linkEmailDomain": { "value": false },
+    "deployApp": { "value": false },
+    "apiImage": { "value": "" },
+    "minReplicas": { "value": 1 },
+    "maxReplicas": { "value": 2 },
+    "malwareScanning": { "value": true },
+    "allowAzureServices": { "value": true },
+    "appOutboundIps": { "value": [] },
+    "cloudflareIpv4Ranges": {
+      "value": [
+        "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18",
+        "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17",
+        "162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"
+      ]
+    },
+    "contentSafetyEndpoint": { "value": "REPLACE_ME-https://<name>.cognitiveservices.azure.com/" },
+    "cloudflareZoneId": { "value": "REPLACE_ME-zone-id" },
+    "adminEmails": { "value": "REPLACE_ME-admin@your-domain" },
+    "appleClientId": { "value": "REPLACE_ME-bundle.id" },
+    "googleClientIds": { "value": ["REPLACE_ME-ios-client-id.apps.googleusercontent.com", "REPLACE_ME-android-client-id.apps.googleusercontent.com"] },
+    "appleTeamId": { "value": "REPLACE_ME-TEAMID" },
+    "androidSha256Fingerprints": { "value": ["REPLACE_ME-AA:BB:..."] },
+    "dmcaAgentName": { "value": "REPLACE_ME-registered DMCA agent name" },
+    "dmcaAgentEmail": { "value": "REPLACE_ME-dmca@your-domain" },
+    "dmcaAgentAddress": { "value": "REPLACE_ME-registered DMCA agent postal address" },
+    "requireAttestation": { "value": true },
+    "playIntegrityPackageName": { "value": "REPLACE_ME-android.package.name" },
+    "appAttestAppId": { "value": "REPLACE_ME-TEAMID.bundle.id" },
+    "reviewMode": { "value": false },
+    "reviewEmails": { "value": [] },
+    "sentryEnabled": { "value": true }
+  }
+}

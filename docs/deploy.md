@@ -1,7 +1,12 @@
 # Deploying Vela (Azure + Cloudflare)
 
 Templates: `infra/main.bicep` (+ `infra/modules`). Check locally with `scripts/validate-infra.sh` (no Azure login needed).
-"Vela" is a code name: domains and ids below are placeholders from `infra/parameters.dev.json`.
+"Vela" is a code name: domains and ids below are placeholders. Two parameter files ship: `infra/parameters.dev.json`
+(environment `dev`: scales to zero, no malware scanning, no purge protection) and `infra/parameters.prod.json` (environment
+`prod`: one replica always on, malware scanning on, Cloudflare allow-list, every owner value as a `REPLACE_ME-...` placeholder).
+**Production always uses `parameters.prod.json`**; never deploy production from the dev file. In the commands below
+`<params>` means `infra/parameters.<env>.json` for the environment you deploy, and the infra workflow's `parameters-file`
+input must be set to `parameters.prod.json` for production (its default is the dev file).
 
 ## What gets created (resource group `rg-vela-<env>`)
 
@@ -56,14 +61,16 @@ Decisions worth knowing:
    subscription-scope deployment still needs rights to write the resource group itself: run pass 1 yourself, or add
    `Microsoft.Resources/subscriptions/resourceGroups/write` through a small custom role. Set repo variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`; add required reviewers to
    the `azure-infra` environment.
-2. **Parameters**: edit `infra/parameters.dev.json` (domains, emails, budget). Never put a secret in it; the validator fails if
-   you do. Set `cloudflareIpv4Ranges` from <https://www.cloudflare.com/ips-v4> **before pass 2** in prod: `validate-infra.sh` fails
+2. **Parameters**: edit `<params>` (domains, emails, budget; for prod replace every `REPLACE_ME-...` value in
+   `infra/parameters.prod.json`). Never put a secret in it; the validator fails if you do. Before each real deployment run
+   `scripts/validate-infra.sh --deploy <params>`: it fails while a placeholder is left and, for prod pass 2, while a launch
+   blocker (DMCA agent, admin allow-list, Cloudflare zone and image host, Content Safety endpoint) is empty. Set `cloudflareIpv4Ranges` from <https://www.cloudflare.com/ips-v4> **before pass 2** in prod: `validate-infra.sh` fails
    prod with `deployApp=true` and an empty list, which would leave the origin open. Refresh the list whenever Cloudflare changes
    it (compare `curl -s https://www.cloudflare.com/ips-v4` with the parameter quarterly and before each release); a stale list
    blocks new Cloudflare ranges and causes an outage. `budgetStartDate` is a fixed first-of-month date; never change it after
    the first deployment.
 3. **Pass 1** (everything except the app), from your shell so the DB password never touches a file or the workflow:
-   `az deployment sub create -l eastus2 -f infra/main.bicep -p infra/parameters.dev.json -p postgresAdminPassword="$(openssl rand -base64 32)"`
+   `az deployment sub create -l eastus2 -f infra/main.bicep -p <params> -p postgresAdminPassword="$(openssl rand -base64 32)"`
    (keep that password somewhere safe: only the connection string in Key Vault holds it). Later deploys omit it; it is kept.
 4. **Key Vault secrets** (you need `Key Vault Secrets Officer` on the vault). Infra already wrote `postgres-connection-string`,
    `storage-connection-string`, `acs-connection-string`, `appinsights-connection-string`. You add:
@@ -86,6 +93,26 @@ Decisions worth knowing:
     `az containerapp update -g rg-vela-<env> -n ca-vela-<env>-api --image ghcr.io/<owner>/vela-api:<new-tag>`.
 11. **Web viewer**: build `app` for web (see `app/web/README.md`), deploy to the Static Web App
     (`az staticwebapp secrets list` gives the deployment token; use `Azure/static-web-apps-deploy`). SPA fallback for `/s/*` and the CSP are in that README.
+
+## Production checklist (tick before pass 2 and before opening sign-ups)
+
+- [ ] Deploying from `infra/parameters.prod.json` (`environment: prod`); `scripts/validate-infra.sh --deploy infra/parameters.prod.json` passes.
+- [ ] `minReplicas` is 1 or more (the validator refuses 0 for prod): deletion, export, draft cleanup, take-down reconcile and
+      evidence retention only run while a replica is up.
+- [ ] `malwareScanning: true` and the Defender cap (`malwareScanningCapGBPerMonth`, default 10 GB) accepted.
+- [ ] `cloudflareIpv4Ranges` matches `curl -s https://www.cloudflare.com/ips-v4` today (the shipped list was copied in October
+      2026); Cloudflare SSL Full (strict), Origin CA certificate bound, Transform Rule `X-Content-Type-Options: nosniff` on the image host.
+- [ ] `cloudflareZoneId`, `imageHost` and the `cloudflare-api-token` secret set: without them deleted and taken-down images stay
+      cached at the edge, which contradicts the deletion statement (the API refuses to start in Production without them).
+- [ ] `dmcaAgentName`, `dmcaAgentEmail`, `dmcaAgentAddress` are the agent registered with the US Copyright Office (the API refuses to
+      start in Production without them).
+- [ ] `adminEmails` set; Cloudflare Access (or equivalent) in front of `/admin`.
+- [ ] `requireAttestation: true` with Play Integrity and App Attest values (false only for first bring-up), `reviewMode: false`
+      except during store review.
+- [ ] Key Vault secrets from step 4 present, including `ban-pepper` (never rotate it) and `sentry-dsn`.
+- [ ] ACS domain Verified and `linkEmailDomain: true`; budget alert emails reach the owner.
+- [ ] After pass 2: `appOutboundIps` filled and `allowAzureServices: false`.
+- [ ] Privacy policy and terms reviewed by counsel (DMCA and audit retention periods, 30-day deletion deferral).
 
 ## Database migrations
 
