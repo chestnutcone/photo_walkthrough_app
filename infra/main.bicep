@@ -188,6 +188,7 @@ module app 'modules/containerapp.bicep' = if (deployApp) {
     reviewMode: reviewMode
     reviewEmails: reviewEmails
     malwareMode: malwareScanning ? 'defender' : 'off'
+    requireLaunchSettings: environment == 'prod'
   }
   dependsOn: [postgres, email]
 }

@@ -106,6 +106,8 @@ Decisions worth knowing:
       cached at the edge, which contradicts the deletion statement (the API refuses to start in Production without them).
 - [ ] `dmcaAgentName`, `dmcaAgentEmail`, `dmcaAgentAddress` are the agent registered with the US Copyright Office (the API refuses to
       start in Production without them).
+- [ ] The start-up refusal above is driven by `Launch__RequireLaunchSettings` (infra sets it `true` only for `environment=prod`;
+      a dev/staging Azure environment, which also runs as `Production`, gets `false`). The error names every missing key.
 - [ ] `adminEmails` set; Cloudflare Access (or equivalent) in front of `/admin`.
 - [ ] `requireAttestation: true` with Play Integrity and App Attest values (false only for first bring-up), `reviewMode: false`
       except during store review.

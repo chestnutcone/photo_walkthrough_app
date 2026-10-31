@@ -287,6 +287,7 @@ public class TokenServiceTests(PostgresFixture pg)
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
+            b.UseSetting("Launch:RequireLaunchSettings", "false"); // launch blockers are covered in LaunchSettingsTests
             b.UseSetting("Abuse:RequireAttestation", "false"); // attestation start-up rules are covered in AttestationEndpointTests
             b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
             b.UseSetting("Auth:Jwt:SigningKey", key);

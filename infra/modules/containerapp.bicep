@@ -44,6 +44,8 @@ param reviewEmails array = []
 @description('Malware verdict source for uploads: defender (Defender for Storage index tags) or off.')
 @allowed(['defender', 'off'])
 param malwareMode string = 'defender'
+@description('True in prod: the API refuses to start without the DMCA agent and Cloudflare purge settings (launch blockers).')
+param requireLaunchSettings bool = true
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: logAnalyticsName
@@ -108,6 +110,7 @@ var settings = [
   { name: 'ContentSafety__Endpoint', value: contentSafetyEndpoint }
   { name: 'ContentSafety__Key', secretRef: 'content-safety-key' }
   { name: 'Malware__Mode', value: malwareMode }
+  { name: 'Launch__RequireLaunchSettings', value: requireLaunchSettings ? 'true' : 'false' }
   { name: 'Branding__Domain', value: brandingDomain }
   { name: 'Web__ViewerUrl', value: viewerUrl }
   { name: 'Links__AppleTeamId', value: links.appleTeamId }

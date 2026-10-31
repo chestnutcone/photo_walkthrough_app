@@ -11,6 +11,7 @@ public class ContentSafetyConfigTests
         new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment(env);
+            b.UseSetting("Launch:RequireLaunchSettings", "false"); // launch blockers are covered in LaunchSettingsTests
             b.UseSetting("Abuse:RequireAttestation", "false"); // attestation start-up rules are covered in AttestationEndpointTests
             b.UseSetting("ConnectionStrings:Default", "Host=localhost;Database=x;Username=x;Password=x");
             b.UseSetting("Admin:Enabled", "false");

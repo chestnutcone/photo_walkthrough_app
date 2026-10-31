@@ -34,3 +34,4 @@ Auth__ReviewCode
 Auth__ReviewEmails
 Database__MigrateOnStartup
 Malware__Mode
+Launch__RequireLaunchSettings

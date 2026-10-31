@@ -143,6 +143,7 @@ public class AttestationEndpointTests(PostgresFixture pg) : IDisposable
         var f = new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
+            b.UseSetting("Launch:RequireLaunchSettings", "false"); // launch blockers are covered in LaunchSettingsTests
             b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");
             b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");
@@ -200,6 +201,7 @@ public class AttestationEndpointTests(PostgresFixture pg) : IDisposable
         using var f = new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment(env);
+            b.UseSetting("Launch:RequireLaunchSettings", "false"); // launch blockers are covered in LaunchSettingsTests
             b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
             b.UseSetting("Auth:Jwt:SigningKey", "integration-test-signing-key-0123456789-abc");
             b.UseSetting("Auth:EmailCode:Pepper", "integration-test-pepper-0123456789-abcdef");

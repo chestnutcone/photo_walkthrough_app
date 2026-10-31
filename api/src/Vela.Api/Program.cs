@@ -101,6 +101,7 @@ builder.Services.AddViewerCors();
 builder.Services.AddLegal(builder.Environment);
 builder.Services.AddAccount(builder.Environment);
 builder.Services.AddCdnPurging(builder.Configuration, builder.Environment);
+Vela.Api.Common.LaunchSettings.Verify(builder.Configuration, builder.Environment);
 builder.Services.AddAdmin(builder.Configuration, builder.Environment);
 if (!builder.Environment.IsEnvironment("Test")) builder.Services.AddHostedService<Vela.Api.Moderation.PublishPipelineWorker>();
 
