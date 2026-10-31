@@ -1,15 +1,14 @@
+import 'package:intl/intl.dart';
 import 'package:vela_api_client/vela_api_client.dart';
 
-const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', //
-];
-
-/// "Oct 2", or "Oct 2, 2025" when [date] is not in [now]'s year.
-String formatFeedDate(DateTime date, DateTime now) {
+/// "Oct 2", or "Oct 2, 2025" when [date] is not in [now]'s year, in
+/// [locale] (default: `Intl.defaultLocale`, en_US until the app adds
+/// localizations; other locales need `initializeDateFormatting` first).
+String formatFeedDate(DateTime date, DateTime now, {String? locale}) {
   final local = date.toLocal();
-  final base = '${_months[local.month - 1]} ${local.day}';
-  return local.year == now.toLocal().year ? base : '$base, ${local.year}';
+  return local.year == now.toLocal().year
+      ? DateFormat.MMMd(locale).format(local)
+      : DateFormat.yMMMd(locale).format(local);
 }
 
 /// "{n} CHAPTERS · {n} REPLIES" with singular forms for 1.

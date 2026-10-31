@@ -53,6 +53,7 @@ dependencies:
   sentry_flutter: 10.0.0
   app_attest: 0.2.1
   unorm_dart: 0.3.3
+  intl: 0.20.3
 
 # The web build is only the read-only story viewer; it must load no Google
 # script (final review I-2). See packages/google_sign_in_web_none/pubspec.yaml.
