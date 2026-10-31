@@ -103,6 +103,33 @@ public class ReportThresholdTests(PostgresFixture pg) : IDisposable
     }
 
     [Fact]
+    public async Task Reports_from_accounts_suspended_or_deleted_since_do_not_count()
+    {
+        // S2 fix (review M-14).
+        var artist = await NewUser();
+        var wid = await SeedWork(artist.Id);
+        var reporters = new[] { await NewUser(), await NewUser(), await NewUser() };
+        await reporters[0].Post("/v1/reports", Rep("work", wid, "spam"));
+        await reporters[1].Post("/v1/reports", Rep("work", wid, "spam"));
+        await using (var db = _h.Db())
+        {
+            await db.Users.Where(u => u.Id == reporters[0].Id).ExecuteUpdateAsync(x => x.SetProperty(u => u.SuspendedAt, ProfileTestHost.Now));
+        }
+
+        await reporters[2].Post("/v1/reports", Rep("work", wid, "spam"));
+        Assert.False(await WorkHidden(wid));
+
+        await using (var db = _h.Db())
+        {
+            await db.Users.Where(u => u.Id == reporters[0].Id).ExecuteUpdateAsync(x => x
+                .SetProperty(u => u.SuspendedAt, (DateTimeOffset?)null).SetProperty(u => u.DeletedAt, ProfileTestHost.Now));
+        }
+        var fourth = await NewUser();
+        await fourth.Post("/v1/reports", Rep("work", wid, "spam"));
+        Assert.True(await WorkHidden(wid)); // reporters 1, 2 and 4 are active
+    }
+
+    [Fact]
     public async Task Repeated_reports_by_the_same_account_count_once()
     {
         var artist = await NewUser(); var rep = await NewUser();

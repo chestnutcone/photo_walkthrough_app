@@ -127,6 +127,8 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
         if (await db.Users.AnyAsync(u => u.Id == reporterId && u.CreatedAt < establishedBefore)) return true;
         var reporters = await db.Reports
             .Where(r => r.TargetType == targetType && r.TargetId == targetId && r.Source == SourceUser && r.Status == Pending && r.ReporterId != null)
+            // Accounts suspended or deleted since they reported no longer count (review M-14).
+            .Where(r => db.Users.Any(u => u.Id == r.ReporterId && u.SuspendedAt == null && u.DeletedAt == null))
             .Select(r => r.ReporterId).Distinct().CountAsync();
         return reporters >= o.HideAfterDistinctReporters;
     }
