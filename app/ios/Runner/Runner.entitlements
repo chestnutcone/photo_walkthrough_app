@@ -9,6 +9,17 @@
 		edited by hand and kept equal to --dart-define=LINKS_DOMAIN. The domain is
 		also enabled under Signing & Capabilities > Associated Domains in Xcode.
 	-->
+	<!--
+		Sign in with Apple (the Apple button is offered on iOS). OWNER: enable
+		the "Sign In with Apple" capability for the App ID in the Apple
+		Developer portal (and in Xcode > Signing & Capabilities); without it
+		the provisioning profile does not match this entitlement and signing
+		fails.
+	-->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:vela.example</string>

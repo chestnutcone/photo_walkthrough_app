@@ -118,6 +118,29 @@ setting to `false` and run an `dotnet ef migrations bundle` from a machine allow
   with it true the API refuses to start unless both Play Integrity and App Attest settings are present. Decide the App Attest
   per-install design before enabling it in production (see the progress ledger).
 
+## App release builds (owner steps)
+
+Release builds refuse to build while a placeholder is left (final review I-5); debug and profile builds are unaffected.
+
+- **Android release key.** Create an upload key once and keep it (and its passwords) outside the repo, backed up:
+  `keytool -genkey -v -keystore ~/vela-upload.jks -keyalg RSA -keysize 4096 -validity 10000 -alias upload`.
+  Write `app/android/key.properties` (git-ignored) with `storeFile=/home/<you>/vela-upload.jks`, `storePassword=...`,
+  `keyAlias=upload`, `keyPassword=...`. Enrol in Play App Signing (Google holds the app signing key; this is the upload key).
+  Put the SHA-256 of the **app signing key** from Play Console into `androidSha256Fingerprints` (assetlinks.json), not only the
+  upload key's. In CI, write `key.properties` and the keystore from secrets at build time; never commit them.
+- **Android values.** Build with `-PlinksDomain=<links domain>` (or `linksDomain=` in `~/.gradle/gradle.properties`, or
+  `ORG_GRADLE_PROJECT_linksDomain`) and the same `--dart-define=LINKS_DOMAIN=<links domain>`, plus
+  `--dart-define=API_BASE_URL=https://<api origin>`. `assembleRelease`/`bundleRelease` fail when the key is missing, when either
+  links value is unset or `vela.example`, when they differ, when `API_BASE_URL` is not https, or when a store URL define holds
+  `vela.example`. `-PvelaLocalRelease=true` allows the debug key for a local check only (never for a store upload).
+- **iOS.** Replace `applinks:vela.example` in `app/ios/Runner/Runner.entitlements` with the links domain. In the Apple Developer
+  portal enable **Sign In with Apple** and **Associated Domains** for the App ID (the entitlements file already requests both;
+  signing fails until the profile has them), then regenerate the provisioning profile. Before `flutter build ipa`, run
+  `API_BASE_URL=... LINKS_DOMAIN=... APP_STORE_URL=... PLAY_STORE_URL=... scripts/check-release-config.sh` (fails on any
+  placeholder or a mismatched entitlement).
+- **Web viewer.** After `flutter build web` (see `app/web/README.md`), run `scripts/check-web-viewer-origins.sh app/build/web`;
+  CI runs it on every app change.
+
 ## Known gaps (owner or later work)
 
 - Origin protection follow-up: the IP allow-list lets any Cloudflare tenant reach the origin. Add Authenticated Origin Pulls
@@ -149,8 +172,8 @@ See `docs/security/` for the threat model, checklists and findings.
   `auth-email` and `public-form`; `/admin` is limited too.
 - Give the application's database role `INSERT` and `SELECT` only on `admin_actions` so the audit trail cannot be edited by the app.
 - Put Cloudflare Access (or equivalent) in front of `/admin`: the pages are single-factor (an emailed code to an allow-listed address).
-- Android release builds: provide a real signing keystore (the Gradle config still signs with the debug key) and build with
-  `--obfuscate --split-debug-info`.
+- Android release builds: provide a real signing keystore (see "App release builds" below; a release without one is refused)
+  and build with `--obfuscate --split-debug-info`.
 
 
 ## Settings and behaviour added by the S1b fixes
