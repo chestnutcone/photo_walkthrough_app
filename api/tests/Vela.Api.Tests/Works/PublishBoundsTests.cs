@@ -115,7 +115,8 @@ public class PublishBoundsTests(PostgresFixture pg) : IDisposable
             Assert.Equal(id, (Guid)(await cmd.ExecuteScalarAsync())!);
             await tx.RollbackAsync();
         }
-        var second = await u.Post($"/v1/works/{id}/publish", new { });
+        // Bounded, so a regression in the claim check fails here instead of hanging on the held read (review F8).
+        var second = await u.Post($"/v1/works/{id}/publish", new { }).WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Equal(HttpStatusCode.Conflict, second.Status);
         Assert.Equal("not_editable", second.ErrorCode);
 
@@ -135,5 +136,34 @@ public class PublishBoundsTests(PostgresFixture pg) : IDisposable
         await Modify(_host, id, w => w.PublishClaimedUntil = ProfileTestHost.Now.AddMinutes(-1));
 
         Assert.Equal(HttpStatusCode.OK, (await u.Post($"/v1/works/{id}/publish", new { })).Status);
+    }
+
+    [Fact]
+    public async Task A_publish_whose_claim_was_taken_over_leaves_the_new_claimants_variants_alone()
+    {
+        var u = await Artist();
+        var id = await ReadyDraft(_host, u);
+        var reading = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        _host.Blobs.BeforeRead = async name =>
+        {
+            if (!name.StartsWith("originals/sealed/", StringComparison.Ordinal)) return;
+            reading.TrySetResult();
+            await release.Task;
+        };
+
+        var publish = u.Post($"/v1/works/{id}/publish", new { });
+        await reading.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        // Our claim lapsed and another request now owns the draft and has written its variants.
+        await Modify(_host, id, w => w.PublishClaimedUntil = ProfileTestHost.Now.AddMinutes(30));
+        foreach (var n in new[] { "thumb", "feed", "full" }) _host.Blobs.Put($"works/{id}/{n}.webp", [7]);
+        _host.Blobs.BeforeRead = null;
+        release.SetResult();
+
+        var r = await publish.WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.Equal("not_editable", r.ErrorCode);
+        Assert.All(new[] { "thumb", "feed", "full" }, n => Assert.True(_host.Blobs.Exists($"works/{id}/{n}.webp"), n));
+        Assert.Equal(ProfileTestHost.Now.AddMinutes(30), (await Load(_host, id)).PublishClaimedUntil); // their claim untouched
     }
 }

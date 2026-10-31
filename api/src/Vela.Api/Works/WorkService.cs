@@ -103,6 +103,9 @@ public sealed class WorkService(
     private async Task CompletePublishAsync(Guid userId, Guid workId, DateTimeOffset until, ImageVariants made, SealedOriginal seal)
     {
         var now = clock.GetUtcNow();
+        // The claim step left this work tracked; without clearing, EF would hand back that stale instance instead of the row as
+        // it is now, and the re-check below would never see a concurrent take-over, delete or expiry (found by the F7 test).
+        db.ChangeTracker.Clear();
         await using var tx = await db.Database.BeginTransactionAsync();
         var work = (await db.Works.FromSqlInterpolated($"SELECT * FROM works WHERE id = {workId} AND artist_id = {userId} FOR UPDATE").ToListAsync())
             .SingleOrDefault();
