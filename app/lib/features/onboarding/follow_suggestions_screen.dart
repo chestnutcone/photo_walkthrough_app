@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:go_router/go_router.dart';
 import 'package:vela_api_client/vela_api_client.dart';
 
@@ -8,6 +9,7 @@ import '../../core/theme/form_styles.dart';
 import '../../core/theme/tokens.dart';
 import '../portfolio/avatar.dart';
 import 'onboarding_draft.dart';
+import 'onboarding_return.dart';
 import 'onboarding_submit.dart';
 import 'onboarding_widgets.dart';
 
@@ -54,7 +56,8 @@ class _FollowState extends ConsumerState<FollowSuggestionsScreen> {
         ),
       );
     }
-    router.go('/');
+    // Back to the link the account was opening before onboarding, if any.
+    router.go(ref.read(onboardingReturnProvider).take() ?? '/');
   }
 
   static String _failureText(ApiException? e) => switch (e?.code) {

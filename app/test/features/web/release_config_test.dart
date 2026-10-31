@@ -19,7 +19,10 @@ void main() {
     });
 
     test('associated domains carry the applinks entry', () {
-      expect(ent, contains('<key>com.apple.developer.associated-domains</key>'));
+      expect(
+        ent,
+        contains('<key>com.apple.developer.associated-domains</key>'),
+      );
       expect(ent, matches(RegExp(r'<string>applinks:[a-z0-9.-]+</string>')));
     });
   });
@@ -34,17 +37,20 @@ void main() {
       expect(gradle, contains('GradleException'));
     });
 
-    test('the guard checks the placeholder domain and every release define', () {
-      for (final s in [
-        'vela.example',
-        'API_BASE_URL',
-        'LINKS_DOMAIN',
-        'APP_STORE_URL',
-        'PLAY_STORE_URL',
-        'dart-defines',
-      ]) {
-        expect(gradle, contains(s), reason: s);
-      }
-    });
+    test(
+      'the guard checks the placeholder domain and every release define',
+      () {
+        for (final s in [
+          'vela.example',
+          'API_BASE_URL',
+          'LINKS_DOMAIN',
+          'APP_STORE_URL',
+          'PLAY_STORE_URL',
+          'dart-defines',
+        ]) {
+          expect(gradle, contains(s), reason: s);
+        }
+      },
+    );
   });
 }

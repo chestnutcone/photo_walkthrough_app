@@ -8,6 +8,7 @@ import 'package:vela_app/core/auth/auth_controller.dart';
 import 'package:vela_app/core/router.dart';
 import 'package:vela_app/features/create/photo_picker.dart';
 import 'package:vela_app/features/onboarding/legal_links.dart';
+import 'package:vela_app/features/onboarding/onboarding_return.dart';
 
 import '../../core/support/avatar_marker.dart';
 import '../create/support/create_harness.dart' show FakePhotoPicker;
@@ -264,6 +265,41 @@ void main() {
       await settle(tester);
       expect(h.storage.value, isNull);
       expect(_location(h), '/');
+    });
+  });
+
+  group('deep link through onboarding (final review M-4)', () {
+    testWidgets('a_link_opened_before_onboarding_is_shown_after_it', (
+      tester,
+    ) async {
+      final h = await pumpOnboarding(
+        tester,
+        api: OnboardingApi(suggestedCount: 0),
+      );
+      final router = h.container.read(routerProvider);
+      router.go('/story/w1?chapter=2');
+      await settle(tester);
+      expect(_location(h), '/onboarding');
+
+      await fillProfile(tester);
+      await _tapContinue(tester);
+      await tester.tap(key('follow-finish'));
+      await settle(tester);
+
+      final uri = router.routerDelegate.currentConfiguration.uri;
+      expect(uri.path, '/story/w1');
+      expect(uri.queryParameters['chapter'], '2');
+    });
+
+    testWidgets('a_remembered_link_does_not_outlive_the_session', (
+      tester,
+    ) async {
+      final h = await pumpOnboarding(tester);
+      h.container.read(routerProvider).go('/artist/someone');
+      await settle(tester);
+      await tester.tap(key('onboarding-signout'));
+      await settle(tester);
+      expect(h.container.read(onboardingReturnProvider).take(), isNull);
     });
   });
 

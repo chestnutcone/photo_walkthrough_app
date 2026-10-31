@@ -9,6 +9,7 @@ import '../features/create/create_screen.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 import '../features/onboarding/demo_story.dart';
+import '../features/onboarding/onboarding_return.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
 import '../features/search/search_screen.dart';
@@ -63,6 +64,20 @@ String? resolveRedirect({
   return _isOnboarding(location) ? '/' : null;
 }
 
+/// The location to resume once onboarding is finished, or null when there
+/// is nothing worth returning to (the feed, onboarding itself, the suspended
+/// screen, or a share link that is about to redirect to its story).
+String? resumableAfterOnboarding(Uri uri) {
+  final path = _normalize(uri.path);
+  if (path == '/' || _isOnboarding(path) || path == suspendedPath) return null;
+  if (path.startsWith('/s/') ||
+      !path.startsWith('/') ||
+      path.startsWith('//')) {
+    return null;
+  }
+  return uri.hasQuery ? '$path?${uri.query}' : path;
+}
+
 /// Guests who deep-link to a gated route are sent to `/`, because a redirect
 /// cannot open the sign-in sheet. Call sites MUST run `requireSignIn` before
 /// navigating to `/create`, `/notifications`, `/settings` (or sub-routes).
@@ -78,13 +93,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: refresh,
     redirect: (context, state) {
       final session = ref.read(sessionProvider);
-      return resolveRedirect(
+      final target = resolveRedirect(
         location: state.uri.path,
         isSignedIn: session.value != null,
         sessionLoading: session.isLoading && !session.hasValue,
         needsOnboarding: ref.read(needsOnboardingProvider),
         accountBlock: ref.read(accountBlockProvider),
       );
+      // Final review M-4: keep the deep link a new account was opening.
+      if (target == '/onboarding') {
+        final resume = resumableAfterOnboarding(state.uri);
+        if (resume != null) ref.read(onboardingReturnProvider).remember(resume);
+      }
+      return target;
     },
     errorBuilder: (context, state) => const NotFoundScreen(),
     routes: [

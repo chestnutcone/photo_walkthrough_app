@@ -128,6 +128,23 @@ void main() {
     expect(find.byType(OnboardingScreen), findsOneWidget);
   });
 
+  test('only in-app content locations are resumed after onboarding', () {
+    expect(
+      resumableAfterOnboarding(Uri.parse('/story/1?chapter=2')),
+      '/story/1?chapter=2',
+    );
+    expect(resumableAfterOnboarding(Uri.parse('/artist/ana')), '/artist/ana');
+    for (final l in [
+      '/',
+      '/onboarding',
+      '/onboarding/demo',
+      '/suspended',
+      '/s/1',
+    ]) {
+      expect(resumableAfterOnboarding(Uri.parse(l)), isNull, reason: l);
+    }
+  });
+
   test('gating matches sub-paths and trailing slashes', () {
     String? r(String l) => resolveRedirect(
       location: l,
