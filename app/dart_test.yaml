@@ -1,0 +1,5 @@
+tags:
+  # Screenshot gallery (writes docs/review/screenshots/widgets). Not part of
+  # the normal suite: flutter test --tags gallery test/gallery/gallery_test.dart
+  gallery:
+    skip: "screenshot gallery; run with --tags gallery --run-skipped"
