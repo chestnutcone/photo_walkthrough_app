@@ -49,6 +49,10 @@
                 <figcaption>Sealed original: the private copy taken at publish, from which the public images were made.</figcaption>
             </figure>
         }
+        else if (Vela.Api.Moderation.MalwareCheck.IsMalwareFlag(d.Item.Reason))
+        {
+            <p class="note">Image not shown: the malware scan flagged this file. It is kept privately; do not download it to review it.</p>
+        }
         <h2>@d.WorkTitle</h2>
         <div class="text">@d.WorkIntro</div>
         @foreach (var c in d.Chapters)

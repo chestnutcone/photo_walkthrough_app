@@ -78,6 +78,20 @@ public sealed class AzureBlobStore : IBlobStore
             });
     }
 
+    /// <summary>The blob's index tags (Defender for Storage writes its malware verdict there). Needs tag read permission.</summary>
+    public async Task<IReadOnlyDictionary<string, string>> GetTagsAsync(string name, CancellationToken ct = default)
+    {
+        var (container, blob) = Split(name);
+        try
+        {
+            return (await _service.GetBlobContainerClient(container).GetBlobClient(blob).GetTagsAsync(cancellationToken: ct)).Value.Tags.AsReadOnly();
+        }
+        catch (RequestFailedException e) when (e.Status == 404)
+        {
+            return new Dictionary<string, string>();
+        }
+    }
+
     public async Task<string?> GetContentTypeAsync(string name)
     {
         var (container, blob) = Split(name);

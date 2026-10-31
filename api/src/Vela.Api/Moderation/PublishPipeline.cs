@@ -83,6 +83,10 @@ public sealed class PublishPipeline(IServiceScopeFactory scopes, ILogger<Publish
         if (work.SealedOriginalBlob is { } sealedBlob && work.SealedOriginalSha256 is { } sha
             && !await sp.GetRequiredService<Works.WorkOriginals>().MatchesAsync(sealedBlob, sha))
             verdict = new Verdict(BlockSeverity, SealedMismatch);
+        // S2-1: a malware verdict that arrived after the request failed open still blocks (an admin restore overrides it).
+        else if (!work.ModerationOverride && work.SealedOriginalBlob is { } scanned
+            && await sp.GetRequiredService<MalwareCheck>().TryGetAsync(work.Id, scanned, ct) == MalwareVerdict.Malicious)
+            verdict = new Verdict(MalwareCheck.Severity, MalwareCheck.Category);
         else if (!work.ModerationOverride)
         {
             try { verdict = await ScanAsync(db, scanner, blobs, work, ct); }

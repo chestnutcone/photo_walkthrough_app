@@ -96,6 +96,7 @@ builder.Services.AddProfiles();
 builder.Services.AddWorks();
 builder.Services.AddSearch();
 builder.Services.AddContentSafety(builder.Configuration, builder.Environment);
+builder.Services.AddMalwareCheck(builder.Configuration, builder.Environment);
 builder.Services.AddShare(builder.Configuration, builder.Environment);
 builder.Services.AddViewerCors();
 builder.Services.AddLegal();

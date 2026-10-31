@@ -8,7 +8,7 @@ namespace Vela.Api.Works;
 
 public sealed class WorkService(
     VelaDbContext db, WorkReader reader, IBlobStore blobs, IVariantGenerator variants, WorkOriginals originals, UnderReview review, TimeProvider clock,
-    ILogger<WorkService>? log = null) : IWorkService
+    Moderation.MalwareCheck malware, Social.ReportService reports, ILogger<WorkService>? log = null) : IWorkService
 {
     public Task<WorkDto?> GetAsync(Guid workId, Guid? viewerId) => reader.GetAsync(workId, viewerId);
 
@@ -53,6 +53,15 @@ public sealed class WorkService(
             {
                 // S1b-3: copy the upload to a server-owned name once; the variants and every later reader use only that copy.
                 seal = await originals.SealAsync(workId);
+                // S2-1: the verdict on the sealed copy decides before anything decodes the file.
+                if (await malware.AwaitVerdictAsync(workId, seal.Blob) == Moderation.MalwareVerdict.Malicious)
+                {
+                    await CompletePublishAsync(userId, workId, claim.Until, null, seal);
+                    await reports.CreateAutoFlagAsync("work", workId, Moderation.MalwareCheck.Category, Moderation.MalwareCheck.Severity);
+                    Telemetry.VelaMetrics.Takedown("malware_block");
+                    await DeleteQuietlyAsync(BlobNames.WorkOriginal(workId));
+                    return (await reader.GetAsync(workId, userId))!;
+                }
                 made = await variants.GenerateAsync(seal.Blob, workId);
             }
             catch (InvalidImageException e)
@@ -101,7 +110,8 @@ public sealed class WorkService(
         return new PublishClaim(work.ImageBlob, until);
     }
 
-    private async Task CompletePublishAsync(Guid userId, Guid workId, DateTimeOffset until, ImageVariants made, SealedOriginal seal)
+    /// <summary>Moves the claimed draft to pending, or to blocked when <paramref name="made"/> is null (malware: nothing was decoded).</summary>
+    private async Task CompletePublishAsync(Guid userId, Guid workId, DateTimeOffset until, ImageVariants? made, SealedOriginal seal)
     {
         var now = clock.GetUtcNow();
         // The claim step left this work tracked; without clearing, EF would hand back that stale instance instead of the row as
@@ -119,13 +129,21 @@ public sealed class WorkService(
                 await DeleteQuietlyAsync(BlobNames.WorkVariantsPrefix(workId));
             throw work is null ? WorkException.NotFound() : NotEditable();
         }
-        work.Width = made.Width;
-        work.Height = made.Height;
         work.SealedOriginalBlob = seal.Blob;
         work.SealedOriginalSha256 = seal.Sha256;
         work.ExpiresAt = null;
-        work.Status = WorkStatus.Pending;
-        work.PendingSince = now;
+        if (made is null)
+        {
+            work.Status = WorkStatus.Blocked;
+            work.TakedownDoneAt = now; // nothing public was ever made
+        }
+        else
+        {
+            work.Width = made.Width;
+            work.Height = made.Height;
+            work.Status = WorkStatus.Pending;
+            work.PendingSince = now;
+        }
         work.PublishClaimedUntil = null;
         await db.SaveChangesAsync();
         await tx.CommitAsync();

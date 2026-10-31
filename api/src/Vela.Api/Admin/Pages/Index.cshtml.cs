@@ -39,7 +39,7 @@ public sealed class IndexModel(IModerationService moderation, IBlobStore blobs, 
 
     /// <summary>A short-lived read link to the private sealed original (as published and scanned), made per page view. Never logged.</summary>
     public string? ThumbnailUrl(ReportItem item) =>
-        item.TargetType == "work"
+        item.TargetType == "work" && !Moderation.MalwareCheck.IsMalwareFlag(item.Reason)
             ? blobs.CreateReadUrl(_originals.TryGetValue(item.TargetId, out var name) ? name : BlobNames.WorkOriginal(item.TargetId), ImageLifetime).ToString()
             : null;
 
