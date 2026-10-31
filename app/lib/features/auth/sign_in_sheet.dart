@@ -67,7 +67,7 @@ class _SignInSheetState extends ConsumerState<SignInSheet> {
     }
     if (!mounted) return;
     setState(() => _error = error);
-    if (done) Navigator.of(context).pop(true);
+    if (done) _closeSignedIn();
   }
 
   /// The email steps report their requests here so the sheet cannot be
@@ -76,7 +76,17 @@ class _SignInSheetState extends ConsumerState<SignInSheet> {
     if (mounted && busy != _busy) setState(() => _busy = busy);
   }
 
-  void _signedIn() => Navigator.of(context).pop(true);
+  void _signedIn() => _closeSignedIn();
+
+  /// A new account is sent to onboarding the moment the session is stored, and
+  /// that redirect replaces the page under this sheet. Popping then would pop
+  /// the onboarding page (go_router asserts on an empty stack), so only close
+  /// the sheet while it is still the current route.
+  void _closeSignedIn() {
+    if (ModalRoute.of(context)?.isCurrent ?? false) {
+      Navigator.of(context).pop(true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

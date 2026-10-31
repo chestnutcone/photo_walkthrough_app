@@ -32,3 +32,6 @@ local.settings.json
 
 # Local agent worktrees
 .claude/worktrees/
+
+# Local E2E state (scripts/run-local-api.sh)
+.local/

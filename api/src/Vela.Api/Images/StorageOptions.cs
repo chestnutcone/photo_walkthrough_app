@@ -7,6 +7,8 @@ public sealed class StorageOptions
     private const string DevPublicBaseUrl = "http://127.0.0.1:10000/devstoreaccount1/";
 
     public string ConnectionString { get; init; } = "";
+    /// <summary>Local development only (Storage:EnsurePublicRead): makes the works and avatars containers public-read at startup, as the infra does in Azure.</summary>
+    public bool EnsurePublicRead { get; init; }
     public string PublicBaseUrl { get; init; } = "";
     /// <summary>Physical name of the private container for raw uploads (never CDN-fronted).</summary>
     public string OriginalsContainer { get; init; } = BlobNames.Originals;
@@ -34,6 +36,7 @@ public sealed class StorageOptions
         {
             ConnectionString = Require(config, "ConnectionString", lenient ? DevConnectionString : null),
             PublicBaseUrl = Require(config, "PublicBaseUrl", lenient ? DevPublicBaseUrl : null),
+            EnsurePublicRead = lenient && config.GetValue<bool>($"{Section}:EnsurePublicRead"),
             OriginalsContainer = originals,
             ExportsContainer = exports,
             EvidenceContainer = evidence,
