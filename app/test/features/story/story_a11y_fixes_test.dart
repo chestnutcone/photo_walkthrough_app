@@ -1,5 +1,3 @@
-import 'dart:ui' show SemanticsFlag;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -69,7 +67,7 @@ void main() {
     await pumpStory(t);
     String cardLabel() {
       final node = t.getSemantics(find.byKey(const ValueKey('bottom-card')));
-      expect(node.hasFlag(SemanticsFlag.isLiveRegion), isTrue);
+      expect(node.flagsCollection.isLiveRegion, isTrue);
       return node.label;
     }
 
@@ -141,7 +139,9 @@ void main() {
           .forEach(visit);
     }
 
-    visit(t.binding.pipelineOwner.semanticsOwner!.rootSemanticsNode!);
+    visit(
+      t.binding.renderViews.first.owner!.semanticsOwner!.rootSemanticsNode!,
+    );
     expect(labels, [
       'Chapter 1: Detail 1',
       'Chapter 2: Detail 2',

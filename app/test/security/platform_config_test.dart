@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Release-build security settings that no Dart code can check: they live in the Android manifest and iOS Info.plist.
 void main() {
-  final manifest = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+  final manifest = File('android/app/src/main/AndroidManifest.xml')
+      .readAsStringSync();
   final plist = File('ios/Runner/Info.plist').readAsStringSync();
 
   group('android manifest', () {
@@ -51,7 +52,10 @@ void main() {
           .allMatches(plist)
           .map((m) => m.group(1)!)
           .toSet();
-      expect(purposes, {'NSCameraUsageDescription', 'NSPhotoLibraryUsageDescription'});
+      expect(purposes, {
+        'NSCameraUsageDescription',
+        'NSPhotoLibraryUsageDescription',
+      });
     });
   });
 
@@ -64,7 +68,9 @@ void main() {
     });
 
     test('iphone_supports_portrait_only', () {
-      final start = plist.indexOf('<key>UISupportedInterfaceOrientations</key>');
+      final start = plist.indexOf(
+        '<key>UISupportedInterfaceOrientations</key>',
+      );
       final end = plist.indexOf('</array>', start);
       final iphone = plist.substring(start, end);
       expect(iphone, contains('UIInterfaceOrientationPortrait'));

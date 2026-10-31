@@ -314,9 +314,9 @@ final scenes = <Scene>[
     member,
     (g) async {
       await g.push('/artist/ines');
-      await g.tap(key('tab-about'));
       await g.tester.drag(find.byType(Scrollable).first, const Offset(0, -420));
       await g.settle();
+      await g.tap(key('tab-about'));
     },
   ),
   Scene(

@@ -146,9 +146,7 @@ class _ReplyComposerState extends ConsumerState<ReplyComposer> {
                       horizontal: 16,
                       vertical: 14,
                     ),
-                    constraints: const BoxConstraints(
-                      minHeight: kMinTapTarget,
-                    ),
+                    constraints: const BoxConstraints(minHeight: kMinTapTarget),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(99),
                       borderSide: BorderSide.none,

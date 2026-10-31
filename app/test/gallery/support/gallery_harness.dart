@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
@@ -134,8 +133,9 @@ class GalleryWorld {
       if (m == 'DELETE') return _ok(null);
       return _ok({...draft, 'status': m == 'GET' ? 'published' : 'draft'});
     }
-    if (p == '/v1/works/wd/publish')
+    if (p == '/v1/works/wd/publish') {
       return _ok({...draft, 'status': 'pending'});
+    }
     final w = RegExp(r'^/v1/works/(\w+)$').firstMatch(p);
     if (w != null && m == 'GET') {
       final all = [...feedWorks, ...inesWorks];
@@ -283,6 +283,10 @@ class Gallery {
   }
 
   Future<void> tap(Finder f) async {
+    // Data may still be arriving (real async decode / fake latency).
+    for (var i = 0; i < 20 && f.evaluate().isEmpty; i++) {
+      await settle();
+    }
     await tester.ensureVisible(f.first);
     await tester.pumpAndSettle();
     await tester.tap(f.first);
