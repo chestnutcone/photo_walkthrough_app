@@ -42,10 +42,11 @@ public sealed class SearchQuery
 
     public static SearchQuery Parse(string? raw)
     {
-        var q = (raw ?? "").Trim();
+        if ((raw ?? "").Contains('\0')) throw new SearchException("validation_failed", "Search text contains an invalid character.");
+        // Cleaned like the stored titles and names (review M-8): an NFD or zero-width-laden query would otherwise never match.
+        var q = Common.TextSanitizer.Clean(raw);
         if (q.Length < MinLength) throw new SearchException("query_too_short", $"Type at least {MinLength} characters to search.");
         if (q.Length > MaxLength) throw new SearchException("validation_failed", $"Search text can be at most {MaxLength} characters.");
-        if (q.Contains('\0')) throw new SearchException("validation_failed", "Search text contains an invalid character.");
 
         var words = q.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Take(MaxTerms)
             .Select(w => w.ToLowerInvariant()).ToList();
