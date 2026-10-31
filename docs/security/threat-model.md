@@ -114,7 +114,7 @@ Mitigation pointers name the code, then the test that pins it. "Residual" points
 |---|---|---|---|
 | S/T | Stolen DB password | Container Apps secret; server firewall; TLS required | R-7: app connects as the server admin; "allow Azure services" firewall rule (C1 findings) |
 | T | Tampering with the audit log | Application-level only | R-6 |
-| I | Backups hold deleted data | Documented: backups expire within 30 days (point-in-time restore window); privacy policy to state it | counsel to confirm |
+| I | Backups hold deleted data | Documented: Postgres point-in-time restore keeps 7 days, blob soft delete 7 days; the privacy policy Retention section states both, the up-to-30-day review deferral, and the records kept after deletion (evidence, DMCA notices 3 years after closing via `DmcaRetentionJob`, moderation audit trail, ban hashes) | counsel to confirm the periods |
 | I | Raw email and IP in `email_codes`, `inquiries` | Codes are hashed; rows pruned by `Auth/AuthDataRetentionJob.cs` (email codes, verify attempts, signup events) | inquiry and notification retention is an owner decision (R-13) |
 | D | Connection exhaustion | Scale-to-zero small API, pooled connections | owner to size at launch |
 

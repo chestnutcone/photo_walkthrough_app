@@ -10,7 +10,12 @@ public sealed record DmcaAck(Guid NoticeId);
 
 public static class DmcaEndpoints
 {
-    public static IServiceCollection AddDmca(this IServiceCollection services) => services.AddScoped<IDmcaService, DmcaService>().AddScoped<ICounterNoticeService, CounterNoticeService>();
+    public static IServiceCollection AddDmca(this IServiceCollection services, IHostEnvironment? env = null)
+    {
+        services.AddScoped<IDmcaService, DmcaService>().AddScoped<ICounterNoticeService, CounterNoticeService>().AddSingleton<DmcaRetentionJob>();
+        if (env is not null && !env.IsEnvironment("Test")) services.AddHostedService(sp => sp.GetRequiredService<DmcaRetentionJob>());
+        return services;
+    }
 
     public static IEndpointRouteBuilder MapDmcaEndpoints(this IEndpointRouteBuilder app)
     {

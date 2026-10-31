@@ -98,7 +98,7 @@ builder.Services.AddContentSafety(builder.Configuration, builder.Environment);
 builder.Services.AddMalwareCheck(builder.Configuration, builder.Environment);
 builder.Services.AddShare(builder.Configuration, builder.Environment);
 builder.Services.AddViewerCors();
-builder.Services.AddLegal();
+builder.Services.AddLegal(builder.Environment);
 builder.Services.AddAccount(builder.Environment);
 builder.Services.AddCdnPurging(builder.Configuration, builder.Environment);
 builder.Services.AddAdmin(builder.Configuration, builder.Environment);

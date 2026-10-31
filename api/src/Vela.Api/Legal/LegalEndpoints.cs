@@ -6,9 +6,9 @@ namespace Vela.Api.Legal;
 
 public static class LegalEndpoints
 {
-    public static IServiceCollection AddLegal(this IServiceCollection services) =>
+    public static IServiceCollection AddLegal(this IServiceCollection services, IHostEnvironment? env = null) =>
         services.AddSingleton(sp => new BrandingOptionsAccessor(sp.GetRequiredService<IOptions<BrandingOptions>>().Value))
-            .AddSingleton<LegalDocuments>().AddDmca();
+            .AddSingleton<LegalDocuments>().AddDmca(env);
 
     public static IEndpointRouteBuilder MapLegalPages(this IEndpointRouteBuilder app)
     {
