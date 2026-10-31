@@ -14,9 +14,12 @@ const deleteWord = 'DELETE';
 const deleteExplanation =
     'This permanently deletes your account and everything in it: your '
     'stories and photos, your replies, your follows and followers, your '
-    'notifications and your messages. It cannot be undone. Copies in backups '
-    'are removed within 30 days. Content held for a legal or safety '
-    'investigation may be kept as the privacy policy describes.';
+    'notifications and your messages. It cannot be undone. Your account is '
+    'hidden at once; if some of your content is being reviewed by our '
+    'moderators, the final removal waits for that review, at most 30 days. '
+    "Deleted files may stay in our storage provider's recovery copies for up "
+    'to 7 more days. Content held for a legal or safety investigation may be '
+    'kept as the privacy policy describes.';
 
 /// True when [typed] is the word DELETE (exactly) or the account's handle.
 bool deleteConfirmed(String typed, String? handle) {
