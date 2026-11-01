@@ -1,0 +1,363 @@
+{
+ "description": "Shared vectors for the user-text sanitizer. Both api (TextSanitizerTests) and app (text_sanitizer_test.dart) must produce 'expected' from 'input', and 'length' is the length both sides count (Unicode code points of the cleaned text).",
+ "maxStackedMarks": 4,
+ "vectors": [
+  {
+   "name": "collapses spaces and trims",
+   "input": "  Hello   world  ",
+   "multiline": false,
+   "expected": "Hello world",
+   "length": 11
+  },
+  {
+   "name": "strips zero-width space",
+   "input": "a\u200bb",
+   "multiline": false,
+   "expected": "ab",
+   "length": 2
+  },
+  {
+   "name": "strips byte-order mark",
+   "input": "\ufefftitle",
+   "multiline": false,
+   "expected": "title",
+   "length": 5
+  },
+  {
+   "name": "normalises to NFC",
+   "input": "e\u0301",
+   "multiline": false,
+   "expected": "\u00e9",
+   "length": 1
+  },
+  {
+   "name": "caps stacked combining marks (zalgo)",
+   "input": "q\u0300\u0301\u0302\u0303\u0304\u0305\u0306\u0307",
+   "multiline": false,
+   "expected": "q\u0300\u0301\u0302\u0303",
+   "length": 5
+  },
+  {
+   "name": "caps zalgo runs after every letter",
+   "input": "a\u0336\u0336\u0336\u0336\u0336\u0336\u0336\u0336\u0336\u0336\u0336\u0336b\u0489\u0489\u0489\u0489\u0489\u0489\u0489\u0489\u0489",
+   "multiline": false,
+   "expected": "a\u0336\u0336\u0336\u0336b\u0489\u0489\u0489\u0489",
+   "length": 10
+  },
+  {
+   "name": "strips right-to-left override",
+   "input": "abc\u202edef",
+   "multiline": false,
+   "expected": "abcdef",
+   "length": 6
+  },
+  {
+   "name": "strips bidi embedding and pop",
+   "input": "\u202atext\u202c",
+   "multiline": false,
+   "expected": "text",
+   "length": 4
+  },
+  {
+   "name": "strips bidi isolates",
+   "input": "\u2066x\u2069",
+   "multiline": false,
+   "expected": "x",
+   "length": 1
+  },
+  {
+   "name": "keeps HTML as text",
+   "input": "<script>alert(1)</script>",
+   "multiline": false,
+   "expected": "<script>alert(1)</script>",
+   "length": 25
+  },
+  {
+   "name": "keeps emoji ZWJ family",
+   "input": "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67",
+   "multiline": false,
+   "expected": "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67",
+   "length": 5
+  },
+  {
+   "name": "keeps heart on fire",
+   "input": "\u2764\ufe0f\u200d\ud83d\udd25",
+   "multiline": false,
+   "expected": "\u2764\ufe0f\u200d\ud83d\udd25",
+   "length": 4
+  },
+  {
+   "name": "drops ZWJ between Latin letters",
+   "input": "ad\u200dmin",
+   "multiline": false,
+   "expected": "admin",
+   "length": 5
+  },
+  {
+   "name": "drops ZWNJ between Latin letters",
+   "input": "ad\u200cmin",
+   "multiline": false,
+   "expected": "admin",
+   "length": 5
+  },
+  {
+   "name": "keeps ZWJ after Devanagari virama",
+   "input": "\u0915\u094d\u200d\u0937",
+   "multiline": false,
+   "expected": "\u0915\u094d\u200d\u0937",
+   "length": 4
+  },
+  {
+   "name": "keeps Persian ZWNJ",
+   "input": "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645",
+   "multiline": false,
+   "expected": "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645",
+   "length": 8
+  },
+  {
+   "name": "drops trailing ZWJ",
+   "input": "\ud83d\udc4d\u200d",
+   "multiline": false,
+   "expected": "\ud83d\udc4d",
+   "length": 1
+  },
+  {
+   "name": "drops ZWJ between emoji and letter",
+   "input": "\ud83d\udc4d\u200dx",
+   "multiline": false,
+   "expected": "\ud83d\udc4dx",
+   "length": 2
+  },
+  {
+   "name": "strips control characters",
+   "input": "a\u0000b\u0007c\u007fd\u009be",
+   "multiline": false,
+   "expected": "abcde",
+   "length": 5
+  },
+  {
+   "name": "tab becomes a space",
+   "input": "a\tb",
+   "multiline": false,
+   "expected": "a b",
+   "length": 3
+  },
+  {
+   "name": "single line folds new lines",
+   "input": "a\nb\r\nc",
+   "multiline": false,
+   "expected": "a b c",
+   "length": 5
+  },
+  {
+   "name": "multiline keeps one blank line",
+   "input": "line1\r\n\r\n\r\n\r\nline2  \n  line3\n",
+   "multiline": true,
+   "expected": "line1\n\nline2\nline3",
+   "length": 18
+  },
+  {
+   "name": "multiline collapses spaces inside lines",
+   "input": "a   b\t\tc",
+   "multiline": true,
+   "expected": "a b c",
+   "length": 5
+  },
+  {
+   "name": "multiline trims surrounding blank lines",
+   "input": "\n\n hi \n\n",
+   "multiline": true,
+   "expected": "hi",
+   "length": 2
+  },
+  {
+   "name": "keeps England flag tag sequence",
+   "input": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f",
+   "multiline": false,
+   "expected": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f",
+   "length": 7
+  },
+  {
+   "name": "strips stray tag characters",
+   "input": "a\udb40\udc41b",
+   "multiline": false,
+   "expected": "ab",
+   "length": 2
+  },
+  {
+   "name": "strips soft hyphen",
+   "input": "co\u00adop",
+   "multiline": false,
+   "expected": "coop",
+   "length": 4
+  },
+  {
+   "name": "strips Hangul filler used as a blank name",
+   "input": "\u3164",
+   "multiline": false,
+   "expected": "",
+   "length": 0
+  },
+  {
+   "name": "strips word joiner and invisible operators",
+   "input": "a\u2060b\u2062c",
+   "multiline": false,
+   "expected": "abc",
+   "length": 3
+  },
+  {
+   "name": "other spaces collapse to one space",
+   "input": "a\u00a0\u3000\u2003b",
+   "multiline": false,
+   "expected": "a b",
+   "length": 3
+  },
+  {
+   "name": "line separator is a space",
+   "input": "a\u2028b",
+   "multiline": true,
+   "expected": "a b",
+   "length": 3
+  },
+  {
+   "name": "keeps keycap",
+   "input": "1\ufe0f\u20e3",
+   "multiline": false,
+   "expected": "1\ufe0f\u20e3",
+   "length": 3
+  },
+  {
+   "name": "keeps left-to-right mark",
+   "input": "abc\u200edef",
+   "multiline": false,
+   "expected": "abc\u200edef",
+   "length": 7
+  },
+  {
+   "name": "keeps skin tone modifier",
+   "input": "\ud83d\udc4b\ud83c\udffd",
+   "multiline": false,
+   "expected": "\ud83d\udc4b\ud83c\udffd",
+   "length": 2
+  },
+  {
+   "name": "composes Vietnamese",
+   "input": "Tie\u0302\u0301ng",
+   "multiline": false,
+   "expected": "Ti\u1ebfng",
+   "length": 5
+  },
+  {
+   "name": "keeps Thai marks",
+   "input": "\u0e17\u0e35\u0e48",
+   "multiline": false,
+   "expected": "\u0e17\u0e35\u0e48",
+   "length": 3
+  },
+  {
+   "name": "keeps Arabic text",
+   "input": "\u0645\u0631\u062d\u0628\u0627",
+   "multiline": false,
+   "expected": "\u0645\u0631\u062d\u0628\u0627",
+   "length": 5
+  },
+  {
+   "name": "only invisible input becomes empty",
+   "input": "\u200b\u200d\ufeff ",
+   "multiline": false,
+   "expected": "",
+   "length": 0
+  },
+  {
+   "name": "caps marks across ZWJ between marks (I-4)",
+   "input": "a\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d\u05b0\u05b0\u05b0\u05b0\u200d",
+   "multiline": false,
+   "expected": "a\u05b0\u05b0\u05b0\u05b0",
+   "length": 5
+  },
+  {
+   "name": "caps marks across LRM between marks (I-4)",
+   "input": "x\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e\u0300\u0300\u0300\u0300\u200e",
+   "multiline": false,
+   "expected": "x\u0300\u0300\u0300\u0300\u200e",
+   "length": 6
+  },
+  {
+   "name": "caps marks across ZWNJ and RLM between marks",
+   "input": "b\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f\u05b0\u05b0\u05b0\u200c\u05b0\u05b0\u05b0\u200f",
+   "multiline": false,
+   "expected": "b\u05b0\u05b0\u05b0\u200c\u05b0\u200f",
+   "length": 7
+  },
+  {
+   "name": "keeps Hindi conjunct ZWJ after a virama",
+   "input": "\u0915\u094d\u200d\u0937",
+   "multiline": false,
+   "expected": "\u0915\u094d\u200d\u0937",
+   "length": 4
+  },
+  {
+   "name": "drops a repeated directional mark",
+   "input": "x\u200e\u200e\u200ey",
+   "multiline": false,
+   "expected": "x\u200ey",
+   "length": 3
+  },
+  {
+   "name": "keeps Scotland flag tag sequence",
+   "input": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc73\udb40\udc63\udb40\udc74\udb40\udc7f",
+   "multiline": false,
+   "expected": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc73\udb40\udc63\udb40\udc74\udb40\udc7f",
+   "length": 7
+  },
+  {
+   "name": "drops hidden ASCII in tag characters (M-4)",
+   "input": "hi \ud83c\udff4\udb40\udc69\udb40\udc67\udb40\udc6e\udb40\udc6f\udb40\udc72\udb40\udc65\udb40\udc20\udb40\udc61\udb40\udc6c\udb40\udc6c",
+   "multiline": false,
+   "expected": "hi \ud83c\udff4",
+   "length": 4
+  },
+  {
+   "name": "drops an unterminated tag run",
+   "input": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67",
+   "multiline": false,
+   "expected": "\ud83c\udff4",
+   "length": 1
+  },
+  {
+   "name": "drops a tag run that is too long",
+   "input": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc78\udb40\udc78\udb40\udc7f",
+   "multiline": false,
+   "expected": "\ud83c\udff4",
+   "length": 1
+  },
+  {
+   "name": "drops a tag run with characters outside a-z 0-9",
+   "input": "\ud83c\udff4\udb40\udc47\udb40\udc42\udb40\udc2d\udb40\udc45\udb40\udc7f",
+   "multiline": false,
+   "expected": "\ud83c\udff4",
+   "length": 1
+  },
+  {
+   "name": "drops a lone tag terminator",
+   "input": "\ud83c\udff4\udb40\udc7f",
+   "multiline": false,
+   "expected": "\ud83c\udff4",
+   "length": 1
+  },
+  {
+   "name": "drops Braille blank (M-5)",
+   "input": "\u2800",
+   "multiline": false,
+   "expected": "",
+   "length": 0
+  },
+  {
+   "name": "drops musical null notehead (M-5)",
+   "input": "a\ud834\udd59b",
+   "multiline": false,
+   "expected": "ab",
+   "length": 2
+  }
+ ]
+}

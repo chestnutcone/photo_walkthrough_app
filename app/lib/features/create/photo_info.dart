@@ -1,0 +1,371 @@
+import 'dart:async';
+import 'dart:isolate';
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image/image.dart' as img;
+
+/// What the server accepts for an original (see `createDraft`).
+const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+/// Header facts about a photo, read without decoding pixels.
+class PhotoMeta {
+  const PhotoMeta({
+    required this.contentType,
+    required this.width,
+    required this.height,
+    this.orientation = 1,
+  });
+
+  final String contentType;
+
+  /// Stored pixel size.
+  final int width;
+  final int height;
+
+  /// EXIF orientation 1..8 (JPEG only; 1 otherwise).
+  final int orientation;
+
+  bool get swapsAxes => orientation >= 5 && orientation <= 8;
+
+  /// Size after EXIF orientation: what the author sees and what the server
+  /// stores.
+  int get displayedWidth => swapsAxes ? height : width;
+  int get displayedHeight => swapsAxes ? width : height;
+}
+
+/// Parses the JPEG, PNG or WebP header. Null for anything else or a
+/// truncated file.
+PhotoMeta? readPhotoMeta(Uint8List b) {
+  if (b.length < 12) return null;
+  if (b[0] == 0xFF && b[1] == 0xD8) return _jpeg(b);
+  if (b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) {
+    return _png(b);
+  }
+  if (_ascii(b, 0, 'RIFF') && _ascii(b, 8, 'WEBP')) return _webp(b);
+  return null;
+}
+
+bool _ascii(Uint8List b, int at, String s) {
+  if (b.length < at + s.length) return false;
+  for (var i = 0; i < s.length; i++) {
+    if (b[at + i] != s.codeUnitAt(i)) return false;
+  }
+  return true;
+}
+
+int _u16(Uint8List b, int at, {bool le = false}) =>
+    le ? b[at] | b[at + 1] << 8 : b[at] << 8 | b[at + 1];
+
+PhotoMeta? _png(Uint8List b) {
+  if (b.length < 24 || !_ascii(b, 12, 'IHDR')) return null;
+  final bd = ByteData.sublistView(b);
+  final w = bd.getUint32(16);
+  final h = bd.getUint32(20);
+  return w == 0 || h == 0
+      ? null
+      : PhotoMeta(contentType: 'image/png', width: w, height: h);
+}
+
+PhotoMeta? _webp(Uint8List b) {
+  if (b.length < 25) return null;
+  if (_ascii(b, 12, 'VP8X')) {
+    if (b.length < 30) return null;
+    final w = 1 + (b[24] | b[25] << 8 | b[26] << 16);
+    final h = 1 + (b[27] | b[28] << 8 | b[29] << 16);
+    return PhotoMeta(contentType: 'image/webp', width: w, height: h);
+  }
+  if (_ascii(b, 12, 'VP8L')) {
+    if (b[20] != 0x2f) return null;
+    final bits = b[21] | b[22] << 8 | b[23] << 16 | b[24] << 24;
+    return PhotoMeta(
+      contentType: 'image/webp',
+      width: 1 + (bits & 0x3FFF),
+      height: 1 + ((bits >> 14) & 0x3FFF),
+    );
+  }
+  if (_ascii(b, 12, 'VP8 ')) {
+    if (b.length < 30) return null;
+    if (b[23] != 0x9d || b[24] != 0x01 || b[25] != 0x2a) return null;
+    return PhotoMeta(
+      contentType: 'image/webp',
+      width: _u16(b, 26, le: true) & 0x3FFF,
+      height: _u16(b, 28, le: true) & 0x3FFF,
+    );
+  }
+  return null;
+}
+
+PhotoMeta? _jpeg(Uint8List b) {
+  var orientation = 1;
+  var i = 2;
+  while (i + 4 <= b.length) {
+    if (b[i] != 0xFF) return null;
+    final marker = b[i + 1];
+    if (marker == 0xFF) {
+      i++;
+      continue;
+    }
+    if (marker == 0xD8 || (marker >= 0xD0 && marker <= 0xD7) || marker == 1) {
+      i += 2;
+      continue;
+    }
+    final len = _u16(b, i + 2);
+    if (len < 2 || i + 2 + len > b.length) return null;
+    final isSof =
+        marker >= 0xC0 &&
+        marker <= 0xCF &&
+        marker != 0xC4 &&
+        marker != 0xC8 &&
+        marker != 0xCC;
+    if (isSof) {
+      if (len < 7) return null;
+      final h = _u16(b, i + 5);
+      final w = _u16(b, i + 7);
+      return w == 0 || h == 0
+          ? null
+          : PhotoMeta(
+              contentType: 'image/jpeg',
+              width: w,
+              height: h,
+              orientation: orientation,
+            );
+    }
+    if (marker == 0xE1) orientation = _exifOrientation(b, i + 4, i + 2 + len);
+    i += 2 + len;
+  }
+  return null;
+}
+
+/// Reads tag 0x0112 from the TIFF block of an APP1 segment, or 1.
+int _exifOrientation(Uint8List b, int start, int end) {
+  if (!_ascii(b, start, 'Exif') || start + 14 > end) return 1;
+  final t = start + 6;
+  final le = b[t] == 0x49;
+  int u16(int at) => _u16(b, at, le: le);
+  int u32(int at) => le
+      ? b[at] | b[at + 1] << 8 | b[at + 2] << 16 | b[at + 3] << 24
+      : b[at] << 24 | b[at + 1] << 16 | b[at + 2] << 8 | b[at + 3];
+  final ifd = t + u32(t + 4);
+  if (ifd + 2 > end) return 1;
+  final count = u16(ifd);
+  for (var n = 0; n < count; n++) {
+    final e = ifd + 2 + n * 12;
+    if (e + 12 > end) return 1;
+    if (u16(e) == 0x0112) {
+      final v = u16(e + 8);
+      return v >= 1 && v <= 8 ? v : 1;
+    }
+  }
+  return 1;
+}
+
+/// The client refuses photos over this many pixels (the server's own limit,
+/// `VariantGenerator.MaxPixels`, is 60 MP). A rotated JPEG is decoded and
+/// re-encoded in pure Dart, which needs roughly 10 bytes per pixel at peak,
+/// so 24 MP stays near 250 MB on a 3 GB phone; 60 MP would not. The platform
+/// picker already scales photos to at most 4096 px a side (16.8 MP) and
+/// bakes in their orientation, so only a photo the picker returned
+/// untouched can reach this cap.
+const int maxPhotoPixels = 24000000;
+
+/// How long preparing one photo may take before the author is told to choose
+/// a smaller one. The isolate doing the work is killed, freeing its memory.
+const Duration photoPrepareTimeout = Duration(seconds: 30);
+
+/// The photo is over [maxPhotoPixels].
+class PhotoTooLargeException implements Exception {
+  const PhotoTooLargeException();
+  @override
+  String toString() => 'PhotoTooLargeException';
+}
+
+/// A rotated JPEG whose pixels could not be decoded. Uploading it with only
+/// the metadata cut would drop the orientation tag and show it sideways, so
+/// it is refused instead.
+class PhotoUnreadableException implements Exception {
+  const PhotoUnreadableException();
+  @override
+  String toString() => 'PhotoUnreadableException';
+}
+
+/// Preparing the photo took longer than [photoPrepareTimeout].
+class PhotoPrepareTimeout implements Exception {
+  const PhotoPrepareTimeout();
+  @override
+  String toString() => 'PhotoPrepareTimeout';
+}
+
+/// Prepares the bytes that are uploaded: pixels in the orientation the author
+/// saw, and no metadata at all (EXIF, GPS, XMP, comments), so the displayed
+/// image, the pin fractions and the stored original agree and nothing about
+/// where the photo was taken leaves the phone.
+///
+/// A rotated JPEG is re-encoded (unavoidable); one over [maxPhotoPixels]
+/// throws [PhotoTooLargeException] before any decode, and one that cannot be
+/// decoded throws [PhotoUnreadableException] (never uploaded sideways).
+/// Everything else keeps its pixels byte for byte and only has its metadata
+/// segments cut out, so quality is not lost. A photo with no metadata is
+/// returned unchanged.
+Uint8List bakePhotoOrientation(Uint8List bytes) {
+  final meta = readPhotoMeta(bytes);
+  if (meta == null) return bytes;
+  if (meta.contentType == 'image/jpeg' && meta.orientation != 1) {
+    if (meta.width * meta.height > maxPhotoPixels) {
+      throw const PhotoTooLargeException();
+    }
+    final img.Image? decoded;
+    try {
+      decoded = img.decodeJpg(bytes);
+    } on Object {
+      throw const PhotoUnreadableException();
+    }
+    if (decoded == null) throw const PhotoUnreadableException();
+    final upright = img.bakeOrientation(decoded)..exif = img.ExifData();
+    return Uint8List.fromList(img.encodeJpg(upright, quality: 92));
+  }
+  return stripPhotoMetadata(bytes);
+}
+
+/// Removes metadata without touching pixel data. Same instance when there was
+/// nothing to remove. ICC colour profiles are kept (they change how colours
+/// look, not who took the photo).
+Uint8List stripPhotoMetadata(Uint8List b) {
+  if (b.length < 12) return b;
+  if (b[0] == 0xFF && b[1] == 0xD8) return _stripJpeg(b);
+  if (b[0] == 0x89 && b[1] == 0x50) return _stripPng(b);
+  if (_ascii(b, 0, 'RIFF') && _ascii(b, 8, 'WEBP')) return _stripWebp(b);
+  return b;
+}
+
+Uint8List _stripJpeg(Uint8List b) {
+  final out = BytesBuilder(copy: false)..add(b.sublist(0, 2));
+  var i = 2;
+  var removed = false;
+  while (i + 4 <= b.length && b[i] == 0xFF) {
+    final marker = b[i + 1];
+    if (marker == 0xFF) {
+      i++;
+      continue;
+    }
+    if (marker == 0xDA) break; // start of scan: the rest is pixel data
+    final len = _u16(b, i + 2);
+    if (len < 2 || i + 2 + len > b.length) return b;
+    final drop =
+        marker == 0xE1 || (marker >= 0xE3 && marker <= 0xEF) || marker == 0xFE;
+    if (drop) {
+      removed = true;
+    } else {
+      out.add(b.sublist(i, i + 2 + len));
+    }
+    i += 2 + len;
+  }
+  if (!removed) return b;
+  out.add(b.sublist(i));
+  return out.toBytes();
+}
+
+Uint8List _stripPng(Uint8List b) {
+  final out = BytesBuilder(copy: false)..add(b.sublist(0, 8));
+  final bd = ByteData.sublistView(b);
+  var i = 8;
+  var removed = false;
+  while (i + 12 <= b.length) {
+    final len = bd.getUint32(i);
+    final end = i + 12 + len;
+    if (end > b.length) return b;
+    if (_ascii(b, i + 4, 'eXIf')) {
+      removed = true;
+    } else {
+      out.add(b.sublist(i, end));
+    }
+    i = end;
+  }
+  return removed ? out.toBytes() : b;
+}
+
+Uint8List _stripWebp(Uint8List b) {
+  if (!_ascii(b, 12, 'VP8X') || b.length < 30) return b;
+  final bd = ByteData.sublistView(b);
+  final out = BytesBuilder(copy: false)..add(b.sublist(0, 12));
+  var i = 12;
+  var removed = false;
+  while (i + 8 <= b.length) {
+    final len = bd.getUint32(i + 4, Endian.little);
+    final end = math.min(b.length, i + 8 + len + (len.isOdd ? 1 : 0));
+    final isMeta = _ascii(b, i, 'EXIF') || _ascii(b, i, 'XMP ');
+    if (isMeta) {
+      removed = true;
+    } else {
+      out.add(b.sublist(i, end));
+    }
+    i = end;
+  }
+  if (!removed) return b;
+  final result = out.toBytes();
+  result[20] &= ~0x0C & 0xFF; // XMP (0x04) and EXIF (0x08) flags
+  ByteData.sublistView(result).setUint32(4, result.length - 8, Endian.little);
+  return result;
+}
+
+/// Runs [bakePhotoOrientation], off the UI isolate by default. Tests
+/// override it with a synchronous version.
+typedef PhotoNormalizer = Future<Uint8List> Function(Uint8List bytes);
+
+final photoNormalizerProvider = Provider<PhotoNormalizer>(
+  (_) =>
+      (bytes) => normalizePhotoInIsolate(bytes, timeout: photoPrepareTimeout),
+);
+
+/// Runs [bakePhotoOrientation] in a new isolate. After [timeout] the isolate
+/// is killed (unlike `compute`, whose work would keep running and holding
+/// memory) and [PhotoPrepareTimeout] is thrown. The photo's exceptions
+/// ([PhotoTooLargeException], [PhotoUnreadableException]) are rethrown here.
+Future<Uint8List> normalizePhotoInIsolate(
+  Uint8List bytes, {
+  required Duration timeout,
+}) async {
+  final port = ReceivePort();
+  Isolate? isolate;
+  try {
+    isolate = await Isolate.spawn(
+      _normalizeEntry,
+      (port.sendPort, TransferableTypedData.fromList([bytes])),
+      onExit: port.sendPort,
+      errorsAreFatal: true,
+    );
+    final Object? msg;
+    try {
+      msg = await port.first.timeout(timeout);
+    } on TimeoutException {
+      throw const PhotoPrepareTimeout();
+    }
+    return switch (msg) {
+      TransferableTypedData data => data.materialize().asUint8List(),
+      'too_large' => throw const PhotoTooLargeException(),
+      'unreadable' => throw const PhotoUnreadableException(),
+      // Exited without an answer (out of memory, crash).
+      _ => throw const PhotoUnreadableException(),
+    };
+  } finally {
+    isolate?.kill(priority: Isolate.immediate);
+    port.close();
+  }
+}
+
+void _normalizeEntry((SendPort, TransferableTypedData) args) {
+  final (reply, data) = args;
+  final Object answer;
+  try {
+    final out = bakePhotoOrientation(data.materialize().asUint8List());
+    answer = TransferableTypedData.fromList([out]);
+  } on PhotoTooLargeException {
+    reply.send('too_large');
+    return;
+  } on Object {
+    reply.send('unreadable');
+    return;
+  }
+  reply.send(answer);
+}

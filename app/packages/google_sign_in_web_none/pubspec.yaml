@@ -1,0 +1,33 @@
+# Replaces google_sign_in_web through dependency_overrides in app/pubspec.yaml.
+#
+# The only web target of this app is the read-only story viewer
+# (lib/main_web.dart), which never signs in. The real google_sign_in_web
+# injects https://accounts.google.com/gsi/client into every page as soon as
+# the plugin is registered, so anonymous viewers would contact Google (and a
+# strict CSP logs errors). This package registers nothing: on web,
+# GoogleSignIn keeps the platform interface's placeholder, which throws if
+# called. Android and iOS use google_sign_in_android / _ios and are not
+# affected. scripts/check-web-viewer-origins.sh fails the build if the GSI
+# URL reappears in build/web.
+name: google_sign_in_web
+description: No-op web implementation of google_sign_in for the Vela web viewer.
+version: 1.1.3+vela.none
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+  flutter: ">=3.35.0"
+
+flutter:
+  plugin:
+    implements: google_sign_in
+    platforms:
+      web:
+        pluginClass: GoogleSignInNoWeb
+        fileName: google_sign_in_web.dart
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter

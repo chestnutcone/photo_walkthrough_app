@@ -1,0 +1,12 @@
+# Proposes updates for the pinned workflow actions, NuGet and pub dependencies. Review each PR; the security workflow gates them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }
+  - package-ecosystem: nuget
+    directory: "/api"
+    schedule: { interval: weekly }
+  - package-ecosystem: pub
+    directory: "/app"
+    schedule: { interval: weekly }

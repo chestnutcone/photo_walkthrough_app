@@ -1,0 +1,300 @@
+import 'package:vela_app/features/profile_edit/edit_profile_screen.dart';
+import 'package:vela_app/features/settings/settings_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:vela_app/core/api/api_providers.dart';
+import 'package:vela_app/core/auth/session_store.dart';
+import 'package:vela_app/core/require_sign_in.dart';
+import 'package:vela_app/core/router.dart';
+import 'package:vela_app/features/create/create_screen.dart';
+import 'package:vela_app/features/feed/feed_screen.dart';
+import 'package:vela_app/features/notifications/notifications_screen.dart';
+import 'package:vela_app/features/search/search_screen.dart';
+import 'package:vela_app/features/onboarding/onboarding_screen.dart';
+
+import 'support/fakes.dart';
+
+final _signedIn = Session(
+  accessToken: 'A',
+  refreshToken: 'R',
+  accessExpiresAt: DateTime.utc(2030),
+).encode();
+
+ProviderContainer _container({
+  bool signedIn = false,
+  bool needsOnboarding = false,
+  SignInSheetLauncher? launcher,
+}) {
+  final c = ProviderContainer(
+    overrides: [
+      sessionStorageProvider.overrideWithValue(
+        FakeSessionStorage(signedIn ? _signedIn : null),
+      ),
+      needsOnboardingProvider.overrideWithValue(needsOnboarding),
+      httpClientAdapterProvider.overrideWithValue(
+        FakeAdapter((_) => jsonResponse(404, errEnvelope('not_found'))),
+      ),
+      if (launcher != null)
+        signInSheetLauncherProvider.overrideWithValue(launcher),
+    ],
+  );
+  addTearDown(c.dispose);
+  return c;
+}
+
+Future<GoRouter> _pump(WidgetTester tester, ProviderContainer c) async {
+  await c.read(sessionProvider.future);
+  final router = c.read(routerProvider);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: c,
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return router;
+}
+
+void main() {
+  testWidgets('guest_can_open_feed_and_story_routes', (tester) async {
+    final c = _container();
+    final router = await _pump(tester, c);
+    expect(find.byType(FeedScreen), findsOneWidget);
+
+    router.go('/story/42');
+    await tester.pumpAndSettle();
+    expect(find.text("This story isn't available"), findsOneWidget);
+
+    router.go('/artist/ana');
+    await tester.pumpAndSettle();
+    expect(find.text('Artist not found'), findsOneWidget);
+
+    router.go('/search');
+    await tester.pumpAndSettle();
+    expect(find.byType(SearchScreen), findsOneWidget);
+  });
+
+  for (final path in [
+    '/create',
+    '/notifications',
+    '/settings',
+    '/profile/edit',
+  ]) {
+    testWidgets('guest is sent to feed from $path', (tester) async {
+      final router = await _pump(tester, _container());
+      router.go(path);
+      await tester.pumpAndSettle();
+      expect(find.byType(FeedScreen), findsOneWidget);
+    });
+
+    testWidgets('signed in user can open $path', (tester) async {
+      final router = await _pump(tester, _container(signedIn: true));
+      router.go(path);
+      await tester.pumpAndSettle();
+      if (path == '/create') {
+        expect(find.byType(CreateScreen), findsOneWidget);
+      } else if (path == '/settings') {
+        expect(find.byType(SettingsScreen), findsOneWidget);
+      } else if (path == '/profile/edit') {
+        expect(find.byType(EditProfileScreen), findsOneWidget);
+      } else if (path == '/notifications') {
+        expect(find.byType(NotificationsScreen), findsOneWidget);
+      } else {
+        expect(find.text('route:${path.substring(1)}'), findsOneWidget);
+      }
+    });
+  }
+
+  testWidgets('signing out on a protected route returns to feed', (
+    tester,
+  ) async {
+    final c = _container(signedIn: true);
+    final router = await _pump(tester, c);
+    router.go('/settings');
+    await tester.pumpAndSettle();
+
+    await c.read(sessionProvider.notifier).clear();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FeedScreen), findsOneWidget);
+  });
+
+  testWidgets('not onboarded signed in user is routed to onboarding', (
+    tester,
+  ) async {
+    await _pump(tester, _container(signedIn: true, needsOnboarding: true));
+    expect(find.byType(OnboardingScreen), findsOneWidget);
+  });
+
+  test('only in-app content locations are resumed after onboarding', () {
+    expect(
+      resumableAfterOnboarding(Uri.parse('/story/1?chapter=2')),
+      '/story/1?chapter=2',
+    );
+    expect(resumableAfterOnboarding(Uri.parse('/artist/ana')), '/artist/ana');
+    for (final l in [
+      '/',
+      '/onboarding',
+      '/onboarding/demo',
+      '/suspended',
+      '/s/1',
+    ]) {
+      expect(resumableAfterOnboarding(Uri.parse(l)), isNull, reason: l);
+    }
+  });
+
+  test('gating matches sub-paths and trailing slashes', () {
+    String? r(String l) => resolveRedirect(
+      location: l,
+      isSignedIn: false,
+      sessionLoading: false,
+      needsOnboarding: false,
+    );
+    for (final l in [
+      '/settings/blocked',
+      '/create/',
+      '/notifications/',
+      '/settings',
+    ]) {
+      expect(r(l), '/', reason: l);
+    }
+    expect(r('/settingsx'), isNull);
+    expect(r('/story/1'), isNull);
+  });
+
+  test('onboarding_sample_story_follows_the_onboarding_rule', () {
+    String? r({
+      required bool signedIn,
+      required bool needs,
+      String l = '/onboarding/demo',
+    }) => resolveRedirect(
+      location: l,
+      isSignedIn: signedIn,
+      sessionLoading: false,
+      needsOnboarding: needs,
+    );
+    expect(r(signedIn: true, needs: true), isNull);
+    expect(r(signedIn: true, needs: true, l: '/story/1'), '/onboarding');
+    expect(r(signedIn: true, needs: false), '/');
+    expect(r(signedIn: false, needs: false), '/');
+    expect(r(signedIn: false, needs: false, l: '/onboardingx'), isNull);
+  });
+
+  testWidgets('unknown route shows not-found with a link home', (tester) async {
+    final router = await _pump(tester, _container());
+    router.go('/nope');
+    await tester.pumpAndSettle();
+    // GALLERY screenshot review: this used to show the debug text
+    // 'route:not-found' to users (unknown deep link paths land here).
+    expect(find.textContaining('route:'), findsNothing);
+    expect(find.text("This page isn't available"), findsOneWidget);
+    await tester.tap(find.text('Go home'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FeedScreen), findsOneWidget);
+  });
+
+  testWidgets('guest cannot stay on onboarding', (tester) async {
+    final router = await _pump(tester, _container());
+    router.go('/onboarding');
+    await tester.pumpAndSettle();
+    expect(find.byType(FeedScreen), findsOneWidget);
+  });
+
+  testWidgets('require_sign_in_returns_true_when_session_exists', (
+    tester,
+  ) async {
+    var launched = 0;
+    final c = _container(
+      signedIn: true,
+      launcher: (_) async {
+        launched++;
+        return true;
+      },
+    );
+    await c.read(sessionProvider.future);
+    bool? result;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: c,
+        child: MaterialApp(
+          home: Consumer(
+            builder: (context, ref, _) => TextButton(
+              onPressed: () async => result = await requireSignIn(context, ref),
+              child: const Text('go'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+
+    expect(result, isTrue);
+    expect(launched, 0);
+  });
+
+  testWidgets(
+    'require sign in opens the sheet for guests and returns its result',
+    (tester) async {
+      for (final outcome in [true, false]) {
+        var launched = 0;
+        final c = _container(
+          launcher: (_) async {
+            launched++;
+            return outcome;
+          },
+        );
+        await c.read(sessionProvider.future);
+        bool? result;
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: c,
+            child: MaterialApp(
+              home: Consumer(
+                builder: (context, ref, _) => TextButton(
+                  onPressed: () async =>
+                      result = await requireSignIn(context, ref),
+                  child: const Text('go'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('go'));
+        await tester.pumpAndSettle();
+
+        expect(launched, 1);
+        expect(result, outcome);
+      }
+    },
+  );
+
+  testWidgets('default launcher opens the sign-in sheet; closing it is false', (
+    tester,
+  ) async {
+    final c = _container();
+    await c.read(sessionProvider.future);
+    late BuildContext ctx;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: c,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              ctx = context;
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+    final result = c.read(signInSheetLauncherProvider)(ctx);
+    await tester.pumpAndSettle();
+    expect(find.text('Sign in'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('sheet-close')));
+    await tester.pumpAndSettle();
+    expect(await result, isFalse);
+  });
+}

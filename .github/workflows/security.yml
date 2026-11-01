@@ -1,0 +1,111 @@
+name: security
+# Dependency, secret, code and static-analysis checks. Runs on every pull request and on pushes to main and build branches.
+# Third-party actions are pinned by commit SHA (the tag each was resolved from is in the trailing comment); dependabot proposes updates.
+on:
+  pull_request:
+  push:
+    branches: [main, "build/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GITLEAKS_VERSION: "8.28.0"
+  GITLEAKS_SHA256: "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb" # gitleaks_8.28.0_linux_x64.tar.gz, from the release's checksums file
+
+jobs:
+  vulnerable-packages:
+    name: NuGet advisories (fails on High or Critical)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+      - name: Parser self-test
+        run: scripts/check-vulnerable-packages.sh --self-test
+      # Runs `dotnet list api/Vela.sln package --vulnerable --include-transitive --format json` and fails on any High or Critical advisory,
+      # and also when the advisory data could not be fetched.
+      - name: Check packages
+        run: scripts/check-vulnerable-packages.sh api/Vela.sln
+
+  flutter-outdated:
+    name: Flutter outdated report (informational)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Report (never fails the build)
+        run: |
+          flutter pub outdated > pub-outdated.txt || true
+          flutter pub outdated --json > pub-outdated.json || true
+          cat pub-outdated.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: flutter-pub-outdated
+          path: |
+            app/pub-outdated.txt
+            app/pub-outdated.json
+
+  dart-analyze:
+    name: dart analyze --fatal-infos
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+      - run: flutter pub get
+      # app/analysis_options.yaml excludes the generated client (packages/vela_api_client): it is rewritten by scripts/gen-client.sh,
+      # never hand-edited, and the generator emits unused-import warnings we cannot fix at the source.
+      - run: dart analyze --fatal-infos
+
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0 # scan history, not only the tip
+      - name: Install gitleaks (checksum verified)
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/gitleaks" && tar -xzf gitleaks.tgz -C "$RUNNER_TEMP/gitleaks" gitleaks
+          echo "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
+      # Allowed values are only the documented dev-only ones in .gitleaks.toml.
+      - name: Scan history and working tree
+        run: gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
+
+  codeql:
+    name: CodeQL (C#)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read # needed by the action on private repositories
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          languages: csharp
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          category: "/language:csharp"
+      # Dart is not a CodeQL language: the app is covered by dart analyze (above) and the review checklist.

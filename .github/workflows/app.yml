@@ -1,0 +1,28 @@
+name: app
+on:
+  push:
+    paths: ["app/**", "contract/**", ".github/workflows/app.yml", "scripts/check-web-viewer-origins.sh"]
+  pull_request:
+    paths: ["app/**", "contract/**", ".github/workflows/app.yml", "scripts/check-web-viewer-origins.sh"]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test --coverage
+      # The public web viewer must load no third-party script (final review I-2).
+      - run: >-
+          flutter build web -t lib/main_web.dart --release --no-web-resources-cdn
+          --dart-define=API_BASE_URL=https://api.ci.invalid
+          --dart-define=LINKS_DOMAIN=links.ci.invalid
+      - run: ../scripts/check-web-viewer-origins.sh build/web

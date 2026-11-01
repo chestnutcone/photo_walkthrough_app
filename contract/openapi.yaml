@@ -1,0 +1,1891 @@
+openapi: 3.0.3
+info:
+  title: Vela API
+  version: 1.0.0
+  description: >
+    Source of truth for the Vela API. Every response, success or failure, uses the
+    standard envelope (success, data, error, page). Lists use cursor pagination and
+    return page.nextCursor. Text fields are cleaned by the shared text sanitizer
+    (NFC, invisible and control characters removed) before validation; minLength and
+    maxLength count Unicode code points of the cleaned text, the same way the app counts.
+servers:
+  - url: http://localhost:5080
+    description: Local development
+tags:
+  - {name: Auth}
+  - {name: Me}
+  - {name: Artists}
+  - {name: Works}
+  - {name: Replies}
+  - {name: Notifications}
+  - {name: Search}
+  - {name: Safety}
+  - {name: Legal}
+security:
+  - bearerAuth: []
+paths:
+  /v1/auth/sso:
+    post:
+      operationId: ssoSignIn
+      tags: [Auth]
+      summary: "Sign in with Apple or Google"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SsoSignInRequest'
+      parameters:
+        - $ref: '#/components/parameters/attestation'
+        - $ref: '#/components/parameters/platform'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/auth/email/request:
+    post:
+      operationId: emailRequest
+      tags: [Auth]
+      summary: "Request an email one-time code"
+      description: "Errors: 400 invalid_email; 400 disposable_email for throwaway-mailbox domains; 403 attestation_required / attestation_failed when the server enforces app attestation; 429 rate_limited (5 per email and 20 per IP per hour)."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequestRequest'
+      parameters:
+        - $ref: '#/components/parameters/attestation'
+        - $ref: '#/components/parameters/platform'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/auth/email/verify:
+    post:
+      operationId: emailVerify
+      tags: [Auth]
+      summary: "Verify an email one-time code"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/auth/refresh:
+    post:
+      operationId: refresh
+      tags: [Auth]
+      summary: "Rotate a refresh token"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [Auth]
+      summary: "Revoke a refresh token"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me:
+    get:
+      operationId: getMe
+      tags: [Me]
+      summary: "Get the signed-in profile"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteAccount
+      tags: [Me]
+      summary: "Delete the account and all data"
+      description: "Signs the account out everywhere and hides it and its content at once. The hard delete follows within minutes (state scheduled), or, while any of the account's content is under moderation review, when the reviews end and at the latest 30 days after the request (state deferred_review, completesBy)."
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/onboarding:
+    post:
+      operationId: completeOnboarding
+      tags: [Me]
+      summary: "Finish onboarding"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteOnboardingRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/profile:
+    patch:
+      operationId: updateProfile
+      tags: [Me]
+      summary: "Update profile fields"
+      description: "Send avatarUploaded: true after uploading to the avatar upload URL; the server builds the 256 px avatar. 400 invalid_image when the upload is missing, not a JPEG/PNG/WebP, over 25 MB or over 60 megapixels."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/Busy'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/avatar-upload:
+    post:
+      operationId: avatarUpload
+      tags: [Me]
+      summary: "Get a signed avatar upload URL"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadTicketEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/export:
+    post:
+      operationId: requestExport
+      tags: [Me]
+      summary: "Request a data export"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJobEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/export/{id}:
+    get:
+      operationId: getExport
+      tags: [Me]
+      summary: "Get a data export"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJobEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/artists/suggested:
+    get:
+      operationId: suggestedArtists
+      tags: [Artists]
+      summary: "Suggested artists to follow"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileListEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/artists/{handle}:
+    get:
+      operationId: getArtist
+      tags: [Artists]
+      summary: "Get an artist by handle"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/handle'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/artists/{handle}/works:
+    get:
+      operationId: listArtistWorks
+      tags: [Artists]
+      summary: "List an artist's published works"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/handle'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkListEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/artists/{id}/follow:
+    put:
+      operationId: follow
+      tags: [Artists]
+      summary: "Follow an artist"
+      description: "Idempotent: following an artist you already follow returns 200 and changes nothing."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: unfollow
+      tags: [Artists]
+      summary: "Unfollow an artist"
+      description: "Idempotent: unfollowing an artist you do not follow returns 200 and changes nothing."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/artists/{id}/followers:
+    get:
+      operationId: listFollowers
+      tags: [Artists]
+      summary: "List an artist's followers"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileListEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/artists/{id}/inquiries:
+    post:
+      operationId: sendInquiry
+      tags: [Artists]
+      summary: "Send an inquiry to an artist"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendInquiryRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/feed:
+    get:
+      operationId: getFeed
+      tags: [Works]
+      summary: "Following or discover feed"
+      description: "Public. `discover` is newest first. `following` lists works by followed artists first, then everyone else's, each newest first; a guest, or a viewer who follows nobody, gets `discover`. Invalid cursor: 400 invalid_cursor."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/tab'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkListEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/works:
+    post:
+      operationId: createDraft
+      tags: [Works]
+      summary: "Create a draft and get an upload URL"
+      description: "Counts against the tier's story limit. Errors: 409 quota_exceeded (message includes the limit) when the account is at its limit; 409 onboarding_required before onboarding."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDraftRequest'
+      parameters:
+        - $ref: '#/components/parameters/attestation'
+        - $ref: '#/components/parameters/platform'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateDraftResultEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/works/{id}:
+    get:
+      operationId: getWork
+      tags: [Works]
+      summary: "Get a work"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      operationId: updateWork
+      tags: [Works]
+      summary: "Update a work's title and chapters"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteWork
+      tags: [Works]
+      summary: "Delete a work"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: "Error 409 (code under_review): the story is pending its scan, blocked, hidden by a report, under an evidence hold, or removed with a copyright notice; nothing was deleted"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/works/{id}/publish:
+    post:
+      operationId: publishWork
+      tags: [Works]
+      summary: "Publish a draft"
+      description: >-
+        Seals the upload, waits briefly (about 10 s at most) for the malware verdict, makes the variants and moves the draft to
+        `pending` (or `blocked` when the file is malicious). Idempotent for the owner: when an earlier publish of the same work
+        already went through (its answer was lost or the client timed out), the work is returned as it is now with 200. 409
+        `not_editable` means another publish of this draft is still running; 409 `draft_expired` that the draft expired.
+        Clients should allow at least 45 s for the answer.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Busy'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/works/{id}/chapters/{index}/replies:
+    get:
+      operationId: listReplies
+      tags: [Replies]
+      summary: "List replies on a chapter"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/index'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyListEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: addReply
+      tags: [Replies]
+      summary: "Reply to a chapter"
+      description: "Body is cleaned by the shared text sanitizer (contract/text-sanitizer-vectors.json: NFC, control and invisible characters stripped, at most 4 stacked marks, spaces collapsed, at most one blank line) and must then be 1 to 1000 code points; bidirectional override characters are refused. A reply the safety scan flags is still returned to its author, with hiddenForOthers true."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/index'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddReplyRequest'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/replies/{id}:
+    delete:
+      operationId: deleteReply
+      tags: [Replies]
+      summary: "Delete a reply"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: "Error 409 (code under_review): the reply was hidden automatically or by a report, or is under an evidence hold, and waits for a moderator; nothing was deleted"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/notifications:
+    get:
+      operationId: listNotifications
+      tags: [Notifications]
+      summary: "List notifications"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/notifications/unread-count:
+    get:
+      operationId: unreadCount
+      tags: [Notifications]
+      summary: "Count unread notifications"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadCountEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/notifications/read:
+    post:
+      operationId: markRead
+      tags: [Notifications]
+      summary: "Mark notifications read"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkReadRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/search:
+    get:
+      operationId: search
+      tags: [Search]
+      summary: "Search artists or stories"
+      description: "Public. `q` is 2 to 80 characters after trimming (shorter: 400 query_too_short; longer or containing a null character: 400 validation_failed); whitespace-separated terms (first 5) must all match, with typo tolerance. `type` defaults to `artists`; `data` fills only the list for the searched type and the other is empty. Results are ranked best match first and paged with an opaque cursor (invalid: 400 invalid_cursor). Hidden, blocked, suspended and unpublished content never appears."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/q'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResultsListEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/reports:
+    post:
+      operationId: report
+      tags: [Safety]
+      summary: "Report a work or reply"
+      description: "An illegal_content report hides the item at once. Any other reason hides it only once 3 distinct accounts have pending reports on it, or when the reporter's account is older than 7 days; until then it waits for review. The note is cleaned by the shared text sanitizer."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/blocks/{userId}:
+    put:
+      operationId: block
+      tags: [Safety]
+      summary: "Block a user"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: unblock
+      tags: [Safety]
+      summary: "Unblock a user"
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/legal/dmca-notices:
+    post:
+      operationId: submitDmcaNotice
+      tags: [Legal]
+      summary: "Submit a copyright (DMCA) notice"
+      description: "Public. Always answers 202 with a reference id, whether or not the reference matched a story (it never reveals which stories exist); unmatched notices are handled manually. Free text is stored verbatim; control characters other than new lines are rejected. Rate limited per client address (5 per rolling 24 hours, 429 rate_limited with Retry-After). The body may be at most 20 KB (413 payload_too_large). The claimant gets a plain-text acknowledgement email."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitDmcaNoticeRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DmcaNoticeAckEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: "Error 413 (code payload_too_large)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/works/{id}/counter-notice:
+    post:
+      operationId: submitCounterNotice
+      tags: [Legal]
+      summary: "Send a counter-notice for a story removed after a copyright notice"
+      description: "Owner only, for a story that is currently removed after a takedown notice. Any other story (not yours, not removed, no takedown notice, unknown id) answers the same 404 work_not_found. One counter-notice per story (409 counter_notice_exists). Free text is stored verbatim; control characters other than new lines are rejected. The body may be at most 20 KB."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitCounterNoticeRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DmcaNoticeAckEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          description: "Error 413 (code payload_too_large)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    attestation:
+      name: X-Attestation
+      in: header
+      required: false
+      description: "App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed."
+      schema:
+        type: string
+    platform:
+      name: X-Platform
+      in: header
+      required: false
+      description: "Platform that minted X-Attestation"
+      schema:
+        type: string
+        enum: [ios, android]
+    id:
+      name: id
+      in: path
+      required: true
+      description: "Resource id"
+      schema:
+        type: string
+        format: uuid
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: "User id"
+      schema:
+        type: string
+        format: uuid
+    handle:
+      name: handle
+      in: path
+      required: true
+      description: "Artist handle (lowercase)"
+      schema:
+        type: string
+    index:
+      name: index
+      in: path
+      required: true
+      description: "Zero-based chapter index"
+      schema:
+        type: integer
+        minimum: 0
+    cursor:
+      name: cursor
+      in: query
+      required: false
+      description: "Opaque cursor from the previous page"
+      schema:
+        type: string
+    limit:
+      name: limit
+      in: query
+      required: false
+      description: "Page size, 1 to 50, default 20"
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 20
+    tab:
+      name: tab
+      in: query
+      required: true
+      description: "Feed tab"
+      schema:
+        type: string
+        enum: [following, discover]
+    q:
+      name: q
+      in: query
+      required: true
+      description: "Search text"
+      schema:
+        type: string
+    type:
+      name: type
+      in: query
+      required: false
+      description: "What to search"
+      schema:
+        type: string
+        enum: [artists, stories]
+  responses:
+    BadRequest:
+      description: "Error 400 (default code validation_failed)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    Unauthorized:
+      description: "Error 401 (default code unauthorized)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    Forbidden:
+      description: "Error 403 (default code forbidden)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    NotFound:
+      description: "Error 404 (default code not_found)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    Conflict:
+      description: "Error 409 (default code conflict)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    RateLimited:
+      description: "Error 429 (code rate_limited). Retry-After says how many seconds to wait."
+      headers:
+        Retry-After:
+          description: "Seconds until the request may be retried"
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    InternalError:
+      description: "Error 500 (code internal_error). The message is generic; the body never carries exception text or a stack trace. X-Trace-Id carries a correlation id for support."
+      headers:
+        X-Trace-Id:
+          description: "Correlation id of the failed request"
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    PayloadTooLarge:
+      description: "Error 413 (code payload_too_large). JSON bodies are limited to 1 MB; nesting deeper than 32 levels is 400 invalid_json."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    Busy:
+      description: "Error 503 (code busy): no image-processing slot became free in time. Nothing changed; retry after Retry-After seconds."
+      headers:
+        Retry-After:
+          description: "Seconds until the request may be retried"
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+  schemas:
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string, example: not_found}
+        message: {type: string}
+    Page:
+      type: object
+      required: [nextCursor]
+      properties:
+        nextCursor: {type: string, nullable: true}
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken, expiresIn, isNewUser]
+      properties:
+        accessToken: {type: string}
+        refreshToken: {type: string}
+        expiresIn: {type: integer, description: Access token lifetime in seconds}
+        isNewUser: {type: boolean, description: True until onboarding is completed}
+    Profile:
+      type: object
+      required: [id, handle, displayName, bio, followerCount, followingCount, workCount, onboardingComplete]
+      properties:
+        id: {type: string, format: uuid}
+        handle: {type: string, minLength: 3, maxLength: 20, pattern: '^[a-z0-9_]{3,20}$'}
+        displayName: {type: string, maxLength: 60}
+        bio: {type: string, maxLength: 280}
+        avatarUrl: {type: string, nullable: true}
+        followerCount: {type: integer}
+        followingCount: {type: integer}
+        workCount: {type: integer, description: Published stories}
+        chapterCount: {type: integer, description: Chapters of published stories}
+        isFollowing: {type: boolean, nullable: true, description: Null when anonymous or viewing self}
+        onboardingComplete: {type: boolean}
+        city: {type: string, maxLength: 80}
+        discipline: {type: string, maxLength: 60}
+        availability: {type: string, maxLength: 60}
+        website: {type: string, maxLength: 200}
+        social: {type: string, maxLength: 60}
+        studio: {type: string, maxLength: 120}
+        replyTime: {type: string, maxLength: 120}
+        publicEmail: {type: string, nullable: true, maxLength: 254, description: Optional public contact email; the only email ever exposed}
+        services:
+          type: array
+          maxItems: 10
+          items: {$ref: '#/components/schemas/ServiceItem'}
+        shows:
+          type: array
+          maxItems: 20
+          items: {$ref: '#/components/schemas/ShowItem'}
+    ServiceItem:
+      type: object
+      required: [title, description, price]
+      properties:
+        title: {type: string, maxLength: 80}
+        description: {type: string, maxLength: 300}
+        price: {type: string, maxLength: 40}
+    ShowItem:
+      type: object
+      required: [year, text]
+      properties:
+        year: {type: string, pattern: '^[0-9]{4}$'}
+        text: {type: string, maxLength: 200}
+    Me:
+      type: object
+      required: [id, profile, onboardingComplete, tier, usedWorks]
+      properties:
+        id: {type: string, format: uuid}
+        profile:
+          allOf:
+            - $ref: '#/components/schemas/Profile'
+          nullable: true
+        onboardingComplete: {type: boolean}
+        tier:
+          type: object
+          required: [name, maxWorks]
+          properties:
+            name: {type: string}
+            maxWorks: {type: integer}
+        usedWorks: {type: integer, description: 'Works in draft, pending or published'}
+    Chapter:
+      type: object
+      required: [x, y, title, body]
+      properties:
+        x: {type: number, format: double, minimum: 0, maximum: 1}
+        y: {type: number, format: double, minimum: 0, maximum: 1}
+        zoom: {type: number, format: double, nullable: true, description: Null means stay put; 2.4 when set by default}
+        title: {type: string, minLength: 1, maxLength: 120}
+        body: {type: string, maxLength: 1000}
+        meta: {type: string, nullable: true, maxLength: 80}
+        altText: {type: string, nullable: true, maxLength: 300}
+        replyCount: {type: integer, description: "Server-computed, ignored on input. Visible replies for the viewer."}
+    ArtistSummary:
+      type: object
+      required: [id, handle, displayName]
+      properties:
+        id: {type: string, format: uuid}
+        handle: {type: string}
+        displayName: {type: string}
+        avatarUrl: {type: string, nullable: true}
+        isFollowing: {type: boolean, nullable: true, description: "Null for guests and for the viewer's own account."}
+    Work:
+      type: object
+      required: [id, author, title, chapters, createdAt, shareUrl, isOwner]
+      properties:
+        id: {type: string, format: uuid}
+        author: {$ref: '#/components/schemas/ArtistSummary'}
+        title: {type: string}
+        intro: {type: string}
+        altText: {type: string, nullable: true}
+        isOwner: {type: boolean}
+        status:
+          type: string
+          nullable: true
+          enum: [draft, pending, published, blocked, removed]
+          description: Present only for the owner and admins.
+        imageUrl: {type: string, nullable: true, description: Full-size variant}
+        thumbUrl: {type: string, nullable: true}
+        feedUrl: {type: string, nullable: true}
+        imageWidth: {type: integer, nullable: true}
+        imageHeight: {type: integer, nullable: true}
+        chapters:
+          type: array
+          maxItems: 40
+          items: {$ref: '#/components/schemas/Chapter'}
+        createdAt: {type: string, format: date-time}
+        publishedAt: {type: string, format: date-time, nullable: true}
+        draftExpiresAt: {type: string, format: date-time, nullable: true}
+        shareUrl: {type: string}
+    Reply:
+      type: object
+      required: [id, workId, chapterIndex, author, body, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        workId: {type: string, format: uuid}
+        chapterIndex: {type: integer}
+        author: {$ref: '#/components/schemas/Profile'}
+        body: {type: string}
+        createdAt: {type: string, format: date-time}
+        hiddenForOthers: {type: boolean, description: "True when only the author can see this reply (flagged or reported). Absent or false otherwise."}
+    Notification:
+      type: object
+      required: [id, type, actor, createdAt, read]
+      properties:
+        id: {type: string, format: uuid}
+        type:
+          type: string
+          description: "Open string: known values are `follow`, `reply`, `new_story`, `inquiry`, `moderation`. New values may be added without a version change; clients must show or skip an unknown type, never fail."
+        actor: {$ref: '#/components/schemas/Profile'}
+        workId: {type: string, format: uuid, nullable: true}
+        workTitle: {type: string, nullable: true, description: Title of the story the notification is about}
+        chapterIndex: {type: integer, nullable: true}
+        replyId: {type: string, format: uuid, nullable: true}
+        createdAt: {type: string, format: date-time}
+        read: {type: boolean}
+        count:
+          type: integer
+          minimum: 1
+          description: "Rows folded into this item. Consecutive unread replies on one chapter collapse into one item (render \"3 new replies on <title>\"); `id` and `actor` are the latest row's. 1 for every other item."
+        ids:
+          type: array
+          items: {type: string, format: uuid}
+          description: Ids of every row folded into this item (pass them to markRead)
+    Inquiry:
+      type: object
+      required: [id, artistId, type, message, createdAt]
+      properties:
+        type: {type: string, enum: [Commission, Buy a print, Licensing, Collaboration, Just saying hi]}
+        id: {type: string, format: uuid}
+        artistId: {type: string, format: uuid}
+        workId: {type: string, format: uuid, nullable: true}
+        message: {type: string}
+        createdAt: {type: string, format: date-time}
+    ExportJob:
+      type: object
+      required: [id, status, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        status: {type: string, enum: [pending, ready, failed, expired], description: "expired = past its 7-day life; request a new export"}
+        downloadUrl: {type: string, nullable: true, description: "Read-only signed URL for the zip, valid for at most 15 minutes; present only while status is ready (fetch the export again for a fresh one)"}
+        createdAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time, nullable: true}
+    AccountDeletion:
+      type: object
+      required: [state, completesBy]
+      properties:
+        state: {type: string, enum: [scheduled, deferred_review], description: "deferred_review = content is under moderation review; the hard delete waits for it"}
+        completesBy: {type: string, format: date-time, nullable: true, description: "For deferred_review: the latest moment the hard delete runs (30 days after the request); earlier once the reviews end. Null when scheduled"}
+    UploadTicket:
+      type: object
+      required: [uploadUrl, expiresAt]
+      properties:
+        uploadUrl: {type: string, description: "Write-only signed URL for one blob (PUT with x-ms-blob-type: BlockBlob), valid for at most 15 minutes"}
+        expiresAt: {type: string, format: date-time, description: When the upload URL stops working}
+    CreateDraftResult:
+      type: object
+      required: [workId, uploadUrl, expiresAt]
+      properties:
+        workId: {type: string, format: uuid}
+        uploadUrl: {type: string, description: "Write-only signed URL for the original image (PUT with x-ms-blob-type: BlockBlob), valid for at most 15 minutes"}
+        expiresAt: {type: string, format: date-time, description: When the upload URL stops working (the draft itself lives 24 hours)}
+    UnreadCount:
+      type: object
+      required: [count]
+      properties:
+        count: {type: integer}
+    SearchResults:
+      type: object
+      required: [artists, stories]
+      properties:
+        artists:
+          type: array
+          items: {$ref: '#/components/schemas/Profile'}
+        stories:
+          type: array
+          items: {$ref: '#/components/schemas/Work'}
+    SsoSignInRequest:
+      type: object
+      required: [provider, idToken, nonce]
+      properties:
+        provider: {type: string, enum: [apple, google]}
+        idToken: {type: string}
+        nonce: {type: string}
+    EmailRequestRequest:
+      type: object
+      required: [email]
+      properties:
+        email: {type: string, format: email}
+    EmailVerifyRequest:
+      type: object
+      required: [email, code]
+      properties:
+        email: {type: string, format: email}
+        code: {type: string, pattern: '^[0-9]{6}$'}
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: {type: string}
+    LogoutRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: {type: string}
+    CompleteOnboardingRequest:
+      type: object
+      required: [displayName, handle, ageConfirmed, termsAccepted, followArtistIds]
+      properties:
+        displayName: {type: string, minLength: 1, maxLength: 60}
+        handle: {type: string, minLength: 3, maxLength: 20, pattern: '^[a-z0-9_]{3,20}$'}
+        ageConfirmed: {type: boolean}
+        termsAccepted: {type: boolean}
+        followArtistIds:
+          type: array
+          maxItems: 50
+          items: {type: string, format: uuid}
+    UpdateProfileRequest:
+      type: object
+      properties:
+        displayName: {type: string, minLength: 1, maxLength: 60}
+        handle: {type: string, minLength: 3, maxLength: 20, pattern: '^[a-z0-9_]{3,20}$'}
+        bio: {type: string, maxLength: 280}
+        city: {type: string, maxLength: 80}
+        discipline: {type: string, maxLength: 60}
+        availability: {type: string, maxLength: 60}
+        website: {type: string, maxLength: 200}
+        social: {type: string, maxLength: 60}
+        studio: {type: string, maxLength: 120}
+        replyTime: {type: string, maxLength: 120}
+        publicEmail: {type: string, nullable: true, format: email, maxLength: 254}
+        services:
+          type: array
+          maxItems: 10
+          items: {$ref: '#/components/schemas/ServiceItem'}
+        shows:
+          type: array
+          maxItems: 20
+          items: {$ref: '#/components/schemas/ShowItem'}
+        avatarUploaded: {type: boolean, description: Set true after uploading to the avatar upload URL}
+    SubmitDmcaNoticeRequest:
+      type: object
+      required: [claimantName, claimantEmail, claimantAddress, workReference, originalWorkDescription, goodFaithStatement, perjuryStatement, signatureName]
+      properties:
+        claimantName: {type: string, minLength: 1, maxLength: 120}
+        claimantEmail: {type: string, format: email, maxLength: 254}
+        claimantAddress: {type: string, minLength: 1, maxLength: 300}
+        claimantPhone: {type: string, maxLength: 40, nullable: true}
+        workReference: {type: string, minLength: 1, maxLength: 500, description: "A story link ending in /s/{id}, or the bare story id"}
+        originalWorkDescription: {type: string, minLength: 1, maxLength: 2000}
+        goodFaithStatement: {type: boolean, enum: [true], description: "Must be true"}
+        perjuryStatement: {type: boolean, enum: [true], description: "Must be true"}
+        signatureName: {type: string, minLength: 1, maxLength: 120}
+    SubmitCounterNoticeRequest:
+      type: object
+      required: [name, address, statement, consentToJurisdiction, goodFaithBelief]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        address: {type: string, minLength: 1, maxLength: 300}
+        phone: {type: string, maxLength: 40, nullable: true}
+        statement: {type: string, minLength: 1, maxLength: 2000}
+        consentToJurisdiction: {type: boolean, enum: [true], description: "Must be true"}
+        goodFaithBelief: {type: boolean, enum: [true], description: "Must be true"}
+    DmcaNoticeAck:
+      type: object
+      required: [noticeId]
+      properties:
+        noticeId: {type: string, format: uuid}
+    DmcaNoticeAckEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/DmcaNoticeAck'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    SendInquiryRequest:
+      type: object
+      required: [type, email, message]
+      properties:
+        type: {type: string, enum: [Commission, Buy a print, Licensing, Collaboration, Just saying hi]}
+        email: {type: string, format: email, maxLength: 254, description: Sender's reply email}
+        message: {type: string, minLength: 1, maxLength: 2000, description: "Cleaned by the shared text sanitizer (multi-line), then 1 to 2000 code points; bidirectional override characters are refused"}
+        workId: {type: string, format: uuid, nullable: true}
+    CreateDraftRequest:
+      type: object
+      required: [contentType]
+      properties:
+        title: {type: string, nullable: true, maxLength: 200}
+        contentType: {type: string, enum: [image/jpeg, image/png, image/webp]}
+    UpdateWorkRequest:
+      type: object
+      required: [title, chapters]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 200}
+        intro: {type: string, maxLength: 1000}
+        altText: {type: string, nullable: true, maxLength: 300}
+        chapters:
+          type: array
+          maxItems: 40
+          items: {$ref: '#/components/schemas/Chapter'}
+    AddReplyRequest:
+      type: object
+      required: [body]
+      properties:
+        body: {type: string, minLength: 1, maxLength: 1000}
+    MarkReadRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          nullable: true
+          items: {type: string, format: uuid}
+        all: {type: boolean}
+    ReportRequest:
+      type: object
+      required: [targetType, targetId, reason]
+      properties:
+        targetType: {type: string, enum: [work, reply, user]}
+        targetId: {type: string, format: uuid}
+        reason: {type: string, enum: [illegal_content, copyright, harassment, spam, other]}
+        note: {type: string, maxLength: 500}
+    Envelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          nullable: true
+          type: object
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    CreateDraftResultEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/CreateDraftResult'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    AccountDeletionEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/AccountDeletion'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ExportJobEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/ExportJob'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    InquiryEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Inquiry'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ProfileEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Profile'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    MeEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Me'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ReplyEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Reply'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    TokenPairEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/TokenPair'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    UnreadCountEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/UnreadCount'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    UploadTicketEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/UploadTicket'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    WorkEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Work'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    NotificationListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ProfileListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    ReplyListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reply'
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    SearchResultsListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          allOf:
+            - $ref: '#/components/schemas/SearchResults'
+          nullable: true
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true
+    WorkListEnvelope:
+      type: object
+      required: [success, data, error, page]
+      properties:
+        success: {type: boolean}
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Work'
+        error:
+          allOf:
+            - $ref: '#/components/schemas/ErrorBody'
+          nullable: true
+        page:
+          allOf:
+            - $ref: '#/components/schemas/Page'
+          nullable: true

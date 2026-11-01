@@ -1,0 +1,47 @@
+namespace Vela.Api.Data.Entities;
+
+public class Work
+{
+    public Guid Id { get; init; }
+    public Guid ArtistId { get; init; }
+    public string Title { get; set; } = "";
+    public string Intro { get; set; } = "";
+    public WorkStatus Status { get; set; }
+    /// <summary>Hidden pending review after a user report.</summary>
+    public bool ReportHidden { get; set; }
+    /// <summary>Set when an admin restores the work; it is then never auto-blocked again.</summary>
+    public bool ModerationOverride { get; set; }
+    /// <summary>The draft's upload name ("originals/works/{id}"), writable through the upload URL. Not read after publish.</summary>
+    public string ImageBlob { get; set; } = "";
+    /// <summary>
+    /// Server-owned copy of the upload taken at publish ("originals/sealed/{id}/{random}", S1b-3). Every later reader (variants,
+    /// scan check, admin review, evidence, restore, export) uses it. Null for drafts and for rows published before S1b-3, which
+    /// fall back to <see cref="ImageBlob"/> (backfill procedure: docs/deploy.md, "Sealed originals").
+    /// </summary>
+    public string? SealedOriginalBlob { get; set; }
+    /// <summary>Lower-case hex SHA-256 of the sealed bytes, recorded when they were copied.</summary>
+    public string? SealedOriginalSha256 { get; set; }
+    /// <summary>Maintained by database triggers: lower-cased title, intro and chapter titles. Never written by the app.</summary>
+    public string SearchText { get; private set; } = "";
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public string? AltText { get; set; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset? PublishedAt { get; set; }
+    public DateTimeOffset? ExpiresAt { get; set; }
+    /// <summary>When publish was requested; the moderation sweep picks up works that stay pending.</summary>
+    public DateTimeOffset? PendingSince { get; set; }
+    /// <summary>Failed moderation scans so far (fail-open after 3).</summary>
+    public int ScanAttempts { get; set; }
+    public DateTimeOffset? LastScanAttemptAt { get; set; }
+    /// <summary>Times publishing this work failed after a clean scan (for example a failing event handler); retried after a gap.</summary>
+    public int PublishFailures { get; set; }
+    public DateTimeOffset? LastPublishFailureAt { get; set; }
+    /// <summary>For blocked or removed works: when the public variants were deleted and the CDN purged. Null means a take-down is still owed (retried by the reconciler).</summary>
+    public DateTimeOffset? TakedownDoneAt { get; set; }
+    /// <summary>
+    /// A publish request has claimed this draft until then (S1b-1): the image is read and decoded outside any row lock, and a
+    /// second publish is refused meanwhile. Cleared when the publish finishes or fails; a crashed request's claim simply expires.
+    /// </summary>
+    public DateTimeOffset? PublishClaimedUntil { get; set; }
+}

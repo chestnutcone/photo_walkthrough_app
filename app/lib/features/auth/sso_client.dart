@@ -1,0 +1,187 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
+import '../../core/auth/local_data.dart';
+import '../../core/config.dart';
+
+/// The user closed the Apple or Google sheet. Not an error.
+class SsoCancelledException implements Exception {
+  const SsoCancelledException();
+  @override
+  String toString() => 'SsoCancelledException';
+}
+
+/// The Apple or Google SDK failed or returned no identity token.
+class SsoFailureException implements Exception {
+  const SsoFailureException([this.reason = 'sso_failed']);
+  final String reason;
+  @override
+  String toString() => 'SsoFailureException($reason)';
+}
+
+/// Gets an OpenID Connect id token from Apple or Google.
+///
+/// [nonce] is the RAW single-use nonce that is also sent to the API. Each
+/// implementation puts the form the provider expects into the token request;
+/// the server checks the token's nonce claim against it (see
+/// [appleNonceClaim]).
+abstract interface class SsoClient {
+  Future<String> idToken(String provider, String nonce);
+}
+
+/// 32 random bytes, base64url without padding (43 characters).
+String generateNonce([Random? random]) {
+  final rng = random ?? Random.secure();
+  final bytes = List<int>.generate(32, (_) => rng.nextInt(256));
+  return base64Url.encode(bytes).replaceAll('=', '');
+}
+
+/// What Apple must embed in the token: the lowercase hex SHA-256 of the raw
+/// nonce. The API's AppleIdentityVerifier compares the token claim with
+/// exactly this value. Google gets the raw nonce unchanged.
+String appleNonceClaim(String rawNonce) =>
+    sha256.convert(utf8.encode(rawNonce)).toString();
+
+class RealSsoClient implements SsoClient {
+  const RealSsoClient();
+
+  /// google_sign_in throws on any call before initialize().
+  static bool _googleInitialized = false;
+
+  /// Forgets the Google account chosen in this run, so the next person on a
+  /// shared device gets the account picker. Best effort; Apple keeps no
+  /// app-side session.
+  static Future<void> signOutProviders() async {
+    if (!_googleInitialized) return;
+    try {
+      await GoogleSignIn.instance.signOut();
+    } on Object {
+      // Sign-out of the SDK must never block ending the Vela session.
+    }
+  }
+
+  @override
+  Future<String> idToken(String provider, String nonce) => switch (provider) {
+    'apple' => _apple(nonce),
+    'google' => _google(nonce),
+    _ => throw ArgumentError.value(provider, 'provider'),
+  };
+
+  Future<String> _apple(String nonce) async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [],
+        nonce: appleNonceClaim(nonce),
+      );
+      final token = credential.identityToken;
+      if (token == null || token.isEmpty) {
+        throw const SsoFailureException('apple_no_token');
+      }
+      return token;
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        throw const SsoCancelledException();
+      }
+      throw SsoFailureException('apple_${e.code.name}');
+    }
+  }
+
+  /// google_sign_in 7 takes the nonce at initialize() and has no per-call
+  /// nonce. Its docs say initialize() must run exactly once (more is
+  /// "undefined behavior"), but the 7.2.0 Android and iOS implementations
+  /// only store the nonce (and, on iOS, reconfigure), so we re-initialise per
+  /// attempt to give each attempt a fresh single-use nonce. DEVICE CHECK
+  /// REQUIRED: sign in twice in a row on Android and iOS. Keep the package
+  /// version pinned; re-verify on any upgrade. Calls are serialised by the
+  /// sign-in sheet's single in-flight attempt.
+  Future<String> _google(String nonce) async {
+    try {
+      await GoogleSignIn.instance.initialize(
+        clientId: _orNull(AppConfig.googleClientId),
+        serverClientId: _orNull(AppConfig.googleServerClientId),
+        nonce: nonce,
+      );
+      _googleInitialized = true;
+      final account = await GoogleSignIn.instance.authenticate();
+      final token = account.authentication.idToken;
+      if (token == null || token.isEmpty) {
+        throw const SsoFailureException('google_no_token');
+      }
+      return token;
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
+        throw const SsoCancelledException();
+      }
+      throw SsoFailureException('google_${e.code.name}');
+    }
+  }
+
+  static String? _orNull(String v) => v.isEmpty ? null : v;
+}
+
+/// Development stand-in (`--dart-define=VELA_FAKE_SSO=true`). The token format
+/// is the one the API's development-only FakeIdentityVerifier accepts.
+///
+/// Each install signs in as its own account (E1: every install used to share
+/// one `dev-google` account, so onboarding ran once per database): the subject
+/// carries a random id made on first use and kept in shared preferences.
+/// Clearing the app's data gives a new account; `VELA_FAKE_SSO_SUBJECT` pins
+/// one for scripted runs.
+class DevFakeSsoClient implements SsoClient {
+  DevFakeSsoClient({Future<String> Function()? installId})
+    : _installId = installId ?? _storedInstallId;
+
+  final Future<String> Function() _installId;
+
+  static const _pinned = String.fromEnvironment('VELA_FAKE_SSO_SUBJECT');
+  static const _prefsKey = 'dev_fake_sso_install_id';
+
+  @override
+  Future<String> idToken(String provider, String nonce) async {
+    final subject = _pinned.isNotEmpty
+        ? _pinned
+        : 'dev-$provider-${await _installId()}';
+    return 'fake:$subject:$subject@example.com';
+  }
+
+  static Future<String> _storedInstallId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(_prefsKey);
+    if (existing != null && existing.isNotEmpty) return existing;
+    final id = newInstallId(Random.secure());
+    await prefs.setString(_prefsKey, id);
+    return id;
+  }
+
+  /// 12 lowercase hex characters.
+  static String newInstallId(Random random) => List.generate(
+    6,
+    (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+  ).join();
+}
+
+/// Building the real client registers the SDK sign-out as an `onSignOut`
+/// cleaner: the SDKs are only used after this provider was built.
+final ssoClientProvider = Provider<SsoClient>((ref) {
+  if (AppConfig.fakeSso) return DevFakeSsoClient();
+  registerLocalDataCleaner(
+    ref,
+    'sso-provider-session',
+    RealSsoClient.signOutProviders,
+    onSignOut: true,
+  );
+  return const RealSsoClient();
+});
+
+/// Apple's button is offered on iOS only. Tests override this.
+final appleSignInAvailableProvider = Provider<bool>(
+  (_) => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
+);

@@ -1,0 +1,281 @@
+# vela_api_client.api.WorksApi
+
+## Load the API package
+```dart
+import 'package:vela_api_client/api.dart';
+```
+
+All URIs are relative to *http://localhost:5080*
+
+Method | HTTP request | Description
+------------- | ------------- | -------------
+[**createDraft**](WorksApi.md#createdraft) | **POST** /v1/works | Create a draft and get an upload URL
+[**deleteWork**](WorksApi.md#deletework) | **DELETE** /v1/works/{id} | Delete a work
+[**getFeed**](WorksApi.md#getfeed) | **GET** /v1/feed | Following or discover feed
+[**getWork**](WorksApi.md#getwork) | **GET** /v1/works/{id} | Get a work
+[**publishWork**](WorksApi.md#publishwork) | **POST** /v1/works/{id}/publish | Publish a draft
+[**updateWork**](WorksApi.md#updatework) | **PUT** /v1/works/{id} | Update a work&#39;s title and chapters
+
+
+# **createDraft**
+> CreateDraftResultEnvelope createDraft(createDraftRequest, xAttestation, xPlatform)
+
+Create a draft and get an upload URL
+
+Counts against the tier's story limit. Errors: 409 quota_exceeded (message includes the limit) when the account is at its limit; 409 onboarding_required before onboarding.
+
+### Example
+```dart
+import 'package:vela_api_client/api.dart';
+
+final api = VelaApiClient().getWorksApi();
+final CreateDraftRequest createDraftRequest = ; // CreateDraftRequest | 
+final String xAttestation = xAttestation_example; // String | App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
+final String xPlatform = xPlatform_example; // String | Platform that minted X-Attestation
+
+try {
+    final response = api.createDraft(createDraftRequest, xAttestation, xPlatform);
+    print(response);
+} catch on DioException (e) {
+    print('Exception when calling WorksApi->createDraft: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **createDraftRequest** | [**CreateDraftRequest**](CreateDraftRequest.md)|  | 
+ **xAttestation** | **String**| App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed. | [optional] 
+ **xPlatform** | **String**| Platform that minted X-Attestation | [optional] 
+
+### Return type
+
+[**CreateDraftResultEnvelope**](CreateDraftResultEnvelope.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **deleteWork**
+> Envelope deleteWork(id)
+
+Delete a work
+
+### Example
+```dart
+import 'package:vela_api_client/api.dart';
+
+final api = VelaApiClient().getWorksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Resource id
+
+try {
+    final response = api.deleteWork(id);
+    print(response);
+} catch on DioException (e) {
+    print('Exception when calling WorksApi->deleteWork: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Resource id | 
+
+### Return type
+
+[**Envelope**](Envelope.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getFeed**
+> WorkListEnvelope getFeed(tab, cursor, limit)
+
+Following or discover feed
+
+Public. `discover` is newest first. `following` lists works by followed artists first, then everyone else's, each newest first; a guest, or a viewer who follows nobody, gets `discover`. Invalid cursor: 400 invalid_cursor.
+
+### Example
+```dart
+import 'package:vela_api_client/api.dart';
+
+final api = VelaApiClient().getWorksApi();
+final String tab = tab_example; // String | Feed tab
+final String cursor = cursor_example; // String | Opaque cursor from the previous page
+final int limit = 56; // int | Page size, 1 to 50, default 20
+
+try {
+    final response = api.getFeed(tab, cursor, limit);
+    print(response);
+} catch on DioException (e) {
+    print('Exception when calling WorksApi->getFeed: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **tab** | **String**| Feed tab | 
+ **cursor** | **String**| Opaque cursor from the previous page | [optional] 
+ **limit** | **int**| Page size, 1 to 50, default 20 | [optional] [default to 20]
+
+### Return type
+
+[**WorkListEnvelope**](WorkListEnvelope.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getWork**
+> WorkEnvelope getWork(id)
+
+Get a work
+
+### Example
+```dart
+import 'package:vela_api_client/api.dart';
+
+final api = VelaApiClient().getWorksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Resource id
+
+try {
+    final response = api.getWork(id);
+    print(response);
+} catch on DioException (e) {
+    print('Exception when calling WorksApi->getWork: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Resource id | 
+
+### Return type
+
+[**WorkEnvelope**](WorkEnvelope.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **publishWork**
+> WorkEnvelope publishWork(id)
+
+Publish a draft
+
+Seals the upload, waits briefly (about 10 s at most) for the malware verdict, makes the variants and moves the draft to `pending` (or `blocked` when the file is malicious). Idempotent for the owner: when an earlier publish of the same work already went through (its answer was lost or the client timed out), the work is returned as it is now with 200. 409 `not_editable` means another publish of this draft is still running; 409 `draft_expired` that the draft expired. Clients should allow at least 45 s for the answer.
+
+### Example
+```dart
+import 'package:vela_api_client/api.dart';
+
+final api = VelaApiClient().getWorksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Resource id
+
+try {
+    final response = api.publishWork(id);
+    print(response);
+} catch on DioException (e) {
+    print('Exception when calling WorksApi->publishWork: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Resource id | 
+
+### Return type
+
+[**WorkEnvelope**](WorkEnvelope.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **updateWork**
+> WorkEnvelope updateWork(id, updateWorkRequest)
+
+Update a work's title and chapters
+
+### Example
+```dart
+import 'package:vela_api_client/api.dart';
+
+final api = VelaApiClient().getWorksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Resource id
+final UpdateWorkRequest updateWorkRequest = ; // UpdateWorkRequest | 
+
+try {
+    final response = api.updateWork(id, updateWorkRequest);
+    print(response);
+} catch on DioException (e) {
+    print('Exception when calling WorksApi->updateWork: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Resource id | 
+ **updateWorkRequest** | [**UpdateWorkRequest**](UpdateWorkRequest.md)|  | 
+
+### Return type
+
+[**WorkEnvelope**](WorkEnvelope.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
