@@ -50,7 +50,7 @@ dependencies:
   url_launcher: 6.3.3
   image: 4.12.0
   shared_preferences: 2.5.3
-  sentry_flutter: 10.0.0
+  sentry_flutter: 10.2.0
   app_attest: 0.2.1
   unorm_dart: 0.3.3
   intl: 0.20.3
