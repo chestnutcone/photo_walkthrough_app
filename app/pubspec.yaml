@@ -45,7 +45,7 @@ dependencies:
   dio: 5.11.1
   sign_in_with_apple: 8.2.0
   google_sign_in: 7.2.0
-  crypto: 3.0.7
+  crypto: 3.0.8
   image_picker: 1.2.4
   url_launcher: 6.3.3
   image: 4.12.0
