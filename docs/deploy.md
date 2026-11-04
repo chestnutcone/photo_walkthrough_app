@@ -285,5 +285,10 @@ See `docs/security/` for the threat model, checklists and findings.
 - **Bans during the deletion window (I3).** An account whose deletion is deferred (content under review) can still be banned from the
   user page or by Mark illegal; the identity hashes survive the hard delete, so the same Apple/Google/email identity cannot sign up again.
   Mark illegal now says when the owner was already banned, is an admin, or was already fully deleted.
+- **Re-signup block after deleting during review (owner decision 2026-11-03).** No settings. When a deletion is deferred because
+  content is under review, each sign-in identity's HMAC hash (same `Admin:BanPepper` as bans: changing the pepper also lifts
+  pending blocks) is stored in `signup_blocks` with the request date and the 30-day cap. Signing in or up with it answers 403
+  `signup_blocked` (the app explains the wait) until the review closes (the hard delete, at most an hour after the review ends,
+  removes the rows) or 30 days pass. The hourly auth-data retention job deletes any lapsed row. Bans are separate and permanent.
 - **Onboarding gate (M18).** Inquiries, reports and blocks answer 403 `onboarding_required` for an account that never confirmed 18+ and
   the terms.
