@@ -15,6 +15,11 @@ public sealed class ReportOptions
     public int HideAfterDistinctReporters { get; set; } = 3;
     /// <summary>A reporter whose account is older than this hides the item with one report (S2 ruling).</summary>
     public int EstablishedAccountDays { get; set; } = 7;
+    /// <summary>
+    /// An illegal-content report hides the item at once only when the reporter's account is at least this old
+    /// (owner decision 2026-11-03, review I-5); a younger account's report waits in the queue and counts as a pending reporter.
+    /// </summary>
+    public int IllegalContentInstantHideMinAgeHours { get; set; } = 24;
 }
 
 public interface IReportService
@@ -27,7 +32,7 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
     public const string SourceUser = "user_report";
     public const string SourceAutoFlag = "auto_flag";
     public const string Pending = "pending";
-    /// <summary>The report reason that hides the item at once, whoever reports it.</summary>
+    /// <summary>The report reason that hides the item at once when the reporter's account is old enough.</summary>
     public const string IllegalContent = "illegal_content";
 
     public async Task CreateAsync(Guid reporterId, string targetType, Guid targetId, string reason, string? note)
@@ -115,14 +120,19 @@ public sealed class ReportService(VelaDbContext db, TimeProvider clock, IOptions
     }
 
     /// <summary>
-    /// S2 ruling (report brigading, R-2): an illegal-content report hides at once; any other reason hides once
+    /// S2 ruling (report brigading, R-2) and owner decision 2026-11-03: an illegal-content report hides at once when the
+    /// reporter's account is at least <see cref="ReportOptions.IllegalContentInstantHideMinAgeHours"/> old; any report hides once
     /// <see cref="ReportOptions.HideAfterDistinctReporters"/> distinct accounts have pending reports on the item, or the reporter's
     /// account is older than <see cref="ReportOptions.EstablishedAccountDays"/>. Below that the report only waits in the queue.
     /// </summary>
     private async Task<bool> ShouldHideAsync(Guid reporterId, string targetType, Guid targetId, string reason, DateTimeOffset now)
     {
-        if (reason == IllegalContent) return true;
         var o = options.Value;
+        if (reason == IllegalContent)
+        {
+            var oldEnoughAt = now - TimeSpan.FromHours(o.IllegalContentInstantHideMinAgeHours);
+            if (await db.Users.AnyAsync(u => u.Id == reporterId && u.CreatedAt <= oldEnoughAt)) return true;
+        }
         var establishedBefore = now - TimeSpan.FromDays(o.EstablishedAccountDays);
         if (await db.Users.AnyAsync(u => u.Id == reporterId && u.CreatedAt < establishedBefore)) return true;
         var reporters = await db.Reports

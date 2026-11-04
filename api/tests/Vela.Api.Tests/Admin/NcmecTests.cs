@@ -39,7 +39,7 @@ public class NcmecTests(PostgresFixture pg) : IAsyncLifetime
     private async Task<Guid> Hold()
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         return (await _s.MarkIllegal(_admin, report)).HoldId!.Value;
     }
 
@@ -133,7 +133,7 @@ public class NcmecTests(PostgresFixture pg) : IAsyncLifetime
         var admin = await site.NewAdminUser();
         var b = await site.AdminBrowser();
         var (_, work) = await site.Story();
-        var id = (await site.MarkIllegal(admin, await site.Report(await site.NewUser(), "work", work, "illegal_content"))).HoldId!.Value;
+        var id = (await site.MarkIllegal(admin, await site.Report(await site.Reporter(), "work", work, "illegal_content"))).HoldId!.Value;
 
         var post = await b.Post($"/admin/evidence/{id}?handler=SubmitNcmec", new Dictionary<string, string> { ["reason"] = "go", ["confirm"] = "on" }, tokenFrom: $"/admin/evidence/{id}");
         var page = await b.Get(post.Response.Headers.Location!.OriginalString);

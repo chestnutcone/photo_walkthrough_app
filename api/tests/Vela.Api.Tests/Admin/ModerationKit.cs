@@ -17,6 +17,21 @@ public static class ModerationKit
     public static async Task<TestUser> NewUser(this AdminSite s, string? email = null) =>
         await s.Host.SignInOnboarded(ProfileTestHost.UniqueHandle());
 
+    /// <summary>
+    /// A reporter whose account is two days old, so an illegal-content report from it hides the item at once
+    /// (owner decision 2026-11-03: fresh accounts only queue).
+    /// </summary>
+    public static async Task<TestUser> Reporter(this AdminSite s) => await s.Aged(await s.NewUser());
+
+    /// <summary>Back-dates the account two days (past the 24 h illegal-content minimum, short of the 7-day established rule).</summary>
+    public static async Task<TestUser> Aged(this AdminSite s, TestUser u)
+    {
+        await using var db = s.Host.Db();
+        var at = s.Host.Clock.GetUtcNow() - TimeSpan.FromDays(2);
+        await db.Users.Where(x => x.Id == u.Id).ExecuteUpdateAsync(x => x.SetProperty(v => v.CreatedAt, at));
+        return u;
+    }
+
     /// <summary>A current admin: flagged, with an email identity that is on the allow-list.</summary>
     public static async Task<Guid> NewAdminUser(this AdminSite s)
     {

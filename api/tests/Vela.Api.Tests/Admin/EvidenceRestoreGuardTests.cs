@@ -21,7 +21,7 @@ public class EvidenceRestoreGuardTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Held_works_cannot_be_restored_through_the_report_restore()
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         await _s.MarkIllegal(_admin, report);
 
         Assert.Equal(ModerationOutcome.EvidenceHeld, await _s.Mod(m => m.RestoreAsync(_admin, report, "mistake")));
@@ -34,7 +34,7 @@ public class EvidenceRestoreGuardTests(PostgresFixture pg) : IAsyncLifetime
     {
         var (_, work) = await _s.Story();
         var reply = await _s.ReplyOn(await _s.NewUser(), work);
-        var report = await _s.Report(await _s.NewUser(), "reply", reply, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "reply", reply, "illegal_content");
         await _s.MarkIllegal(_admin, report);
 
         Assert.Equal(ModerationOutcome.EvidenceHeld, await _s.Mod(m => m.RestoreAsync(_admin, report, "mistake")));
@@ -46,9 +46,9 @@ public class EvidenceRestoreGuardTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Reinstating_an_owner_with_a_hold_is_refused_for_every_target_type()
     {
         var (owner, work) = await _s.Story();
-        await _s.MarkIllegal(_admin, await _s.Report(await _s.NewUser(), "work", work, "illegal_content"));
+        await _s.MarkIllegal(_admin, await _s.Report(await _s.Reporter(), "work", work, "illegal_content"));
         var target = await _s.NewUser();
-        await _s.MarkIllegal(_admin, await _s.Report(await _s.NewUser(), "user", target.Id, "illegal_content"));
+        await _s.MarkIllegal(_admin, await _s.Report(await _s.Reporter(), "user", target.Id, "illegal_content"));
 
         Assert.Equal(ModerationOutcome.EvidenceHeld, await _s.Mod(m => m.ReinstateUserAsync(_admin, owner.Id, "sorry")));
         Assert.Equal(ModerationOutcome.EvidenceHeld, await _s.Mod(m => m.ReinstateUserAsync(_admin, target.Id, "sorry")));
@@ -79,7 +79,7 @@ public class EvidenceRestoreGuardTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Pages_do_not_offer_restore_or_reinstate_for_held_content()
     {
         var (owner, work) = await _s.Story();
-        var held = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var held = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         await _s.MarkIllegal(_admin, held);
         var (_, other) = await _s.Story();
         var plain = await _s.Report(await _s.NewUser(), "work", other, "spam");
