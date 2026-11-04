@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vela: what is left</title>
+<style>
+  :root { --bg:#faf8f4; --fg:#1f1d1a; --muted:#6b665e; --line:#e2ddd3; --card:#fff; --accent:#b4532a; --ok:#2f7d4f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#17150f; --fg:#efeae0; --muted:#a39d90; --line:#34302a; --card:#1f1c16; --accent:#e08a5c; --ok:#6cc08b; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 Georgia, 'Times New Roman', serif; }
+  main { max-width:880px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:2rem; margin:0 0 4px; }
+  h2 { font-size:1.25rem; margin:40px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent); }
+  p.lede { color:var(--muted); margin:0 0 8px; }
+  ul { list-style:none; padding:0; margin:0; }
+  li { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin:8px 0; display:flex; gap:10px; align-items:flex-start; }
+  li input { margin-top:6px; flex:none; width:18px; height:18px; }
+  li b { display:block; }
+  li span { color:var(--muted); font-size:.92rem; }
+  .tag { font:600 .7rem system-ui, sans-serif; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); }
+  .done { color:var(--ok); font-weight:600; }
+  code { font:.85em ui-monospace, Menlo, monospace; background:var(--line); padding:1px 5px; border-radius:3px; }
+  footer { margin-top:40px; color:var(--muted); font-size:.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Vela: what is left</h1>
+  <p class="lede">The build is finished and merged into <code>main</code>. Everything below needs you, a device, or a decision. Tick items as you go (ticks stay in this browser only).</p>
+  <p class="lede"><span class="done">Done:</span> API (1444 tests), Flutter app (935), web viewer, security hardening, two independent final reviews with fixes, emulator end-to-end (18 tests), screenshot gallery and accessibility audit.</p>
+
+  <h2>1. Decisions only you can make</h2>
+  <ul>
+    <li><input type="checkbox"><div><b>Fresh-account illegal-content reports (I-5)</b><span>One new account can hide any story at once by reporting it as illegal content. Pick: rate-limit per fresh account; hide only after an admin sees it; require 24 h account age; or make a dismissed false report cost the reporter instant hide. Details: <code>docs/security/threat-model.md</code> section 7.</span></div></li>
+    <li><input type="checkbox"><div><b>Re-signup cooling-off</b><span>How long someone who deletes their account while content is under review must wait before signing up again.</span></div></li>
+    <li><input type="checkbox"><div><b>Attestation design</b><span>App Attest (per-install key, assertions, server nonce store) and Play Integrity request binding. Until configured, production sign-in returns 403 <code>attestation_required</code>.</span></div></li>
+    <li><input type="checkbox"><div><b>Product name, icon and launch content</b><span>"Vela" is a code name. Names live in one place each: <code>api/src/Vela.Api/Branding/BrandingOptions.cs</code> and <code>app/lib/core/branding.dart</code>; <code>app/web/README.md</code> has the rename checklist.</span></div></li>
+    <li><input type="checkbox"><div><b>Visual calls</b><span>Photo cover falls back to contain per work; progress segments stay 15 pt; artist name sits on its own line at 390 pt; desktop web layout is undesigned; web fallback fonts (emoji/CJK show as boxes) blocked by the CSP.</span></div></li>
+  </ul>
+
+  <h2>2. Legal (counsel review)</h2>
+  <ul>
+    <li><input type="checkbox"><div><b>Privacy policy and terms</b><span>Including: 30-day deletion deferral while under review, 7-day database backup and storage recovery windows, 3-year DMCA retention, indefinite audit trail and ban hashes (set periods).</span></div></li>
+    <li><input type="checkbox"><div><b>DMCA agent registration</b><span>Production start-up refuses to run without the DMCA agent set.</span></div></li>
+    <li><input type="checkbox"><div><b>NCMEC ESP account</b><span>Illegal-content reports stay queued until you can submit manually or configure it.</span></div></li>
+  </ul>
+
+  <h2>3. Accounts and setup</h2>
+  <ul>
+    <li><input type="checkbox"><div><b>Apple Developer and Google Play accounts</b><span>Enable Sign in with Apple for the App ID (entitlement is already in the project). Associated Domains capability.</span></div></li>
+    <li><input type="checkbox"><div><b>Google sign-in</b><span>iOS and web OAuth client IDs; <code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_SERVER_CLIENT_ID</code>; API <code>Auth:Google:ClientIds</code>; iOS URL scheme; Android SHA-1 / SHA-256.</span></div></li>
+    <li><input type="checkbox"><div><b>Android release signing key</b><span>Release builds are refused without <code>key.properties</code>. Steps are in <code>docs/deploy.md</code> under "App release builds".</span></div></li>
+    <li><input type="checkbox"><div><b>Domains and links</b><span><code>LINKS_DOMAIN</code>, API host and viewer host on different origins, store URLs, <code>assetlinks.json</code> and the Apple association file. Release builds fail while <code>vela.example</code> placeholders remain.</span></div></li>
+    <li><input type="checkbox"><div><b>Azure</b><span>Subscription and OIDC for GitHub Actions, Key Vault secrets, Azure AI Content Safety resource, Communication Services email domain DNS, region (default East US 2).</span></div></li>
+    <li><input type="checkbox"><div><b>Cloudflare</b><span>Zone, proxy, the nosniff transform rule, Cloudflare Access in front of <code>/admin</code>, SPA fallback for <code>/s/*</code> on the viewer, CSP from <code>app/web/README.md</code>.</span></div></li>
+    <li><input type="checkbox"><div><b>Sentry</b><span><code>SENTRY_DSN</code> for the app and the API.</span></div></li>
+    <li><input type="checkbox"><div><b>Admin allow-list emails</b><span>Who can sign in to <code>/admin</code>.</span></div></li>
+    <li><input type="checkbox"><div><b>Fill the production parameters</b><span><code>infra/parameters.prod.json</code>: replace every <code>REPLACE_ME-</code> value, then run <code>scripts/validate-infra.sh --deploy</code> and follow the production checklist in <code>docs/deploy.md</code>.</span></div></li>
+    <li><input type="checkbox"><div><b>Point the infra workflow at the prod file</b><span><code>.github/workflows/infra.yml</code> still defaults to the dev file and does not run the strict check.</span></div></li>
+  </ul>
+
+  <h2>4. Things I could not test here</h2>
+  <ul>
+    <li><input type="checkbox"><div><b>Real devices</b><span>Run on real Android and iOS hardware: large 48 MP photos on a 3 GB phone, Google and Apple sign-in, deep links and app links, haptics, screen reader (TalkBack, VoiceOver) speech.</span></div></li>
+    <li><input type="checkbox"><div><b>iOS build</b><span>Needs a Mac and Xcode. Nothing iOS-specific was built or run; the release check for iOS is a script, not an Xcode build phase.</span></div></li>
+    <li><input type="checkbox"><div><b>Real services</b><span>Play Integrity, App Attest, Defender for Storage (preview API version), Content Safety, ACS email delivery, Cloudflare and ACA forwarded-for shape, Postgres CA trust and <code>pg_trgm</code> on Azure.</span></div></li>
+    <li><input type="checkbox"><div><b>Docker image and Bicep deploy</b><span>CI never builds the image, and no <code>what-if</code> or real deploy was run.</span></div></li>
+  </ul>
+
+  <h2>5. Optional follow-ups (deferred, none are blockers)</h2>
+  <ul>
+    <li><input type="checkbox"><div><b>Contract gaps</b><span>Many error codes the app relies on are missing from <code>openapi.yaml</code> (incl. 403 <code>account_suspended</code>); no list-drafts endpoint (so no resume-draft); <code>/v1/me</code> lacks the sign-in provider; no <code>city</code>, artist colour, or total reply count; no profile Share link.</span></div></li>
+    <li><input type="checkbox"><div><b>Web viewer</b><span>Tab focus and focus rings on story controls; prune unused CanvasKit/skwasm variants (bundle size).</span></div></li>
+    <li><input type="checkbox"><div><b>Right-to-left text</b><span>Handled for replies only.</span></div></li>
+    <li><input type="checkbox"><div><b>Moderation extras</b><span>Admin "clear avatar" action; profile text scanning; blocked works keep sealed originals with no cap; a malware verdict arriving after the publish sweep is ignored.</span></div></li>
+    <li><input type="checkbox"><div><b>Smaller items</b><span>The full list is under "Deferred minors" in <code>docs/superpowers/PROGRESS.md</code>.</span></div></li>
+  </ul>
+
+  <footer>Rulings I made on your behalf: <code>docs/superpowers/RULINGS.md</code>. Screenshots: <code>docs/review/gallery.md</code>. Source of truth for status: <code>docs/superpowers/PROGRESS.md</code>.</footer>
+</main>
+<script>
+  (function () {
+    var boxes = document.querySelectorAll('input[type=checkbox]');
+    var key = 'vela-todos';
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) {}
+    boxes.forEach(function (b, i) {
+      b.checked = !!saved[i];
+      b.addEventListener('change', function () {
+        saved[i] = b.checked;
+        try { localStorage.setItem(key, JSON.stringify(saved)); } catch (e) {}
+      });
+    });
+  })();
+</script>
+</body>
+</html>
