@@ -1,3 +1,4 @@
+using Vela.Api.Social;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Data.Entities;
@@ -264,5 +265,45 @@ public class ReportThresholdTests(PostgresFixture pg) : IDisposable
         await Task.WhenAll(reporters.Select(r => r.Post("/v1/reports", Rep("work", wid, "spam"))));
 
         Assert.True(await WorkHidden(wid));
+    }
+}
+
+/// <summary>DECISIONS fix M-4: the instant-hide account age is checked when the API starts.</summary>
+public class ReportOptionsValidationTests
+{
+    private static ReportOptions Load(string? hours)
+    {
+        var values = new Dictionary<string, string?>();
+        if (hours is not null) values["Reports:IllegalContentInstantHideMinAgeHours"] = hours;
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        return ReportOptions.Load(config);
+    }
+
+    [Theory]
+    [InlineData(null, 24)]
+    [InlineData("0", 0)]
+    [InlineData("48", 48)]
+    [InlineData("8760", 8760)]
+    public void Accepts_zero_to_one_year(string? hours, int expected) =>
+        Assert.Equal(expected, Load(hours).IllegalContentInstantHideMinAgeHours);
+
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("8761")]
+    [InlineData("2147483647")]
+    public void Refuses_negative_or_absurd_values_with_a_clear_message(string hours)
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => Load(hours));
+        Assert.Contains("Reports:IllegalContentInstantHideMinAgeHours", ex.Message);
+        Assert.Contains("8760", ex.Message);
+    }
+
+    [Fact]
+    public void The_api_refuses_to_start_with_a_negative_value()
+    {
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Reports:IllegalContentInstantHideMinAgeHours"] = "-5" }).Build();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Assert.Throws<InvalidOperationException>(() => services.AddSafety(config));
     }
 }

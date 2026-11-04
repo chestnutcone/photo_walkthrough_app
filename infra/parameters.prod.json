@@ -40,7 +40,7 @@
     "requireAttestationAndroid": { "value": true },
     "requireAttestationIos": { "value": false },
     "playIntegrityPackageName": { "value": "REPLACE_ME-android.package.name" },
-    "appAttestAppId": { "value": "REPLACE_ME-TEAMID.bundle.id" },
+    "appAttestAppId": { "value": "" },
     "reviewMode": { "value": false },
     "reviewEmails": { "value": [] },
     "sentryEnabled": { "value": true }

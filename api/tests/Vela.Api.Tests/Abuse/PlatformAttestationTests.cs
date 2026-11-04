@@ -141,12 +141,114 @@ public class PlatformAttestationTests(PostgresFixture pg) : IDisposable
     [Fact]
     public async Task Unattested_limits_are_per_address_and_per_action()
     {
-        var c = (await LaunchHost(new() { ["Abuse:RateLimits:unattested-email_request:Permit"] = "1" })).Anonymous();
+        var c = (await LaunchHost(new()
+        {
+            ["Abuse:RateLimits:unattested-email_request:Permit"] = "1",
+            ["Abuse:RateLimits:unattested-sso:Permit"] = "1",
+        })).Anonymous();
         var ip = NewIp();
 
         Assert.Equal(HttpStatusCode.OK, (await EmailRequest(c, NewEmail(), ip, Headers(null, "ios"))).Status);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await EmailRequest(c, NewEmail(), ip, Headers(null, "ios"))).Status);
         Assert.Equal(HttpStatusCode.OK, (await EmailRequest(c, NewEmail(), NewIp(), Headers(null, "ios"))).Status);
         Assert.Equal(HttpStatusCode.OK, (await Send(c, HttpMethod.Post, "/v1/auth/sso", SsoBody(), ip, Headers(null, "ios"))).Status);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await Send(c, HttpMethod.Post, "/v1/auth/sso", SsoBody(), ip, Headers(null, "ios"))).Status);
+    }
+
+    [Fact]
+    public async Task Unattested_email_codes_are_also_limited_per_address_and_target_email()
+    {
+        var c = (await LaunchHost(new() { ["Abuse:RateLimits:unattested-email_target:Permit"] = "2" })).Anonymous();
+        var ip = NewIp();
+        var victim = NewEmail();
+
+        for (var i = 0; i < 2; i++) Assert.Equal(HttpStatusCode.OK, (await EmailRequest(c, victim, ip, Headers(null, "ios"))).Status);
+        var third = await EmailRequest(c, victim, ip, Headers(null, "ios"));
+        var otherEmailSameIp = await EmailRequest(c, NewEmail(), ip, Headers(null, "ios"));
+        var sameEmailOtherIp = await EmailRequest(c, victim, NewIp(), Headers(null, "ios"));
+
+        Assert.Equal((HttpStatusCode.TooManyRequests, "rate_limited"), (third.Status, third.ErrorCode));
+        Assert.True(third.Response.Headers.RetryAfter is not null);
+        Assert.Equal(HttpStatusCode.OK, otherEmailSameIp.Status);
+        Assert.Equal(HttpStatusCode.OK, sameEmailOtherIp.Status);
+    }
+
+    [Fact]
+    public async Task Junk_email_requests_do_not_spend_the_shared_address_budget()
+    {
+        var c = (await LaunchHost(new() { ["Abuse:RateLimits:unattested-email_request:Permit"] = "1" })).Anonymous();
+        var ip = NewIp();
+
+        foreach (var junk in new[] { "not-an-email", "", "x@mailinator.com" })
+            Assert.Equal(HttpStatusCode.BadRequest, (await EmailRequest(c, junk, ip, Headers(null, "ios"))).Status);
+
+        Assert.Equal(HttpStatusCode.OK, (await EmailRequest(c, NewEmail(), ip, Headers(null, "ios"))).Status);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await EmailRequest(c, NewEmail(), ip, Headers(null, "ios"))).Status);
+    }
+
+    [Fact]
+    public async Task A_pair_refusal_does_not_spend_the_address_budget()
+    {
+        var c = (await LaunchHost(new()
+        {
+            ["Abuse:RateLimits:unattested-email_request:Permit"] = "2",
+            ["Abuse:RateLimits:unattested-email_target:Permit"] = "1",
+        })).Anonymous();
+        var ip = NewIp();
+        var spammed = NewEmail();
+
+        Assert.Equal(HttpStatusCode.OK, (await EmailRequest(c, spammed, ip, Headers(null, "ios"))).Status);
+        for (var i = 0; i < 3; i++)
+            Assert.Equal(HttpStatusCode.TooManyRequests, (await EmailRequest(c, spammed, ip, Headers(null, "ios"))).Status);
+
+        Assert.Equal(HttpStatusCode.OK, (await EmailRequest(c, NewEmail(), ip, Headers(null, "ios"))).Status);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await EmailRequest(c, NewEmail(), ip, Headers(null, "ios"))).Status);
+    }
+
+    [Fact]
+    public async Task Only_verified_sso_sign_ins_spend_the_unattested_sso_budget()
+    {
+        var c = (await LaunchHost(new() { ["Abuse:RateLimits:unattested-sso:Permit"] = "1" })).Anonymous();
+        var ip = NewIp();
+        string Body(string? provider, string? token) => JsonSerializer.Serialize(new { provider, idToken = token, nonce = "n" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await Send(c, HttpMethod.Post, "/v1/auth/sso", Body("nope", "fake:x"), ip, Headers(null, "ios"))).Status);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Send(c, HttpMethod.Post, "/v1/auth/sso", Body("fake", ""), ip, Headers(null, "ios"))).Status);
+        for (var i = 0; i < 3; i++)
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Send(c, HttpMethod.Post, "/v1/auth/sso", Body("fake", "garbage"), ip, Headers(null, "ios"))).Status);
+
+        Assert.Equal(HttpStatusCode.OK, (await Send(c, HttpMethod.Post, "/v1/auth/sso", SsoBody(), ip, Headers(null, "ios"))).Status);
+        var limited = await Send(c, HttpMethod.Post, "/v1/auth/sso", SsoBody(), ip, Headers(null, "ios"));
+        var junkWhileLimited = await Send(c, HttpMethod.Post, "/v1/auth/sso", Body("fake", "garbage"), ip, Headers(null, "ios"));
+
+        Assert.Equal((HttpStatusCode.TooManyRequests, "rate_limited"), (limited.Status, limited.ErrorCode));
+        Assert.True(limited.Response.Headers.RetryAfter is not null);
+        Assert.Equal(HttpStatusCode.TooManyRequests, junkWhileLimited.Status); // an exhausted address does not even verify tokens
+    }
+
+    [Fact]
+    public async Task Unattested_create_work_is_limited_per_account_not_per_address()
+    {
+        var cs = await pg.CreateIsolatedDatabaseAsync();
+        var open = await Host(pg, cs: cs);
+        _hosts.Add(open);
+        var a = await open.SignInOnboarded(ProfileTestHost.UniqueHandle());
+        var b = await open.SignInOnboarded(ProfileTestHost.UniqueHandle());
+        var host = await LaunchHost(new() { ["Abuse:RateLimits:unattested-create_work:Permit"] = "1" }, cs);
+        const string body = "{\"title\":\"x\",\"contentType\":\"image/jpeg\"}";
+        var ip = NewIp();
+
+        async Task<HttpStatusCode> Post(TestUser u)
+        {
+            var client = host.Anonymous();
+            client.DefaultRequestHeaders.Authorization = u.Client.DefaultRequestHeaders.Authorization;
+            return (await Send(client, HttpMethod.Post, "/v1/works", body, ip, Headers(null, "ios"))).Status;
+        }
+
+        Assert.Equal(HttpStatusCode.OK, await Post(a));
+        Assert.Equal(HttpStatusCode.OK, await Post(b));   // same address, other account: own budget
+        Assert.Equal(HttpStatusCode.TooManyRequests, await Post(a));
+        Assert.Equal(HttpStatusCode.TooManyRequests, await Post(b));
     }
 
     [Fact]

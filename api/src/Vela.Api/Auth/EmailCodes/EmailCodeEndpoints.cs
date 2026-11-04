@@ -42,10 +42,15 @@ public static class EmailCodeEndpoints
         return app;
     }
 
-    private static async Task<IResult> RequestAsync(EmailRequestBody? req, HttpContext ctx, IEmailCodeService svc, IClientIpResolver ips, DisposableEmailList disposable)
+    private static async Task<IResult> RequestAsync(EmailRequestBody? req, HttpContext ctx, IEmailCodeService svc, IClientIpResolver ips,
+        DisposableEmailList disposable, UnattestedLimiter unattested)
     {
-        if (EmailCodeService.Normalize(req?.Email) is { } email && disposable.IsDisposable(email))
+        var email = EmailCodeService.Normalize(req?.Email);
+        if (email is not null && disposable.IsDisposable(email))
             return Results.Fail(StatusCodes.Status400BadRequest, "disposable_email", "Use a permanent email address.");
+        // Unattested (iOS at launch): only a valid, permanent address spends the budget, keyed per (address, email) and per address (DECISIONS I-1).
+        if (email is not null && UnattestedLimiter.IsUnattested(ctx) && unattested.TryAcquireEmail(ctx, ips, email) is { } wait)
+            return UnattestedLimiter.Refuse(ctx, wait);
         try
         {
             await svc.RequestAsync(req?.Email ?? "", ips.Resolve(ctx).ToString());

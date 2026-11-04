@@ -1,4 +1,3 @@
-using System.Globalization;
 using Vela.Api.Common;
 
 namespace Vela.Api.Abuse;
@@ -17,7 +16,8 @@ public static class AttestationEndpointExtensions
 /// iOS rule; anything else (no header, android, web, unknown, several values) gets the Android rule, so a request cannot reach a
 /// weaker rule by omitting or garbling the header. Where the rule requires attestation it fails closed: anything short of a
 /// verified token (including a verifier error) is a 403. Where it does not, the request passes but is held to the tighter
-/// <see cref="UnattestedLimiter"/> budget, which is all an unprovable iOS claim can buy.
+/// <see cref="UnattestedLimiter"/> budget, which is all an unprovable iOS claim can buy: create_work is charged here, sso and
+/// email_request by their endpoints after basic validation (the request is marked with <see cref="UnattestedLimiter.MarkUnattested"/>).
 /// </summary>
 public sealed class AttestationMiddleware(RequestDelegate next, AbuseOptions options, UnattestedLimiter unattested,
     IClientIpResolver ips, ILogger<AttestationMiddleware> log)
@@ -37,12 +37,14 @@ public sealed class AttestationMiddleware(RequestDelegate next, AbuseOptions opt
         var required = platform == "ios" ? options.RequireAttestationIos : options.RequireAttestationAndroid;
         if (!required)
         {
-            if (unattested.TryAcquire(requirement.Action, SubjectOf(ctx, requirement.Action)) is { } wait)
+            // sso and email_request are charged by their endpoints once the request passes basic validation (DECISIONS I-1).
+            if (requirement.Action == UnattestedLimiter.CreateWork
+                && unattested.TryAcquire(requirement.Action, SubjectOf(ctx)) is { } wait)
             {
-                ctx.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(wait.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
-                await Results.Fail(StatusCodes.Status429TooManyRequests, "rate_limited", "Too many requests. Try again later.").ExecuteAsync(ctx);
+                await UnattestedLimiter.Refuse(ctx, wait).ExecuteAsync(ctx);
                 return;
             }
+            UnattestedLimiter.MarkUnattested(ctx);
             await next(ctx);
             return;
         }
@@ -85,9 +87,9 @@ public sealed class AttestationMiddleware(RequestDelegate next, AbuseOptions opt
         }
     }
 
-    /// <summary>Signed-in uploads count per account; sign-in requests per client address bucket.</summary>
-    private string SubjectOf(HttpContext ctx, string action) =>
-        action == "create_work" && ctx.User.FindFirst("sub") is { } sub ? "user:" + sub.Value : "ip:" + IpKey.Of(ips.Resolve(ctx));
+    /// <summary>Signed-in uploads count per account (the address bucket only for a request without a token, which authorization then refuses).</summary>
+    private string SubjectOf(HttpContext ctx) =>
+        ctx.User.FindFirst("sub") is { } sub ? "user:" + sub.Value : UnattestedLimiter.AddressSubject(ctx, ips);
 
     private static IResult Deny(string code, string message) => Results.Fail(StatusCodes.Status403Forbidden, code, message);
 }

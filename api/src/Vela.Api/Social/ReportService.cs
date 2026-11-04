@@ -20,6 +20,20 @@ public sealed class ReportOptions
     /// (owner decision 2026-11-03, review I-5); a younger account's report waits in the queue and counts as a pending reporter.
     /// </summary>
     public int IllegalContentInstantHideMinAgeHours { get; set; } = 24;
+
+    /// <summary>One year: a larger value is a typo, and a huge one would overflow the cutoff on every illegal_content report.</summary>
+    public const int MaxIllegalContentInstantHideMinAgeHours = 24 * 365;
+
+    /// <summary>Binds the section and refuses values that would silently revert the owner decision or fail at report time (DECISIONS M-4).</summary>
+    public static ReportOptions Load(IConfiguration config)
+    {
+        var o = config.GetSection(Section).Get<ReportOptions>() ?? new ReportOptions();
+        if (o.IllegalContentInstantHideMinAgeHours is < 0 or > MaxIllegalContentInstantHideMinAgeHours)
+            throw new InvalidOperationException(
+                $"{Section}:IllegalContentInstantHideMinAgeHours must be between 0 and {MaxIllegalContentInstantHideMinAgeHours} hours " +
+                $"(default 24); got {o.IllegalContentInstantHideMinAgeHours}.");
+        return o;
+    }
 }
 
 public interface IReportService

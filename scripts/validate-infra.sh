@@ -7,7 +7,8 @@
 #   3b. prod + deployApp has no Cloudflare allow-list, or the budget start date is not fixed,
 #   3c. a parameter file names a parameter main.bicep does not declare (typo = silently ignored default),
 #   3d. there is no prod parameter file, or a prod file scales to zero (minReplicas < 1: background deletion, export and
-#       retention jobs would not run), turns malware scanning off or leaves review mode on,
+#       retention jobs would not run), turns malware scanning off, leaves review mode on or does not set
+#       requireAttestationAndroid to true,
 #   4. a setting listed in infra/required-settings.txt is not wired into infra/modules/containerapp.bicep.
 # With --deploy <parameter file> (run it right before a real deployment) it also fails when that file still holds a
 # REPLACE_ME placeholder, and, for prod with deployApp=true, when a launch-blocking value (DMCA agent, admin allow-list,
@@ -155,6 +156,8 @@ for path in sorted(glob.glob(infra + "/parameters*.json")):
         bad.append(f"{path}: prod must keep malwareScanning on")
     if val("reviewMode", False) is not False:
         bad.append(f"{path}: reviewMode must be off in the committed prod file (turn it on only for the store review, then off)")
+    if val("requireAttestationAndroid") is not True:
+        bad.append(f"{path}: prod must set requireAttestationAndroid to true explicitly (Play Integrity is the launch control, threat model R-3)")
 if not prod_files:
     bad.append("no parameter file with environment=prod (expected infra/parameters.prod.json)")
 if bad:

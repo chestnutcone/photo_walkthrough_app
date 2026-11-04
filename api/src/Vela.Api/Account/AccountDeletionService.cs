@@ -56,8 +56,13 @@ public static class DeletionDeferral
         if (deletedAt is not { } requested) return new AccountDeletionStatus(AccountDeletionStates.Scheduled, null);
         var cap = requested + UnderReview.AccountDeferralCap;
         if (now >= cap || !await review.AccountAsync(userId)) return new AccountDeletionStatus(AccountDeletionStates.Scheduled, null);
-        await db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.DeletionDeferredUntil, cap));
-        await blocks.BlockAsync(userId, now, cap);
+        // The deferral and its signup blocks commit together (DECISIONS M-2); a caller's own transaction is joined instead.
+        await using (var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync() : null)
+        {
+            await db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.DeletionDeferredUntil, cap));
+            await blocks.BlockAsync(userId, now, cap);
+            if (tx is not null) await tx.CommitAsync();
+        }
         log.LogInformation("Hard delete of {UserId} deferred: content under review (until {Cap} at the latest).", userId, cap);
         return new AccountDeletionStatus(AccountDeletionStates.DeferredReview, cap);
     }
