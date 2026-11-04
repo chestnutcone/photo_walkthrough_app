@@ -95,6 +95,10 @@ Read this first after any interruption. Update it after every task, then commit.
   public (I6); spans scrubbed before export (I2); DMCA retention job and privacy Retention text (I5 + 7-day backup wording);
   18+/terms gate on inquiry/report/block (M18); Production refuses missing DMCA agent / CDN purge (M9); draft cleanup vs in-flight
   publish (M13); restore over quota defined (M5); take-down reconciler rotation (M4)
+- [x] DECISIONS Owner decisions 2026-11-03 (fc03982, 65a013f, 31bab3c + docs 1289614, bb2a84b, 9faf5db, [report](../../.superpowers/sdd/2026-10-22-vela-build/task-DECISIONS-report.md) local only):
+  `illegal_content` instant hide only from accounts at least 24 h old; re-signup block `signup_blocked` after deleting during
+  review (hash + dates, at most 30 days); per-platform attestation (Android Play Integrity required, iOS deferred with tighter
+  unattested limits); release blocker "Legal review by counsel"
 - [x] CLEANUP Contract and leftovers (77fa745, 77da463, b57a3c0, accfbf2, 18c5700): 501 stubs removed, idempotent follow text, open notification type, contract length limits (F-T2-1, F-A8-4, F-A13-1), B7 website opens https, 'Followed by' excludes viewer, zero build/analyze warnings, consolidated Deferred minors list below
 
 ## Review documents
@@ -166,6 +170,9 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | FINALAPI | M5 rest: blocked/removed works keep sealed originals with no count cap | Later | Needs a storage cap or a sweep of old blocked originals (counsel: evidence value) |
 | FINALAPI | M9 rest: `Branding:Domain` still falls back to `vela.example` when unset | Accept | Infra always sets it (required `brandingDomain`), and the viewer-host check refuses equal hosts |
 | FINALAPI | I6 rest: no admin "clear avatar" action; profile text unscanned | Later / Accept | Avatars are now scanned before publishing (pre-launch none exist unscanned); ban covers a bad one; spec does not require profile text scans |
+| DECISIONS | An `X-Platform: ios` claim cannot be proven, so a script claiming iOS skips Play Integrity and gets the unattested budget (R-3); the unattested limiter is in memory per replica (R-4) | Owner / Accept | Closes when App Attest is designed and `Abuse:RequireAttestation:Ios=true`; single replica at launch |
+| DECISIONS | Re-signup block lapses up to an hour after the review closes (the deletion sweep rechecks hourly); a different identity (other email, Apple or Google account) is not blocked; rotating `Admin:BanPepper` voids blocks as it voids bans | Accept | Bounded and documented; identities are never linked by email by design |
+| DECISIONS | Only `ssoSignIn` and `emailVerify` list their 403 codes (`SignInForbidden`); other operations still use the generic `Forbidden` (FINALAPI M6) | Later (contract) | Same as M6 |
 | C1 | Unused role assignments; hand-maintained settings list; Postgres CA trust and omitted-password behaviour; no one-time warning when `TrustedProxyHops>0` falls back to the TCP peer (F-C1-4) | Accept / Device | The warning needs a logger in `ClientIpResolver` (constructed in many places); check the rest on first deploy |
 
 ### App
@@ -199,6 +206,7 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | GALLERY | Contrast measured from rendered pixels flags 11-13 pt labels (anti-aliasing); specified colours pass | Accept | See a11y-audit.md |
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-11-03 DECISIONS (fc03982..9faf5db + docs, branch `build/decisions`): API 1481/1481 (was 1444), one full run 21 min; dotnet build 0 warnings; `scripts/validate-infra.sh` OK; Flutter 937 pass (was 935), 2 skipped, flutter analyze no issues; `scripts/gen-client.sh` run (doc comments only). Owner decisions (a) 24 h illegal_content rule, (b) `signup_blocked`, (c) Android-only attestation built; release blocker "Legal review by counsel" recorded. Pushed.
 - 2026-10-31 FINALAPI (61cf8cb..fc8ed7b + docs): API 1444/1444 (was 1406), one full run 18 min 27 s; dotnet build 0 warnings; `scripts/validate-infra.sh` OK. No app/, contract/ or generated client touched; no flutter run. Pushed.
 - 2026-10-31 FINALAPP (c91fed6..f14ca3c + docs): Flutter 935 pass (was 900), 2 skipped; flutter analyze no issues; gallery 114/114; web viewer release build has no third-party script origin (`scripts/check-web-viewer-origins.sh`); Android release refused without key/real domain, debug and allowed local release build. No api/infra/contract touched, no dotnet run. Pushed.
 - 2026-10-31 GALLERY (2d65b4a..71c2e27 + docs): Flutter 900 pass (was 887), flutter analyze no issues, gallery 64/64 and audit 50/50 (`--tags gallery --run-skipped`), e2e 18/18 on the emulator, web viewer checked with Playwright. No API code touched. Pushed.
