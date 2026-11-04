@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Vela.Api.Social;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
@@ -304,6 +305,6 @@ public class ReportOptionsValidationTests
         var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Reports:IllegalContentInstantHideMinAgeHours"] = "-5" }).Build();
         var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
-        Assert.Throws<InvalidOperationException>(() => services.AddSafety(config));
+        Assert.Throws<InvalidOperationException>(() => { services.AddSafety(config); });
     }
 }

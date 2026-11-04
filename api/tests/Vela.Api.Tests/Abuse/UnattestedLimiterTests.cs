@@ -82,21 +82,23 @@ public class UnattestedLimiterTests
     [Fact]
     public void Each_refusal_is_counted_by_action()
     {
-        var seen = new List<string>();
+        var seen = new System.Collections.Concurrent.ConcurrentQueue<string>();
         using var listener = new System.Diagnostics.Metrics.MeterListener();
         listener.InstrumentPublished = (i, ml) => { if (i.Meter.Name == VelaMetrics.MeterName) ml.EnableMeasurementEvents(i); };
         listener.SetMeasurementEventCallback<long>((i, _, tags, _) =>
         {
-            if (i.Name == "vela.abuse.unattested_limited") seen.Add(string.Join(",", tags.ToArray().Select(t => $"{t.Key}={t.Value}")));
+            if (i.Name == "vela.abuse.unattested_limited") seen.Enqueue(string.Join(",", tags.ToArray().Select(t => $"{t.Key}={t.Value}")));
         });
         listener.Start();
-        using var l = Make(overrides: new() { ["unattested-email_target"] = 1 });
-        var subject = "ip:" + Guid.NewGuid();
+        // A unique action name keeps refusals from tests running in parallel out of the assertion.
+        var action = "test-" + Guid.NewGuid().ToString("N");
+        using var l = Make(overrides: new() { ["unattested-" + action] = 1 });
 
-        l.TryAcquire("email_target", subject);
-        l.TryAcquire("email_target", subject);
-        l.Peek("email_target", subject);
+        Assert.Null(l.TryAcquire(action, "s"));   // allowed: not counted
+        Assert.NotNull(l.TryAcquire(action, "s")); // refused: counted
+        Assert.NotNull(l.TryAcquire(action, "s")); // refused: counted
+        Assert.NotNull(l.Peek(action, "s"));       // a peek spends nothing and is not a refusal
 
-        Assert.Equal(["action=email_target", "action=email_target"], seen);
+        Assert.Equal(["action=" + action, "action=" + action], seen.Where(t => t == "action=" + action));
     }
 }
