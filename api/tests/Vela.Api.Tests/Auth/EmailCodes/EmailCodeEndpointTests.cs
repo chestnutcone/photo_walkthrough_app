@@ -35,7 +35,7 @@ public class EmailCodeEndpointTests(PostgresFixture pg) : IDisposable
         {
             b.UseEnvironment(env);
             b.UseSetting("Launch:RequireLaunchSettings", "false"); // launch blockers are covered in LaunchSettingsTests
-            b.UseSetting("Abuse:RequireAttestation", "false"); // attestation start-up rules are covered in AttestationEndpointTests
+            b.UseSetting("Abuse:RequireAttestation:Android", "false"); // attestation start-up rules are covered in AttestationEndpointTests
             b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
             b.UseSetting("Admin:Enabled", "false");
             b.UseSetting("Admin:BanPepper", new string('p', 40)); // required even when the pages are off: earlier bans are matched with it

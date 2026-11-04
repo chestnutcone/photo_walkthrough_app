@@ -68,7 +68,10 @@ public sealed class AbuseOptions
     public const int DefaultSignupsPerIpPerDay = 5;
     private const int TestSignupsPerIpPerDay = 100_000;
 
-    public bool RequireAttestation { get; init; }
+    /// <summary>Play Integrity required on requests that do not claim iOS (default true outside Development and Test).</summary>
+    public bool RequireAttestationAndroid { get; init; }
+    /// <summary>App Attest required on requests that claim iOS (default false: deferred at launch, owner decision 2026-11-03).</summary>
+    public bool RequireAttestationIos { get; init; }
     public IReadOnlyList<string> CloudflareRanges { get; init; } = Abuse.CloudflareRanges.Default;
     public IReadOnlyList<string> DisposableEmailDomains { get; init; } = [];
     public int SignupsPerIpPerDay { get; init; } = DefaultSignupsPerIpPerDay;
@@ -79,9 +82,10 @@ public sealed class AbuseOptions
     public AppAttestOptions AppAttest { get; init; } = new();
 
     /// <summary>
-    /// Reads the section. RequireAttestation defaults to true everywhere except Development and Test (set it to false
-    /// explicitly to opt out). Whenever it is on outside Development and Test, both verifiers must be configured: the
-    /// API refuses to start, naming every missing key, rather than silently letting unattested clients through.
+    /// Reads the section. Owner decision 2026-11-03: <c>RequireAttestation:Android</c> defaults to true everywhere except
+    /// Development and Test, <c>RequireAttestation:Ios</c> to false. Whenever a platform's switch is on outside Development and
+    /// Test its verifier must be configured: the API refuses to start, naming every missing key. The old single
+    /// <c>Abuse:RequireAttestation</c> value is refused so a leftover setting cannot silently change meaning.
     /// </summary>
     public static AbuseOptions Load(IConfiguration config, IHostEnvironment env)
     {
@@ -89,15 +93,17 @@ public sealed class AbuseOptions
         var play = s.GetSection("PlayIntegrity").Get<PlayIntegrityOptions>() ?? new();
         var apple = s.GetSection("AppAttest").Get<AppAttestOptions>() ?? new();
         var useFake = env.IsDevelopment() || env.IsEnvironment("Test");
-        var require = s.GetValue<bool?>("RequireAttestation") ?? !useFake;
-
-        if (require && !useFake)
+        // Host settings for the child keys surface the parent as "", so only a real value counts as the old switch.
+        if (s["RequireAttestation"] is { Length: > 0 })
+            throw new InvalidOperationException(
+                "Abuse:RequireAttestation was replaced by Abuse:RequireAttestation:Android (default true outside Development and Test) " +
+                "and Abuse:RequireAttestation:Ios (default false). Remove it and set those instead.");
+        var android = s.GetValue<bool?>("RequireAttestation:Android") ?? !useFake;
+        var ios = s.GetValue<bool?>("RequireAttestation:Ios") ?? false;
+        if (!useFake)
         {
-            var missing = play.MissingKeys().Concat(apple.MissingKeys()).ToList();
-            if (missing.Count > 0)
-                throw new InvalidOperationException(
-                    $"Abuse:RequireAttestation is on (the default outside Development and Test) but these settings are missing: {string.Join(", ", missing)}. " +
-                    "Configure both verifiers, or set Abuse:RequireAttestation to false to opt out.");
+            RequireConfigured(android, "Abuse:RequireAttestation:Android", play.MissingKeys(), " (the default outside Development and Test)");
+            RequireConfigured(ios, "Abuse:RequireAttestation:Ios", apple.MissingKeys(), "");
         }
         if (!useFake)
         {
@@ -113,7 +119,8 @@ public sealed class AbuseOptions
             .ToDictionary(c => c.Key, c => c.GetValue<int>("Permit"));
         return new AbuseOptions
         {
-            RequireAttestation = require,
+            RequireAttestationAndroid = android,
+            RequireAttestationIos = ios,
             CloudflareRanges = s.GetSection("CloudflareRanges").Get<string[]>() is { Length: > 0 } r ? r : Abuse.CloudflareRanges.Default,
             DisposableEmailDomains = s.GetSection("DisposableEmailDomains").Get<string[]>() ?? [],
             // Test hosts share one loopback address and create many accounts; the limit itself is exercised with an explicit value.
@@ -123,5 +130,13 @@ public sealed class AbuseOptions
             PlayIntegrity = play,
             AppAttest = apple,
         };
+    }
+
+    private static void RequireConfigured(bool on, string key, IReadOnlyList<string> missing, string note)
+    {
+        if (on && missing.Count > 0)
+            throw new InvalidOperationException(
+                $"{key} is on{note} but these settings are missing: {string.Join(", ", missing)}. " +
+                $"Configure that verifier, or set {key} to false to opt out.");
     }
 }

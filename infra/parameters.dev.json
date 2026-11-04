@@ -12,7 +12,8 @@
     "imageHost": { "value": "" },
     "emailSendingDomain": { "value": "mail.vela.example" },
     "deployApp": { "value": false },
-    "requireAttestation": { "value": true },
+    "requireAttestationAndroid": { "value": true },
+    "requireAttestationIos": { "value": false },
     "minReplicas": { "value": 0 }
   }
 }

@@ -232,7 +232,7 @@ public class TokenServiceTests(PostgresFixture pg)
     private WebApplicationFactory<Program> Factory() => new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
     {
         b.UseEnvironment("Development");
-        b.UseSetting("Abuse:RequireAttestation", "false"); // attestation start-up rules are covered in AttestationEndpointTests
+        b.UseSetting("Abuse:RequireAttestation:Android", "false"); // attestation start-up rules are covered in AttestationEndpointTests
         b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
     });
 
@@ -288,7 +288,7 @@ public class TokenServiceTests(PostgresFixture pg)
         {
             b.UseEnvironment("Production");
             b.UseSetting("Launch:RequireLaunchSettings", "false"); // launch blockers are covered in LaunchSettingsTests
-            b.UseSetting("Abuse:RequireAttestation", "false"); // attestation start-up rules are covered in AttestationEndpointTests
+            b.UseSetting("Abuse:RequireAttestation:Android", "false"); // attestation start-up rules are covered in AttestationEndpointTests
             b.UseSetting("ConnectionStrings:Default", pg.ConnectionString);
             b.UseSetting("Auth:Jwt:SigningKey", key);
         });

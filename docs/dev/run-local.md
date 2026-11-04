@@ -18,7 +18,7 @@ What the script sets (all Development-only, nothing secret):
 |---|---|
 | `ASPNETCORE_ENVIRONMENT=Development` | fake SSO provider (`idToken` = `fake:<subject>:<email>`), console email sender, fake Content Safety, fake NCMEC |
 | `Database__MigrateOnStartup=true` | creates the schema on first start |
-| `Abuse__RequireAttestation=false`, `Abuse__SignupsPerIpPerDay=100000` | no Play Integrity / App Attest; tests create many accounts from one IP (default limit is 5/day) |
+| `Abuse__RequireAttestation__Android=false` (iOS is off by default), `Abuse__SignupsPerIpPerDay=100000` | no Play Integrity / App Attest; tests create many accounts from one IP (default limit is 5/day) |
 | `Storage__EnsurePublicRead=true` | makes `works`/`avatars` public-read in Azurite as the Azure infra does (otherwise images 403) |
 | `Storage__PublicBaseUrl=http://127.0.0.1:10000/...` | the emulator reaches it through `adb reverse tcp:10000 tcp:10000` |
 | `Auth__UserStateCacheSeconds=1` | a ban written straight to the DB is seen within a second (default 20 s) |

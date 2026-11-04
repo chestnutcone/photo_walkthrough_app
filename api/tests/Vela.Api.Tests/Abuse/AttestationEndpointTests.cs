@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -17,7 +18,8 @@ public class AttestationEndpointTests(PostgresFixture pg) : IDisposable
 
     private async Task<ProfileTestHost> NewHost(bool require, string? cs = null)
     {
-        var h = await Host(pg, new() { ["Abuse:RequireAttestation"] = require ? "true" : "false" }, cs: cs);
+        var flag = require ? "true" : "false";
+        var h = await Host(pg, new() { ["Abuse:RequireAttestation:Android"] = flag, ["Abuse:RequireAttestation:Ios"] = flag }, cs: cs);
         _hosts.Add(h);
         return h;
     }
@@ -105,7 +107,7 @@ public class AttestationEndpointTests(PostgresFixture pg) : IDisposable
     [Fact]
     public async Task Verifier_exceptions_fail_closed()
     {
-        var h = new ProfileTestHost(pg, new Dictionary<string, string> { ["Abuse:RequireAttestation"] = "true" }, await pg.CreateIsolatedDatabaseAsync(),
+        var h = new ProfileTestHost(pg, new Dictionary<string, string> { ["Abuse:RequireAttestation:Android"] = "true" }, await pg.CreateIsolatedDatabaseAsync(),
             s => s.AddSingleton<IAttestationVerifier, ThrowingVerifier>());
         _hosts.Add(h);
 
@@ -152,41 +154,76 @@ public class AttestationEndpointTests(PostgresFixture pg) : IDisposable
         return f;
     }
 
-    [Fact]
-    public void Production_requires_attestation_by_default_and_names_every_missing_key()
+    private const string PlayPackage = "com.example.app";
+    private static readonly Dictionary<string, string> PlayKeys = new()
     {
+        ["Abuse:PlayIntegrity:PackageName"] = PlayPackage,
+        ["Abuse:PlayIntegrity:DecryptionKey"] = Convert.ToBase64String(new byte[32]),
+        ["Abuse:PlayIntegrity:VerificationKey"] = Convert.ToBase64String(System.Security.Cryptography.ECDsa.Create(
+            System.Security.Cryptography.ECCurve.NamedCurves.nistP256).ExportSubjectPublicKeyInfo()),
+    };
+
+    [Fact]
+    public void Production_requires_play_integrity_by_default_and_names_every_missing_key_but_not_app_attest()
+    {
+        // Owner decision 2026-11-03: Android only at launch; App Attest is deferred.
         using var f = Production(ProductionSettings());
         var ex = Assert.Throws<InvalidOperationException>(() => f.CreateClient());
-        foreach (var key in new[] { "Abuse:PlayIntegrity:PackageName", "Abuse:PlayIntegrity:DecryptionKey", "Abuse:PlayIntegrity:VerificationKey", "Abuse:AppAttest:AppId" })
+        foreach (var key in new[] { "Abuse:PlayIntegrity:PackageName", "Abuse:PlayIntegrity:DecryptionKey", "Abuse:PlayIntegrity:VerificationKey" })
             Assert.Contains(key, ex.Message);
+        Assert.Contains("Abuse:RequireAttestation:Android", ex.Message);
+        Assert.DoesNotContain("Abuse:AppAttest", ex.Message);
     }
 
     [Fact]
-    public void Production_refuses_to_start_when_attestation_is_required_but_verifier_config_is_missing()
+    public void Production_starts_with_play_integrity_only_and_requires_android_not_ios()
     {
-        using var f = Production(ProductionSettings(new() { ["Abuse:RequireAttestation"] = "true" }));
-        var ex = Assert.Throws<InvalidOperationException>(() => f.CreateClient());
-        Assert.Contains("Abuse:PlayIntegrity", ex.Message);
+        using var f = Production(ProductionSettings(PlayKeys));
+        f.CreateClient();
+        var o = f.Services.GetRequiredService<AbuseOptions>();
+        Assert.True(o.RequireAttestationAndroid);
+        Assert.False(o.RequireAttestationIos);
     }
 
     [Fact]
-    public void Production_refuses_to_start_when_only_one_platform_is_configured()
+    public void Production_refuses_to_start_when_ios_is_required_without_app_attest()
     {
-        using var f = Production(ProductionSettings(new()
-        {
-            ["Abuse:RequireAttestation"] = "true",
-            ["Abuse:PlayIntegrity:PackageName"] = "com.example.app",
-            ["Abuse:PlayIntegrity:DecryptionKey"] = Convert.ToBase64String(new byte[32]),
-            ["Abuse:PlayIntegrity:VerificationKey"] = Convert.ToBase64String(new byte[91]),
-        }));
+        using var f = Production(ProductionSettings(new(PlayKeys) { ["Abuse:RequireAttestation:Ios"] = "true" }));
         var ex = Assert.Throws<InvalidOperationException>(() => f.CreateClient());
-        Assert.Contains("Abuse:AppAttest", ex.Message);
+        Assert.Contains("Abuse:AppAttest:AppId", ex.Message);
+        Assert.Contains("Abuse:RequireAttestation:Ios", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("Production", "true")]
+    [InlineData("Production", "false")]
+    [InlineData("Test", "false")]
+    public void The_old_single_switch_is_refused_so_it_cannot_silently_mean_something_else(string env, string value)
+    {
+        // AbuseOptions.Load directly: a host built with this key could leak it into hosts built in parallel.
+        IConfiguration config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>(PlayKeys.Select(k => KeyValuePair.Create(k.Key, (string?)k.Value)))
+            {
+                ["Abuse:RequireAttestation"] = value,
+            }).Build();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => AbuseOptions.Load(config, new FakeEnv(env)));
+
+        Assert.Contains("Abuse:RequireAttestation:Android", ex.Message);
+    }
+
+    private sealed class FakeEnv(string name) : Microsoft.Extensions.Hosting.IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = name;
+        public string ApplicationName { get; set; } = "Vela.Api";
+        public string ContentRootPath { get; set; } = "/";
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 
     [Fact]
     public async Task Production_starts_without_attestation_config_when_not_required_and_uses_a_rejecting_verifier()
     {
-        using var f = Production(ProductionSettings(new() { ["Abuse:RequireAttestation"] = "false" }));
+        using var f = Production(ProductionSettings(new() { ["Abuse:RequireAttestation:Android"] = "false" }));
         f.CreateClient();
         var verifier = f.Services.GetRequiredService<IAttestationVerifier>();
         Assert.IsNotType<FakeAttestationVerifier>(verifier);

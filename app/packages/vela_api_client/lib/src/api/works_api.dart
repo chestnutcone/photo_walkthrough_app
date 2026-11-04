@@ -27,8 +27,8 @@ class WorksApi {
   ///
   /// Parameters:
   /// * [createDraftRequest] 
-  /// * [xAttestation] - App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
-  /// * [xPlatform] - Platform that minted X-Attestation
+  /// * [xAttestation] - App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation for the request's platform (at launch: Android yes, iOS no); failing it is 403 attestation_required or attestation_failed. A request that passes without a verified token is held to tighter per-address and per-account limits (429 rate_limited).
+  /// * [xPlatform] - Platform of the app, sent on every request. Selects the attestation rule: only a single value ios gets the iOS rule; a missing, unknown or repeated value gets the Android rule. A token is verified only for the platform named here.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
