@@ -181,7 +181,7 @@ Mitigation pointers name the code, then the test that pins it. "Residual" points
 | A-2 | **Scrapers** | `anon-read` 120/min/IP; `user-read` 600/min/user; Cloudflare | `RateLimitTests`, `HardeningTests` | R-5, R-4 |
 | A-3 | **CSAM upload** | Content Safety auto-block (severity 4+), user reports, admin queue; evidence hold in a restricted container; admin-triggered NCMEC report behind an interface; suspension plus banned-identity hash | `Admin/Evidence*Tests.cs`, `NcmecTests.cs`, `BanTests.cs` | R-1: fail-open scan; no hash matching; NCMEC reporter is a stub (owner needs an ESP account) |
 | A-4 | **DMCA abuse** (false claims; mail-bombing the claimant address) | Notice stored, never auto-actioned; admin decides; counter-notice flow with the 10-day wait; ack mails capped per address; per-IP form limit | `Legal/*Tests.cs`, `HardeningTests` | wording and periods need counsel |
-| A-5 | **Report brigading** (silencing an artist) | 10 reports per user per day; S2-5: an `illegal_content` report hides at once, any other reason only once 3 distinct accounts have pending reports or the reporter's account is older than 7 days (per-target advisory lock, so parallel reports cannot slip under; reporters suspended or deleted since no longer count); an admin restores; restored content is never auto-blocked again; duplicates collapse | `Social/ReportThresholdTests.cs`, `SafetyTests.cs`, `ModerationActionTests.cs` | R-2: a false `illegal_content` report, 3 fresh accounts, or one aged account can still hide a story until review |
+| A-5 | **Report brigading** (silencing an artist) | 10 reports per user per day; S2-5 and owner decision 2026-11-03: an `illegal_content` report hides at once only when the reporter's account is at least 24 h old (younger: queued and counted as a pending reporter, no hide), any report once 3 distinct accounts have pending reports or the reporter's account is older than 7 days (per-target advisory lock, so parallel reports cannot slip under; reporters suspended or deleted since no longer count); an admin restores; restored content is never auto-blocked again; duplicates collapse | `Social/ReportThresholdTests.cs`, `SafetyTests.cs`, `ModerationActionTests.cs` | R-2: a false `illegal_content` report from an account at least a day old, 3 fresh accounts, or one account older than 7 days can still hide a story until review |
 | A-6 | **Account enumeration** | Same response for known and unknown emails and for allow-listed and other admin addresses; handle lookups are public by design | `EmailCodeEndpointTests`, `AdminAuthTests` | R-12 (timing) |
 | A-7 | **SAS URL leakage** | One blob, write-only (read-only for exports), https, at most 15 minutes; scrubbed from telemetry | `UploadUrlTests`, `TelemetryTests` | a leaked write URL lets the holder replace that one pending upload |
 | A-8 | **Token theft** | Short access token, rotating refresh token with family revocation, secure storage on device, suspension revokes everything | `TokenServiceTests`, `HardeningTests` | device compromise |
@@ -195,7 +195,7 @@ Mitigation pointers name the code, then the test that pins it. "Residual" points
 | ID | Risk | Rating | Disposition |
 |---|---|---|---|
 | R-1 | Content Safety fails open and has no known-CSAM hash matching; the NCMEC reporter is unconfigured outside Development | High (legal) | Owner decision recorded in the spec; counsel and an ESP account are launch dependencies |
-| R-2 | Report brigading: since S2-5 hiding needs `illegal_content`, 3 distinct reporters or one reporter older than 7 days. The reason is chosen by the reporter, so the cheapest attack still works: one fresh account picks `illegal_content` and hides any story at once (the S2 review, I-5); one account older than 7 days hides with any reason | Medium | Accepted for now: an illegal-content report must hide at once so real CSAM is not left up; the admin queue shows the report and an admin restores. Mitigations are an owner decision (section 7) |
+| R-2 | Report brigading: hiding needs an `illegal_content` report from an account at least 24 h old (`Reports:IllegalContentInstantHideMinAgeHours`), 3 distinct pending reporters, or one reporter older than 7 days. The reason is chosen by the reporter, so an attacker who keeps an account for a day can still hide any story at once with `illegal_content`; one account older than 7 days hides with any reason | Medium | Accepted (owner decision 2026-11-03, section 7): the 24 h wait removes the throwaway-account attack (I-5) while an established reporter still takes real CSAM down at once; a fresh account's report is queued for the admin and counts towards the 3-reporter threshold; an admin restores false hides |
 | R-3 | Attestation is not enforceable until Apple and Google developer accounts exist; no replay store; App Attest creates a key per call | Medium | Owner decision before enabling in production (ledger B14/A15) |
 | R-4 | Rate limiters are in memory per instance; an attacker spreads requests across replicas | Low | Accepted at scale-to-zero size; move to Cloudflare rules or a shared store if replicas grow |
 | R-5 | Public content can be scraped | Low | Accepted; it is public by design |
@@ -214,14 +214,12 @@ Mitigation pointers name the code, then the test that pins it. "Residual" points
 | R-17 | An external penetration test has not been done | n/a | Recommended by the spec before public launch |
 | R-18 | Malware scanning fails open: no verdict within 10 s, a scan that finished without a verdict (`Error`, `Not scanned`: no wait) (or past the 10 GB monthly cap, or Defender off outside prod) publishes without one; Defender scans only what it supports (no image-decoder exploit detection is promised) | Medium | Accepted (mirrors the Content Safety fail-open decision); the publish sweep re-checks the tag; public files are always re-encoded; watch the `No malware verdict` warning |
 
-## 7. Owner decisions pending (S2 review)
+## 7. Owner decisions (S2 review, decided 2026-11-03)
 
-- **R-2 / I-5: instant hide on `illegal_content`.** Trade-off: hiding at once keeps real illegal content (CSAM above all) off the
-  app until an admin looks, but a fresh account can pick `illegal_content` and hide any story at once; the admin queue then shows
-  it and an admin restores. Possible mitigations (none implemented; behaviour unchanged):
-  1. rate-limit `illegal_content` hides per fresh account (for example one instant hide per day for accounts younger than
-     `Reports:EstablishedAccountDays`; later reports only queue);
-  2. for fresh accounts, hide only after an admin has seen the report (the item goes to the top of the queue with an alert);
-  3. require an account age of 24 hours before an `illegal_content` report hides anything;
-  4. count a dismissed `illegal_content` report against the reporter (that account loses instant hide).
-  Keep immediate hiding for established accounts whichever is chosen.
+- **R-2 / I-5: instant hide on `illegal_content` (decided: option 3).** Trade-off: hiding at once keeps real illegal content (CSAM
+  above all) off the app until an admin looks, but a fresh account could pick `illegal_content` and hide any story at once.
+  The owner chose to require an account age of 24 hours (`Reports:IllegalContentInstantHideMinAgeHours`, default 24, "at least",
+  so exactly 24 h hides) before an `illegal_content` report hides anything by itself. A younger account's report is stored, shown in
+  the admin queue, and counts as a pending reporter for the 3-distinct-reporters rule; it hides nothing on its own. The other
+  options considered (per-day instant-hide cap for fresh accounts, hide only after an admin has seen it, a dismissed report costing
+  the reporter instant hide) were not implemented. Immediate hiding for established accounts is kept.

@@ -259,11 +259,12 @@ See `docs/security/` for the threat model, checklists and findings.
   a Cloudflare **Transform Rule** (Modify Response Header) on `img.<domain>`: set `X-Content-Type-Options: nosniff` (and optionally
   `Content-Security-Policy: default-src 'none'; img-src 'self'; sandbox`). Direct blob-endpoint URLs (read SAS for exports and
   admin views) rely on the stored Content-Type and `attachment` disposition.
-- **Report threshold (S2-5).** `Reports__HideAfterDistinctReporters` (default 3) and `Reports__EstablishedAccountDays` (default 7):
-  an `illegal_content` report hides the item at once; other reasons hide it once that many distinct accounts have pending reports
+- **Report threshold (S2-5).** `Reports__HideAfterDistinctReporters` (default 3), `Reports__EstablishedAccountDays` (default 7) and
+  `Reports__IllegalContentInstantHideMinAgeHours` (default 24): an `illegal_content` report hides the item at once when the
+  reporter's account is at least that many hours old; any report hides it once that many distinct accounts have pending reports
   on it, or when the reporter's account is older than that many days. Reporters suspended or deleted since do not count. Below
-  the threshold reports wait in the queue. Because the reason is user-chosen, one fresh account can still hide a story with
-  `illegal_content` (owner decision, `docs/security/threat-model.md` section 7).
+  the threshold reports wait in the queue; a younger account's `illegal_content` report waits there too and counts as one
+  reporter (owner decision 2026-11-03, `docs/security/threat-model.md` section 7).
 - **Text (S2-2) and inquiry mail (S2-3).** No settings. User text is cleaned (NFC, invisible and control characters stripped,
   stacked marks capped, spaces collapsed) before it is stored; rows written earlier are unchanged. Inquiry mails use a fixed
   template with an "unverified user message" banner and disarmed links.
