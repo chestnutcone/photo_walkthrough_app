@@ -61,7 +61,7 @@ public sealed class DeletionWorker(IServiceScopeFactory scopes, TimeProvider clo
     private async Task<bool> DeferAsync(IServiceProvider sp, Guid id, DateTimeOffset now)
     {
         var db = sp.GetRequiredService<VelaDbContext>();
-        var status = await DeletionDeferral.EvaluateAsync(db, sp.GetRequiredService<Admin.UnderReview>(), id, now, log);
+        var status = await DeletionDeferral.EvaluateAsync(db, sp.GetRequiredService<Admin.UnderReview>(), sp.GetRequiredService<SignupBlocks>(), id, now, log);
         if (status.CompletesBy is not { } cap) return false;
         var next = now + DeferredRecheck < cap ? now + DeferredRecheck : cap;
         await db.Users.Where(u => u.Id == id).ExecuteUpdateAsync(s => s.SetProperty(u => u.DeletionLeaseUntil, next));

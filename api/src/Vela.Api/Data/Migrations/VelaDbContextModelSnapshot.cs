@@ -951,6 +951,29 @@ namespace Vela.Api.Data.Migrations
                     b.ToTable("reports", (string)null);
                 });
 
+            modelBuilder.Entity("Vela.Api.Data.Entities.SignupBlock", b =>
+                {
+                    b.Property<string>("SubjectHash")
+                        .HasColumnType("text")
+                        .HasColumnName("subject_hash");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.HasKey("SubjectHash")
+                        .HasName("pk_signup_blocks");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_signup_blocks_expires_at");
+
+                    b.ToTable("signup_blocks", (string)null);
+                });
+
             modelBuilder.Entity("Vela.Api.Data.Entities.SignupEvent", b =>
                 {
                     b.Property<Guid>("Id")

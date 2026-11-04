@@ -25,6 +25,7 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
     public DbSet<ExportJob> ExportJobs => Set<ExportJob>();
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
     public DbSet<BannedIdentity> BannedIdentities => Set<BannedIdentity>();
+    public DbSet<SignupBlock> SignupBlocks => Set<SignupBlock>();
     public DbSet<EvidenceHold> EvidenceHolds => Set<EvidenceHold>();
     public DbSet<DmcaNotice> DmcaNotices => Set<DmcaNotice>();
 
@@ -196,6 +197,11 @@ public class VelaDbContext(DbContextOptions<VelaDbContext> options) : DbContext(
         {
             e.HasKey(x => new { x.Provider, x.SubjectHash });
             e.HasIndex(x => x.UserRef);
+        });
+        b.Entity<SignupBlock>(e =>
+        {
+            e.HasKey(x => x.SubjectHash);
+            e.HasIndex(x => x.ExpiresAt);
         });
         b.Entity<DmcaNotice>(e =>
         {

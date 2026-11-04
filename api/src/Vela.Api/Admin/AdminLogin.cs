@@ -53,7 +53,7 @@ public sealed class AdminLoginService(IAdminAllowList allow, IEmailCodeService c
         }
         EmailSignInResult result;
         try { result = await codes.VerifyAsync(normalized, code ?? "", ip); }
-        catch (Exception e) when (e is InvalidCodeException or RateLimitedException or AccountSuspendedException or AccountDeletedException)
+        catch (Exception e) when (e is InvalidCodeException or RateLimitedException or AccountSuspendedException or AccountDeletedException or SignupBlockedException)
         {
             return null;
         }

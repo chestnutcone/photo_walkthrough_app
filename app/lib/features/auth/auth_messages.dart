@@ -42,6 +42,10 @@ String signInErrorMessage(ApiException e) => switch (e.code) {
   'unsupported_provider' => "We couldn't verify that sign-in. Try again.",
   'account_suspended' => 'This account is suspended.',
   'account_deleted' => 'This account has been deleted.',
+  'signup_blocked' =>
+      'An account using this sign-in was deleted while its content was under '
+          'review. You can sign up again when the review ends, at most 30 days '
+          'after the deletion.',
   'attestation_required' ||
   'attestation_failed' ||
   'invalid_attestation' => "This device couldn't be verified.",

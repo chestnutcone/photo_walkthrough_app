@@ -51,7 +51,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          $ref: '#/components/responses/SignInForbidden'
         '429':
           $ref: '#/components/responses/RateLimited'
         '413':
@@ -115,7 +115,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          $ref: '#/components/responses/SignInForbidden'
         '429':
           $ref: '#/components/responses/RateLimited'
         '413':
@@ -1173,6 +1173,17 @@ components:
             $ref: '#/components/schemas/Envelope'
     Forbidden:
       description: "Error 403 (default code forbidden)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    SignInForbidden:
+      description: >
+        Error 403 on sign-in. Codes: account_suspended (the account or this sign-in identity is banned, permanent);
+        account_deleted (the account was deleted and its removal is still pending); signup_blocked (an account using this
+        sign-in identity was deleted while its content was under review: signing up again is possible once the review
+        closes, at most 30 days after the deletion request; the block then lapses by itself); attestation_required or
+        attestation_failed (ssoSignIn only, when the server enforces app attestation for the request's platform).
       content:
         application/json:
           schema:

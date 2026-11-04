@@ -87,6 +87,10 @@ public static class EmailCodeEndpoints
         {
             return Results.Fail(StatusCodes.Status403Forbidden, "account_deleted", "This account has been deleted.");
         }
+        catch (SignupBlockedException)
+        {
+            return Results.Fail(StatusCodes.Status403Forbidden, "signup_blocked", SignupBlockedException.ClientMessage);
+        }
     }
 
     private static IResult RateLimited(HttpContext ctx, RateLimitedException e)
