@@ -13,6 +13,20 @@ Read this first after any interruption. Update it after every task, then commit.
 - Account ban/reinstate in admin; lookup page. Max 10 reports/account/day (configurable).
 - US market, East US 2, 18+ only, own auth (Apple/Google/email code), Sentry, Cloudflare, Log Analytics (~5 GB).
 - Apple Developer account not yet available: use fakes, deployment deferred.
+- 2026-11-03 (built in DECISIONS): (a) an `illegal_content` report hides at once only when the reporter's account is at least
+  24 h old (`Reports:IllegalContentInstantHideMinAgeHours`); younger accounts' reports are queued and counted, no hide;
+  (b) deleting an account while content is under review blocks the same sign-in identity (403 `signup_blocked`) until the
+  review closes, at most 30 days; only the identity hash and dates are stored; bans stay permanent; (c) attestation at launch
+  on Android only (Play Integrity, `Abuse:RequireAttestation:Android=true`), iOS App Attest deferred (`:Ios=false`), iOS and
+  every other unattested request held to tighter per-address/per-account limits. Product name stays Vela (code name).
+
+## Release blockers
+- [ ] **Legal review by counsel.** Legal texts are drafts; keep as is until counsel reviews. Scope: `api/src/Vela.Api/Legal/`
+  `privacy.md`, `terms.md`, `content.md`, `dmca.md`, and the behaviours counsel must confirm: 30-day deletion deferral, 7-day
+  recovery windows (DB backups, storage soft delete), 3-year DMCA retention, ban and audit-trail retention periods, the 24 h
+  illegal-content hide rule, the re-signup block, DMCA agent registration, NCMEC process and ESP account, 18+ self-confirmation
+  and COPPA, the fail-open scanner stance (Content Safety, malware), app-store privacy disclosures. Owner list:
+  `docs/owner-todos.html` ("Release blockers").
 
 ## How to resume
 1. `cd /home/oliver/vela && git status && git log --oneline | head`
@@ -126,18 +140,17 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | A14a | Dashboard thumbnails fetch full-size originals (F-A14a-5); dismiss form has no reason (F-A14a-8); state-cache repopulation race, reconciler lock across IO (F-A14a-9/10) | Accept | Admin-only cost / UX / bounded |
 | A14b | Audit on evidence view (F-A14b-3); real NCMEC integration; DMCA wording and 10-day period (F-A14b-5/6) | Owner | Counsel / ESP account |
 | A14b | Forward-notice stuck state after a crash (F-A14b-4) | Accept | Rare; runbook line is the owner's |
-| A15 | Play Integrity server nonce, App Attest counter/replay (F-A15-1/2, S1b-6/8/14) | Owner | Decide with the attestation design before enabling attestation |
+| A15 | Play Integrity server nonce, App Attest counter/replay (F-A15-1/2, S1b-6/8/14) | Owner | Play Integrity is enforced on Android at launch without a nonce store (token replayable for its max age); App Attest stays off until the owner's design (DECISIONS) |
 | A15 | In-memory limiters per instance (F-A15-5, R-4) | Accept | Single instance at launch |
 | A16 | No stack when Sentry off, console logs unscrubbed (audited), admin 500 as JSON (F-A16-1..3) | Accept | Nothing leaks |
 | A16 | Sentry `BeforeSend` throw drops the event (F-A16-4, R-10) | Device | Confirm with a real DSN |
 | S1b | S1b-4 unscanned variants at a predictable URL / staging prefix; S1b-7 unbounded upload size; S1b-9 evidence not tamper-evident | Later | Each needs storage-layout or Azure work; listed in `s1b-security-reviewer-findings.md` section 7 |
 | S1b | S1b-10/11/16/18 (admin bearer reads, review/admin overlap, email canonicalisation for bans, scheme routes); S1b-19 read-SAS content-type override | Later | Low; not cheap without design changes |
-| S1b | Re-signup cooling-off after deletion with open reviews (S1b-2 rest; FINALAPI I3 made the ban itself possible during the deferral, so only a cooling-off for *unbanned* deleted accounts remains); Android release key (S1b-17: a release without `key.properties` is now refused, the owner must create the key, see deploy.md "App release builds"); inquiry footer text (S1b-20) | Owner | Legal/product decision; release keystore; wording |
+| S1b | Android release key (S1b-17: a release without `key.properties` is now refused, the owner must create the key, see deploy.md "App release builds"); inquiry footer text (S1b-20) | Owner | Legal/product decision; release keystore; wording |
 | S2 | Defender malware settings not validated against Azure; tag-read permission needed under managed identity | Device | bicep build/lint only |
 | S2-fix | M-3 late verdict after the sweep published is not acted on | Later | Needs a reconciler pass (threat model R-18) |
 | S2-fix | M-7 only replies are cleaned client-side (other forms get an opaque 400 for bidi isolates from RTL copy) | Later | Per-field client clean or server message surfacing across several forms |
 | S2-fix | M-12 declared type and bytes read in two requests; M-13 read SAS without rsct/rscd pinning and admin fallback to the upload name | Later | Needs an `IBlobStore` read-with-details API / AzureBlobStore change and an Azure check |
-| S2-fix | I-5 instant hide on `illegal_content` from a fresh account | Owner | Four options in threat-model section 7 |
 | C1 | DP keys unencrypted (R-16); app connects as DB admin, allow-Azure firewall (R-7); Authenticated Origin Pulls; RG-scoped principal; orphan originals after deletion sweep (F-C1-2/3/5) | Owner | First real deploy |
 | FINALAPI | M1 refresh rotation has no grace window (lost response or two concurrent refreshes sign the user out) | Later | Needs a successor cache keyed by the old token and a race test; the app retries one refresh (F-B2-2) |
 | FINALAPI | M2 client-chosen SSO nonce, id tokens replayable until expiry; M3 per-email code limit lets anyone lock a victim out of email sign-in for an hour | Later / Owner | M2 needs a server nonce endpoint (contract change); M3 needs a product choice (per-IP budget vs live-code holder) |
@@ -145,7 +158,7 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | FINALAPI | M7 no `ix_reports_target`; M8 search full scan per page | Later | Migration / revisit with real data |
 | FINALAPI | M10 Play Integrity request hash = SHA-256(action), replayable for MaxAge | Owner | Part of the attestation design (with F-A15-1/2); the per-IP/per-user limits and the signup cap are the real protection |
 | FINALAPI | M11 ex-admin keeps API read access to non-public works until the reconciler/admin visit | Accept | 10-minute window, metadata only |
-| FINALAPI | M12 one 7-day-old account hides 10 stories a day (R-2) | Owner | Existing threat-model decision |
+| FINALAPI | M12 one 7-day-old account hides 10 stories a day (R-2); since DECISIONS also one 24 h-old account with `illegal_content` | Accept | Owner decision 2026-11-03 (threat-model section 7); admins restore |
 | FINALAPI | M14 publish holds the row lock across Content Safety calls | Later | Lease column + scan outside the transaction |
 | FINALAPI | M15 api.yml: no timeout, no gen-client drift check, no Docker build, no coverage gate; base images not digest-pinned. `infra.yml` does not run `validate-infra.sh --deploy` and defaults to the dev file | Later | `.github/` was outside this round's scope; deploy.md names the prod file and the `--deploy` gate |
 | FINALAPI | M16 export includes the sealed original of a malware-flagged work and omits moderation records about the user | Owner | GDPR/CCPA access-scope decision (admin_actions reasons are now stated as retained in privacy.md) |
