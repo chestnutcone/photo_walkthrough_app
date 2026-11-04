@@ -196,7 +196,9 @@ public class ReplyTests(PostgresFixture pg) : IDisposable
         var work = await SeedWork(h, owner.Id);
         var id = (await author.Post(Url(work), new { body = "borderline" })).Data.GetProperty("id").GetGuid();
 
-        var report = await reporter.Post("/v1/reports", new { targetType = "reply", targetId = id, reason = "illegal_content" }); // S2: hides with one report
+        await using (var db = h.Db()) // illegal_content hides at once only from an account at least 24 h old
+            await db.Users.Where(u => u.Id == reporter.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.CreatedAt, ProfileTestHost.Now.AddDays(-2)));
+        var report = await reporter.Post("/v1/reports", new { targetType = "reply", targetId = id, reason = "illegal_content" });
 
         Assert.Equal(HttpStatusCode.OK, report.Status);
         Assert.Empty(Bodies(await other.Get(Url(work))));

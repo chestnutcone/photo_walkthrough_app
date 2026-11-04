@@ -81,7 +81,7 @@ public class EvidenceIsolationTests(PostgresFixture pg)
         var admin = await site.NewAdminUser();
         var owner = await site.OwnerWithEmail();
         var (_, work) = await site.Story("Held story", owner);
-        var reporter = await site.NewUser();
+        var reporter = await site.Reporter();
         var report = await site.Report(reporter, "work", work, "illegal_content");
         var hold = (await site.MarkIllegal(admin, report, Marker)).HoldId!.Value;
         var viewer = await site.NewUser();

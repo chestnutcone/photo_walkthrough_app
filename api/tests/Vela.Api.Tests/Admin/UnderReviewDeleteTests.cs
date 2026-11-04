@@ -52,7 +52,7 @@ public class UnderReviewDeleteTests(PostgresFixture pg) : IAsyncLifetime
     public async Task A_work_hidden_by_a_report_cannot_be_deleted()
     {
         var (owner, work) = await _s.Story();
-        await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         Assert.True((await WorkTestKit.Load(_s.Host, work)).ReportHidden);
 
         await AssertRefusedAndIntact(owner, work);

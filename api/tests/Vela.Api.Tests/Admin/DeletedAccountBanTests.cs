@@ -40,7 +40,7 @@ public class DeletedAccountBanTests(PostgresFixture pg) : IAsyncLifetime
     {
         var (owner, work) = await _s.Story();
         var (provider, subject) = await IdentityOf(owner.Id);
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         Assert.Equal(AccountDeletionStates.DeferredReview, (await RequestDeletion(owner.Id)).State);
 
         var result = await _s.MarkIllegal(_admin, report);
@@ -85,7 +85,7 @@ public class DeletedAccountBanTests(PostgresFixture pg) : IAsyncLifetime
         var (owner, work) = await _s.Story();
         await _s.Mod(m => m.SuspendUserAsync(_admin, owner.Id, "earlier ban"));
 
-        var result = await _s.MarkIllegal(_admin, await _s.Report(await _s.NewUser(), "work", work, "illegal_content"));
+        var result = await _s.MarkIllegal(_admin, await _s.Report(await _s.Reporter(), "work", work, "illegal_content"));
 
         Assert.Equal(OwnerBan.AlreadyBanned, result.OwnerBan);
         Assert.False(result.BanRefused);
@@ -104,7 +104,7 @@ public class DeletedAccountBanTests(PostgresFixture pg) : IAsyncLifetime
         _s.Allow.Add(email);
         await Vela.Api.Tests.Works.WorkTestKit.MakeAdmin(_s.Host, owner.Id);
 
-        var result = await _s.MarkIllegal(_admin, await _s.Report(await _s.NewUser(), "work", work, "illegal_content"));
+        var result = await _s.MarkIllegal(_admin, await _s.Report(await _s.Reporter(), "work", work, "illegal_content"));
 
         Assert.Equal(OwnerBan.Refused, result.OwnerBan);
         Assert.True(result.BanRefused);

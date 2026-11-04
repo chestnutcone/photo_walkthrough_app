@@ -12,6 +12,7 @@ public static class AbuseServiceExtensions
         services.AddSingleton<IClientIpResolver>(new ClientIpResolver(options.CloudflareRanges, options.TrustedProxyHops));
         services.AddSingleton(new DisposableEmailList(options.DisposableEmailDomains));
         services.AddScoped<SignupVelocity>();
+        services.AddSingleton<UnattestedLimiter>();
         services.AddAbuseRateLimiting(options);
         AddAttestation(services, options, env);
         return services;

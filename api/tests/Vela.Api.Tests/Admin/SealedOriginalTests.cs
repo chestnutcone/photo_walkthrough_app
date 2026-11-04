@@ -71,7 +71,7 @@ public class SealedOriginalTests(PostgresFixture pg) : IAsyncLifetime
         _s.Host.Blobs.Put(BlobNames.WorkOriginal(work), Green());
 
         // Admin report page: the image shown is the sealed original.
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         var page = await (await _s.AdminBrowser()).Get($"/admin/reports/{report}");
         Assert.Contains(sealedName["originals/".Length..], page.Body);
         Assert.Contains("Sealed original", page.Body);

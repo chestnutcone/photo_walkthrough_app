@@ -51,7 +51,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          $ref: '#/components/responses/SignInForbidden'
         '429':
           $ref: '#/components/responses/RateLimited'
         '413':
@@ -115,7 +115,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          $ref: '#/components/responses/SignInForbidden'
         '429':
           $ref: '#/components/responses/RateLimited'
         '413':
@@ -1076,14 +1076,14 @@ components:
       name: X-Attestation
       in: header
       required: false
-      description: "App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed."
+      description: "App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation for the request's platform (at launch: Android yes, iOS no); failing it is 403 attestation_required or attestation_failed. A request that passes without a verified token is held to tighter per-address and per-account limits (429 rate_limited)."
       schema:
         type: string
     platform:
       name: X-Platform
       in: header
       required: false
-      description: "Platform that minted X-Attestation"
+      description: "Platform of the app, sent on every request. Selects the attestation rule: only a single value ios gets the iOS rule; a missing, unknown or repeated value gets the Android rule. A token is verified only for the platform named here."
       schema:
         type: string
         enum: [ios, android]
@@ -1173,6 +1173,17 @@ components:
             $ref: '#/components/schemas/Envelope'
     Forbidden:
       description: "Error 403 (default code forbidden)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+    SignInForbidden:
+      description: >
+        Error 403 on sign-in. Codes: account_suspended (the account or this sign-in identity is banned, permanent);
+        account_deleted (the account was deleted and its removal is still pending); signup_blocked (an account using this
+        sign-in identity was deleted while its content was under review: signing up again is possible once the review
+        closes, at most 30 days after the deletion request; the block then lapses by itself); attestation_required or
+        attestation_failed (ssoSignIn only, when the server enforces app attestation for the request's platform).
       content:
         application/json:
           schema:

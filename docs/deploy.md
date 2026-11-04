@@ -83,9 +83,10 @@ Decisions worth knowing:
    Verified in the portal, then redeploy with `linkEmailDomain=true`.
 6. **Content Safety**: create an Azure AI Content Safety resource (F0 tier), pass `contentSafetyEndpoint`, store its key above.
 7. **Store and identity values** (parameters): `appleClientId`, `googleClientIds`, `appleTeamId`, `androidSha256Fingerprints`,
-   `appAttestAppId` (`TEAMID.bundle.id`), `playIntegrityPackageName`, `dmcaAgent*` (needs legal review), `adminEmails`
+   `playIntegrityPackageName`, `appAttestAppId` (`TEAMID.bundle.id`; App Attest is deferred, may stay empty), `dmcaAgent*` (needs legal review), `adminEmails`
    (comma-separated allow-list; first admin signs in at `/admin` with an email code), Sentry DSN (secret above).
-   Also set the app's dart-defines (`LINKS_DOMAIN`, `SENTRY_DSN`, `PLAY_CLOUD_PROJECT_NUMBER`, `APP_ATTEST_ENABLED=true`, store URLs).
+   Also set the app's dart-defines (`LINKS_DOMAIN`, `SENTRY_DSN`, `PLAY_CLOUD_PROJECT_NUMBER`, store URLs; leave
+   `APP_ATTEST_ENABLED` unset while App Attest is deferred). See "App review mode and attestation" for the Play Integrity steps.
 8. **Container image**: `docker build -f api/Dockerfile -t ghcr.io/<owner>/vela-api:<tag> .` then `docker push`. Public GHCR package
    needs no credentials; a private one needs `registryUsername` + `registry-password`.
 9. **Pass 2**: redeploy with `deployApp=true`, `apiImage=ghcr.io/<owner>/vela-api:<tag>`. Output `apiUrl` is the app FQDN.
@@ -109,8 +110,8 @@ Decisions worth knowing:
 - [ ] The start-up refusal above is driven by `Launch__RequireLaunchSettings` (infra sets it `true` only for `environment=prod`;
       a dev/staging Azure environment, which also runs as `Production`, gets `false`). The error names every missing key.
 - [ ] `adminEmails` set; Cloudflare Access (or equivalent) in front of `/admin`.
-- [ ] `requireAttestation: true` with Play Integrity and App Attest values (false only for first bring-up), `reviewMode: false`
-      except during store review.
+- [ ] `requireAttestationAndroid: true` with the Play Integrity values (false only for first bring-up), `requireAttestationIos:
+      false` (App Attest deferred, owner design pending), `reviewMode: false` except during store review.
 - [ ] Key Vault secrets from step 4 present, including `ban-pepper` (never rotate it) and `sentry-dsn`.
 - [ ] ACS domain Verified and `linkEmailDomain: true`; budget alert emails reach the owner.
 - [ ] After pass 2: `appOutboundIps` filled and `allowAzureServices: false`.
@@ -150,9 +151,50 @@ setting to `false` and run an `dotnet ef migrations bundle` from a machine allow
 ## App review mode and attestation
 
 - `reviewMode=true` plus `reviewEmails` and secret `review-code` accepts a fixed code for those accounts. Turn it off after review.
-- `requireAttestation` defaults to true and must be true at launch. Set false only for first bring-up (before store apps exist);
-  with it true the API refuses to start unless both Play Integrity and App Attest settings are present. Decide the App Attest
-  per-install design before enabling it in production (see the progress ledger).
+- **Per-platform switches (owner decision 2026-11-03).** `Abuse__RequireAttestation__Android` (infra `requireAttestationAndroid`,
+  default true outside Development and Test) and `Abuse__RequireAttestation__Ios` (infra `requireAttestationIos`, default false).
+  The old single `Abuse__RequireAttestation` is refused at start-up: remove it. Sign-in (`/v1/auth/sso`, `/v1/auth/email/request`)
+  and `createDraft` (`POST /v1/works`) need a Play Integrity token on Android; iOS requests need none at launch.
+- **How the platform is decided.** Only a request with exactly one `X-Platform: ios` header gets the iOS rule. No header, `android`,
+  `web`, anything unknown or several values get the Android rule (fail closed), and a token is verified only for the platform
+  the header declares. An iOS claim cannot be proven without App Attest, so anyone can send it; what it buys is the tighter
+  **unattested limits**, applied to every protected request that passes without a verified token (all iOS requests at launch):
+
+  | Action | Unattested limit (in memory, per replica) | Counts only | Setting | For comparison, attested |
+  |---|---|---|---|---|
+  | `email_request` | 20 per hour per client address | valid, permanent addresses that pass the per-email key | `Abuse__RateLimits__unattested-email_request__Permit` | 20/hour per address (`auth-email`) |
+  | `email_target` | 5 per hour per (client address, target email) | valid, permanent addresses | `Abuse__RateLimits__unattested-email_target__Permit` | 5/hour per email (code store, every platform) |
+  | `sso` | 60 per hour per client address | sign-ins whose identity token verified | `Abuse__RateLimits__unattested-sso__Permit` | `write` 60/min; 5 new accounts per address per day |
+  | `create_work` | 10 per day per account | every unattested `createDraft` | `Abuse__RateLimits__unattested-create_work__Permit` | `upload` 20/hour per account |
+
+  **Shared addresses (ruling, DECISIONS fix I-1).** These budgets are per client address, and one address is often shared by
+  many real people: carrier CGNAT (many phones behind one IPv4), school, office, hotel or event wifi. Every iOS user behind such
+  an address shares the same `email_request` and `sso` budget, so the numbers are sized for a crowded address (60 verified iOS
+  sign-ins and 20 email codes per hour), not for one phone. To keep junk from draining that shared budget, `sso` is charged only
+  after the identity token verifies (an exhausted address is refused before the token is checked), and email codes are charged
+  only for a valid, non-disposable address, the (address, email) key first: a burst of requests for one email spends only that
+  pair's budget, not the address budget the other people behind the address share. The code store's 5 codes per hour per email
+  (every platform, any address) is unchanged, so someone who floods requests for your email can still delay your code for up to
+  an hour; that limit predates this branch and is the mail-bombing guard. Every refusal increments the metric
+  **`vela.abuse.unattested_limited`** (tag `action`) in Application Insights; if it climbs for real users (support reports of
+  "Too many requests" on iOS, or a steady count from a few addresses), raise the permit with the setting above. The limits bound
+  abuse **per address only**: a bot that claims iOS through a proxy pool gets these budgets once per address it controls, and
+  until App Attest ships the only control across addresses is Cloudflare (bot fight mode / WAF rate rules on `/v1/auth/*` and
+  `POST /v1/works`, owner); see threat model R-3.
+
+  The per-email limits apply to every platform as before (5 codes per hour per email, wrong-code lockout), as do the signup
+  velocity (5 new accounts per address per day) and the daily draft quota. 429 answers carry `Retry-After`.
+- **Play Integrity owner steps (Android, required at launch).** In Play Console link a Google Cloud project to the app (App
+  integrity > Play Integrity API) and enable the Play Integrity API in that project. Note the **Cloud project number** and build
+  the app with `--dart-define=PLAY_CLOUD_PROJECT_NUMBER=<number>` (without it the app sends no token and every Android sign-in
+  gets 403 `attestation_required`). Choose "Manage response encryption" (your own keys, not Google-managed), download the keys,
+  store the base64 AES-256 decryption key as Key Vault secret `play-integrity-decryption-key` and the base64 EC verification key
+  (SubjectPublicKeyInfo) as `play-integrity-verification-key`, and set `playIntegrityPackageName` (the Android applicationId).
+  These fill `Abuse:PlayIntegrity:PackageName`, `:DecryptionKey`, `:VerificationKey`; the API refuses to start in Production
+  with Android enforcement on and any of them missing, naming each. Optional: `Abuse__PlayIntegrity__AllowedCertificateDigests`.
+- **App Attest (iOS): deferred, owner design pending.** Leave `requireAttestationIos: false`, `appAttestAppId` may stay empty and
+  the app is built without `APP_ATTEST_ENABLED`. Before turning it on decide the per-install key design and replay store (ledger
+  A15/B14); with it on the API refuses to start without `Abuse:AppAttest:AppId`. Turning it on closes the iOS downgrade path.
 
 ## App release builds (owner steps)
 
@@ -259,11 +301,12 @@ See `docs/security/` for the threat model, checklists and findings.
   a Cloudflare **Transform Rule** (Modify Response Header) on `img.<domain>`: set `X-Content-Type-Options: nosniff` (and optionally
   `Content-Security-Policy: default-src 'none'; img-src 'self'; sandbox`). Direct blob-endpoint URLs (read SAS for exports and
   admin views) rely on the stored Content-Type and `attachment` disposition.
-- **Report threshold (S2-5).** `Reports__HideAfterDistinctReporters` (default 3) and `Reports__EstablishedAccountDays` (default 7):
-  an `illegal_content` report hides the item at once; other reasons hide it once that many distinct accounts have pending reports
+- **Report threshold (S2-5).** `Reports__HideAfterDistinctReporters` (default 3), `Reports__EstablishedAccountDays` (default 7) and
+  `Reports__IllegalContentInstantHideMinAgeHours` (default 24): an `illegal_content` report hides the item at once when the
+  reporter's account is at least that many hours old; any report hides it once that many distinct accounts have pending reports
   on it, or when the reporter's account is older than that many days. Reporters suspended or deleted since do not count. Below
-  the threshold reports wait in the queue. Because the reason is user-chosen, one fresh account can still hide a story with
-  `illegal_content` (owner decision, `docs/security/threat-model.md` section 7).
+  the threshold reports wait in the queue; a younger account's `illegal_content` report waits there too and counts as one
+  reporter (owner decision 2026-11-03, `docs/security/threat-model.md` section 7).
 - **Text (S2-2) and inquiry mail (S2-3).** No settings. User text is cleaned (NFC, invisible and control characters stripped,
   stacked marks capped, spaces collapsed) before it is stored; rows written earlier are unchanged. Inquiry mails use a fixed
   template with an "unverified user message" banner and disarmed links.
@@ -284,5 +327,10 @@ See `docs/security/` for the threat model, checklists and findings.
 - **Bans during the deletion window (I3).** An account whose deletion is deferred (content under review) can still be banned from the
   user page or by Mark illegal; the identity hashes survive the hard delete, so the same Apple/Google/email identity cannot sign up again.
   Mark illegal now says when the owner was already banned, is an admin, or was already fully deleted.
+- **Re-signup block after deleting during review (owner decision 2026-11-03).** No settings. When a deletion is deferred because
+  content is under review, each sign-in identity's HMAC hash (same `Admin:BanPepper` as bans: changing the pepper also lifts
+  pending blocks) is stored in `signup_blocks` with the request date and the 30-day cap. Signing in or up with it answers 403
+  `signup_blocked` (the app explains the wait) until the review closes (the hard delete, at most an hour after the review ends,
+  removes the rows) or 30 days pass. The hourly auth-data retention job deletes any lapsed row. Bans are separate and permanent.
 - **Onboarding gate (M18).** Inquiries, reports and blocks answer 403 `onboarding_required` for an account that never confirmed 18+ and
   the terms.

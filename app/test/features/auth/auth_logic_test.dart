@@ -48,6 +48,11 @@ void main() {
       ApiException(code: code, message: 'server text', retryAfter: wait),
     );
 
+    test('signup_blocked_explains_the_review_wait', () {
+      expect(msg('signup_blocked'), contains('under review'));
+      expect(msg('signup_blocked'), contains('30 days'));
+    });
+
     test('wait_text', () {
       expect(waitText(const Duration(seconds: 20)), '20 seconds');
       expect(waitText(const Duration(seconds: 60)), '1 minute');
@@ -67,6 +72,7 @@ void main() {
         'invalid_identity_token',
         'account_suspended',
         'account_deleted',
+        'signup_blocked',
         'attestation_failed',
         'network_error',
         'something_new',

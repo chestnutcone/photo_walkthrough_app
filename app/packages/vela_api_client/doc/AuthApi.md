@@ -29,8 +29,8 @@ import 'package:vela_api_client/api.dart';
 
 final api = VelaApiClient().getAuthApi();
 final EmailRequestRequest emailRequestRequest = ; // EmailRequestRequest | 
-final String xAttestation = xAttestation_example; // String | App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
-final String xPlatform = xPlatform_example; // String | Platform that minted X-Attestation
+final String xAttestation = xAttestation_example; // String | App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation for the request's platform (at launch: Android yes, iOS no); failing it is 403 attestation_required or attestation_failed. A request that passes without a verified token is held to tighter per-address and per-account limits (429 rate_limited).
+final String xPlatform = xPlatform_example; // String | Platform of the app, sent on every request. Selects the attestation rule: only a single value ios gets the iOS rule; a missing, unknown or repeated value gets the Android rule. A token is verified only for the platform named here.
 
 try {
     final response = api.emailRequest(emailRequestRequest, xAttestation, xPlatform);
@@ -45,8 +45,8 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **emailRequestRequest** | [**EmailRequestRequest**](EmailRequestRequest.md)|  | 
- **xAttestation** | **String**| App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed. | [optional] 
- **xPlatform** | **String**| Platform that minted X-Attestation | [optional] 
+ **xAttestation** | **String**| App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation for the request's platform (at launch: Android yes, iOS no); failing it is 403 attestation_required or attestation_failed. A request that passes without a verified token is held to tighter per-address and per-account limits (429 rate_limited). | [optional] 
+ **xPlatform** | **String**| Platform of the app, sent on every request. Selects the attestation rule: only a single value ios gets the iOS rule; a missing, unknown or repeated value gets the Android rule. A token is verified only for the platform named here. | [optional] 
 
 ### Return type
 
@@ -197,8 +197,8 @@ import 'package:vela_api_client/api.dart';
 
 final api = VelaApiClient().getAuthApi();
 final SsoSignInRequest ssoSignInRequest = ; // SsoSignInRequest | 
-final String xAttestation = xAttestation_example; // String | App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed.
-final String xPlatform = xPlatform_example; // String | Platform that minted X-Attestation
+final String xAttestation = xAttestation_example; // String | App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation for the request's platform (at launch: Android yes, iOS no); failing it is 403 attestation_required or attestation_failed. A request that passes without a verified token is held to tighter per-address and per-account limits (429 rate_limited).
+final String xPlatform = xPlatform_example; // String | Platform of the app, sent on every request. Selects the attestation rule: only a single value ios gets the iOS rule; a missing, unknown or repeated value gets the Android rule. A token is verified only for the platform named here.
 
 try {
     final response = api.ssoSignIn(ssoSignInRequest, xAttestation, xPlatform);
@@ -213,8 +213,8 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **ssoSignInRequest** | [**SsoSignInRequest**](SsoSignInRequest.md)|  | 
- **xAttestation** | **String**| App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation; failing it is 403 attestation_required or attestation_failed. | [optional] 
- **xPlatform** | **String**| Platform that minted X-Attestation | [optional] 
+ **xAttestation** | **String**| App attestation token (Play Integrity on Android, App Attest on iOS), minted for this operation. Required when the server enforces attestation for the request's platform (at launch: Android yes, iOS no); failing it is 403 attestation_required or attestation_failed. A request that passes without a verified token is held to tighter per-address and per-account limits (429 rate_limited). | [optional] 
+ **xPlatform** | **String**| Platform of the app, sent on every request. Selects the attestation rule: only a single value ios gets the iOS rule; a missing, unknown or repeated value gets the Android rule. A token is verified only for the platform named here. | [optional] 
 
 ### Return type
 

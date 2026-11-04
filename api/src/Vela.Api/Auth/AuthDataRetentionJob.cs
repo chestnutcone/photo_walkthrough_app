@@ -5,7 +5,8 @@ namespace Vela.Api.Auth;
 
 /// <summary>
 /// Sign-in bookkeeping keeps raw email addresses and client IPs (<c>email_codes</c>, <c>verify_attempts</c>) only as long as the
-/// limits that read them need: the longest window is one hour, so a day is generous. Runs hourly; safe to run twice.
+/// limits that read them need: the longest window is one hour, so a day is generous. Also removes lapsed re-signup blocks
+/// (<c>signup_blocks</c>). Runs hourly; safe to run twice.
 /// </summary>
 public sealed class AuthDataRetentionJob(IServiceScopeFactory scopes, TimeProvider clock, ILogger<AuthDataRetentionJob> log) : BackgroundService
 {
@@ -33,7 +34,10 @@ public sealed class AuthDataRetentionJob(IServiceScopeFactory scopes, TimeProvid
         var cutoff = now - Retention;
         var codes = await db.EmailCodes.Where(c => c.CreatedAt < cutoff).ExecuteDeleteAsync(ct);
         var attempts = await db.VerifyAttempts.Where(a => a.CreatedAt < cutoff).ExecuteDeleteAsync(ct);
-        if (codes + attempts > 0) log.LogInformation("Auth data retention removed {Codes} email codes and {Attempts} verify attempts.", codes, attempts);
+        // Backstop: re-signup blocks normally go with the hard delete; any that outlived their expiry are removed here.
+        var blocks = await scope.ServiceProvider.GetRequiredService<Account.SignupBlocks>().DeleteLapsedAsync(now, ct);
+        if (codes + attempts + blocks > 0)
+            log.LogInformation("Auth data retention removed {Codes} email codes, {Attempts} verify attempts and {Blocks} lapsed sign-up blocks.", codes, attempts, blocks);
         return (codes, attempts);
     }
 }

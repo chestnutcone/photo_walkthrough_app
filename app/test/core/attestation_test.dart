@@ -90,6 +90,12 @@ void main() {
     await dio.post<dynamic>('/v1/works', data: {});
 
     expect(adapter.requests.single.headers.containsKey('X-Attestation'), false);
+    // The server picks the platform rule from X-Platform (owner decision
+    // 2026-11-03: Android enforced, iOS not), so it is sent without a token too.
+    expect(
+      adapter.requests.single.headers['X-Platform'],
+      anyOf('android', 'ios'),
+    );
   });
 
   test('a_throwing_client_never_blocks_the_request', () async {

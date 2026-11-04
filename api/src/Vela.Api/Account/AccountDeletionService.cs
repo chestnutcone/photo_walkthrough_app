@@ -25,7 +25,8 @@ public interface IAccountDeletionService
 }
 
 public sealed class AccountDeletionService(
-    VelaDbContext db, ITokenService tokens, IUserStateCache stateCache, UnderReview review, TimeProvider clock, ILogger<AccountDeletionService> log)
+    VelaDbContext db, ITokenService tokens, IUserStateCache stateCache, UnderReview review, SignupBlocks blocks, TimeProvider clock,
+    ILogger<AccountDeletionService> log)
     : IAccountDeletionService
 {
     public async Task<AccountDeletionStatus> RequestAsync(Guid userId)
@@ -37,23 +38,31 @@ public sealed class AccountDeletionService(
         await tokens.RevokeAllAsync(userId);
         stateCache.Evict(userId);
         log.LogInformation("Account deletion requested for {UserId} (newly marked: {Marked}).", userId, marked > 0);
-        return await DeletionDeferral.EvaluateAsync(db, review, userId, now, log);
+        return await DeletionDeferral.EvaluateAsync(db, review, blocks, userId, now, log);
     }
 }
 
 /// <summary>
 /// The S1b-2 deferral rule, shared by the request and the sweep: while content is under review and the 30-day cap has not
-/// passed, the hard delete waits and <c>users.deletion_deferred_until</c> records the cap.
+/// passed, the hard delete waits and <c>users.deletion_deferred_until</c> records the cap. The account's sign-in identities are
+/// blocked from signing up again until the same cap (owner decision 2026-11-03); the block goes with the hard delete.
 /// </summary>
 public static class DeletionDeferral
 {
-    public static async Task<AccountDeletionStatus> EvaluateAsync(VelaDbContext db, UnderReview review, Guid userId, DateTimeOffset now, ILogger log)
+    public static async Task<AccountDeletionStatus> EvaluateAsync(VelaDbContext db, UnderReview review, SignupBlocks blocks, Guid userId,
+        DateTimeOffset now, ILogger log)
     {
         var deletedAt = await db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.DeletedAt).SingleOrDefaultAsync();
         if (deletedAt is not { } requested) return new AccountDeletionStatus(AccountDeletionStates.Scheduled, null);
         var cap = requested + UnderReview.AccountDeferralCap;
         if (now >= cap || !await review.AccountAsync(userId)) return new AccountDeletionStatus(AccountDeletionStates.Scheduled, null);
-        await db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.DeletionDeferredUntil, cap));
+        // The deferral and its signup blocks commit together (DECISIONS M-2); a caller's own transaction is joined instead.
+        await using (var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync() : null)
+        {
+            await db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.DeletionDeferredUntil, cap));
+            await blocks.BlockAsync(userId, now, cap);
+            if (tx is not null) await tx.CommitAsync();
+        }
         log.LogInformation("Hard delete of {UserId} deferred: content under review (until {Cap} at the latest).", userId, cap);
         return new AccountDeletionStatus(AccountDeletionStates.DeferredReview, cap);
     }

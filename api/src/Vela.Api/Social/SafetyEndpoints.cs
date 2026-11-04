@@ -10,10 +10,13 @@ public static class SafetyEndpoints
     private static readonly string[] TargetTypes = ["work", "reply", "user"];
     private static readonly string[] Reasons = ["illegal_content", "copyright", "harassment", "spam", "other"];
 
-    public static IServiceCollection AddSafety(this IServiceCollection services, IConfiguration config) =>
-        services.Configure<ReportOptions>(config.GetSection(ReportOptions.Section))
+    public static IServiceCollection AddSafety(this IServiceCollection services, IConfiguration config)
+    {
+        ReportOptions.Load(config); // fail at start-up on a bad value, not on the first report
+        return services.Configure<ReportOptions>(config.GetSection(ReportOptions.Section))
             .AddScoped<IVisibility, Visibility>().AddScoped<IBlockService, BlockService>()
             .AddScoped<ReportService>().AddScoped<IReportService>(sp => sp.GetRequiredService<ReportService>());
+    }
 
     public static IEndpointRouteBuilder MapSafetyEndpoints(this IEndpointRouteBuilder app)
     {

@@ -57,8 +57,10 @@ param androidSha256Fingerprints array = []
 param dmcaAgentName string = ''
 param dmcaAgentEmail string = ''
 param dmcaAgentAddress string = ''
-@description('MUST be true at launch. False only for first bring-up before the store apps and verifier settings exist.')
-param requireAttestation bool = true
+@description('Play Integrity on Android requests. MUST be true at launch. False only for first bring-up before the store app and verifier settings exist.')
+param requireAttestationAndroid bool = true
+@description('App Attest on iOS requests. False at launch (owner decision 2026-11-03: App Attest deferred, owner design pending).')
+param requireAttestationIos bool = false
 param playIntegrityPackageName string = ''
 param appAttestAppId string = ''
 param reviewMode bool = false
@@ -182,7 +184,8 @@ module app 'modules/containerapp.bicep' = if (deployApp) {
     googleClientIds: googleClientIds
     appleClientId: appleClientId
     sentryEnabled: sentryEnabled
-    requireAttestation: requireAttestation
+    requireAttestationAndroid: requireAttestationAndroid
+    requireAttestationIos: requireAttestationIos
     playIntegrityPackageName: playIntegrityPackageName
     appAttestAppId: appAttestAppId
     reviewMode: reviewMode

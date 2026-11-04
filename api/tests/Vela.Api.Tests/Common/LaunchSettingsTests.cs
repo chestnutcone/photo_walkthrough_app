@@ -58,7 +58,7 @@ public class LaunchSettingsTests
         using var f = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
-            b.UseSetting("Abuse:RequireAttestation", "false");
+            b.UseSetting("Abuse:RequireAttestation:Android", "false");
             b.UseSetting("ConnectionStrings:Default", "Host=localhost;Database=x;Username=x;Password=x");
             b.UseSetting("Admin:Enabled", "false");
             b.UseSetting("Admin:BanPepper", new string('p', 40));

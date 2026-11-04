@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+using Vela.Api.Social;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Vela.Api.Data.Entities;
@@ -8,7 +10,8 @@ using ReplyEntity = Vela.Api.Data.Entities.Reply;
 namespace Vela.Api.Tests.Social;
 
 /// <summary>
-/// S2 ruling on report brigading (R-2, e2e report Major): an illegal-content report hides at once; any other reason hides only
+/// S2 ruling on report brigading (R-2, e2e report Major), owner decision 2026-11-03: an illegal-content report hides at once
+/// when the reporter's account is at least 24 h old (younger: queued and counted, no hide); any other reason hides only
 /// once 3 distinct accounts have reported the item, or one reporter whose account is older than 7 days has.
 /// </summary>
 [Collection(PostgresCollection.Name)]
@@ -59,15 +62,77 @@ public class ReportThresholdTests(PostgresFixture pg) : IDisposable
         return (await db.Replies.SingleAsync(r => r.Id == id)).Hidden;
     }
 
-    [Fact]
-    public async Task Illegal_content_report_from_a_new_account_hides_the_work_at_once()
+    [Theory]
+    [InlineData(24 * 60)]      // exactly 24 h: at least 24 h old, hides
+    [InlineData(24 * 60 + 1)]  // over 24 h
+    [InlineData(8 * 24 * 60)]  // established account
+    public async Task Illegal_content_report_from_an_account_at_least_24_hours_old_hides_at_once(int ageMinutes)
     {
-        var artist = await NewUser(); var rep = await NewUser();
+        var artist = await NewUser(); var rep = await AgedUser(TimeSpan.FromMinutes(ageMinutes));
         var wid = await SeedWork(artist.Id);
 
         Assert.Equal(HttpStatusCode.OK, (await rep.Post("/v1/reports", Rep("work", wid, "illegal_content"))).Status);
 
         Assert.True(await WorkHidden(wid));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(24 * 60 - 1)] // just under 24 h
+    public async Task Illegal_content_report_from_a_younger_account_queues_but_does_not_hide(int ageMinutes)
+    {
+        // Owner decision 2026-11-03 (review I-5): a fresh account cannot take content down on its own.
+        var artist = await NewUser(); var rep = await AgedUser(TimeSpan.FromMinutes(ageMinutes));
+        var wid = await SeedWork(artist.Id);
+
+        Assert.Equal(HttpStatusCode.OK, (await rep.Post("/v1/reports", Rep("work", wid, "illegal_content"))).Status);
+
+        Assert.False(await WorkHidden(wid));
+        await using var db = _h.Db();
+        var row = await db.Reports.SingleAsync(r => r.TargetId == wid);
+        Assert.Equal(("pending", "illegal_content"), (row.Status, row.Reason));
+    }
+
+    [Fact]
+    public async Task Fresh_illegal_content_reports_count_towards_the_distinct_reporter_threshold()
+    {
+        var artist = await NewUser();
+        var wid = await SeedWork(artist.Id);
+        await (await NewUser()).Post("/v1/reports", Rep("work", wid, "illegal_content"));
+        await (await NewUser()).Post("/v1/reports", Rep("work", wid, "spam"));
+        Assert.False(await WorkHidden(wid));
+
+        await (await NewUser()).Post("/v1/reports", Rep("work", wid, "illegal_content"));
+
+        Assert.True(await WorkHidden(wid));
+    }
+
+    [Fact]
+    public async Task Fresh_illegal_content_report_on_a_reply_does_not_hide_it_but_an_older_one_does()
+    {
+        var artist = await NewUser(); var author = await NewUser();
+        var rid = await SeedReply(await SeedWork(artist.Id), author.Id);
+
+        await (await AgedUser(TimeSpan.FromHours(23))).Post("/v1/reports", Rep("reply", rid, "illegal_content"));
+        Assert.False(await ReplyHidden(rid));
+
+        await (await AgedUser(TimeSpan.FromHours(25))).Post("/v1/reports", Rep("reply", rid, "illegal_content"));
+        Assert.True(await ReplyHidden(rid));
+    }
+
+    [Fact]
+    public async Task Minimum_account_age_for_an_instant_illegal_content_hide_is_configurable()
+    {
+        using var h = new ProfileTestHost(pg, new Dictionary<string, string> { ["Reports:IllegalContentInstantHideMinAgeHours"] = "48" });
+        var artist = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
+        var rep = await h.SignInOnboarded(ProfileTestHost.UniqueHandle());
+        await using (var db = h.Db())
+            await db.Users.Where(x => x.Id == rep.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedAt, ProfileTestHost.Now - TimeSpan.FromHours(30)));
+        var wid = await SeedWork(artist.Id);
+
+        await rep.Post("/v1/reports", Rep("work", wid, "illegal_content"));
+
+        Assert.False(await WorkHidden(wid));
     }
 
     [Theory]
@@ -201,5 +266,45 @@ public class ReportThresholdTests(PostgresFixture pg) : IDisposable
         await Task.WhenAll(reporters.Select(r => r.Post("/v1/reports", Rep("work", wid, "spam"))));
 
         Assert.True(await WorkHidden(wid));
+    }
+}
+
+/// <summary>DECISIONS fix M-4: the instant-hide account age is checked when the API starts.</summary>
+public class ReportOptionsValidationTests
+{
+    private static ReportOptions Load(string? hours)
+    {
+        var values = new Dictionary<string, string?>();
+        if (hours is not null) values["Reports:IllegalContentInstantHideMinAgeHours"] = hours;
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        return ReportOptions.Load(config);
+    }
+
+    [Theory]
+    [InlineData(null, 24)]
+    [InlineData("0", 0)]
+    [InlineData("48", 48)]
+    [InlineData("8760", 8760)]
+    public void Accepts_zero_to_one_year(string? hours, int expected) =>
+        Assert.Equal(expected, Load(hours).IllegalContentInstantHideMinAgeHours);
+
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("8761")]
+    [InlineData("2147483647")]
+    public void Refuses_negative_or_absurd_values_with_a_clear_message(string hours)
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => Load(hours));
+        Assert.Contains("Reports:IllegalContentInstantHideMinAgeHours", ex.Message);
+        Assert.Contains("8760", ex.Message);
+    }
+
+    [Fact]
+    public void The_api_refuses_to_start_with_a_negative_value()
+    {
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Reports:IllegalContentInstantHideMinAgeHours"] = "-5" }).Build();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Assert.Throws<InvalidOperationException>(() => { services.AddSafety(config); });
     }
 }

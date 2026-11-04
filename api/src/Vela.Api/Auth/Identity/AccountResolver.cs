@@ -8,13 +8,14 @@ namespace Vela.Api.Auth.Identity;
 
 /// <summary>Maps (provider, subject) to a user. Never matches or links by email.</summary>
 public sealed class AccountResolver(VelaDbContext db, TimeProvider clock, Admin.IBanList? bans = null,
-    Abuse.SignupVelocity? velocity = null) : IAccountResolver
+    Abuse.SignupVelocity? velocity = null, Account.SignupBlocks? signupBlocks = null) : IAccountResolver
 {
     public async Task<(Guid UserId, bool IsNew)> SignInAsync(VerifiedIdentity identity, System.Net.IPAddress? clientIp = null)
     {
         if (await FindAsync(identity) is { } existing) return (existing, false);
         // A banned identity cannot start over, whether the person deleted the account or never had one here.
         if (bans is not null && await bans.IsBannedAsync(identity.Provider, identity.Subject)) throw new AccountSuspendedException();
+        if (await IsSignupBlockedAsync(identity)) throw new SignupBlockedException();
 
         // The velocity slot and the account commit or roll back together, so only a created account counts.
         await using var tx = await db.Database.BeginTransactionAsync();
@@ -44,6 +45,9 @@ public sealed class AccountResolver(VelaDbContext db, TimeProvider clock, Admin.
         }
     }
 
+    private async Task<bool> IsSignupBlockedAsync(VerifiedIdentity identity) =>
+        signupBlocks is not null && await signupBlocks.IsBlockedAsync(identity.Provider, identity.Subject, clock.GetUtcNow());
+
     private async Task<Guid?> FindAsync(VerifiedIdentity identity)
     {
         var row = await db.Identities.AsNoTracking()
@@ -51,6 +55,8 @@ public sealed class AccountResolver(VelaDbContext db, TimeProvider clock, Admin.
             .Join(db.Users, i => i.UserId, u => u.Id, (i, u) => new { u.Id, u.SuspendedAt, u.DeletedAt })
             .SingleOrDefaultAsync();
         if (row is null) return null;
+        // Deleted during review (and not banned): say when they can come back rather than just "deleted".
+        if (row.DeletedAt is not null && row.SuspendedAt is null && await IsSignupBlockedAsync(identity)) throw new SignupBlockedException();
         if (row.DeletedAt is not null) throw new AccountDeletedException();
         if (row.SuspendedAt is not null) throw new AccountSuspendedException();
         return row.Id;

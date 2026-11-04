@@ -32,8 +32,10 @@ param appleClientId string
 param sentryEnabled bool = true
 
 // Abuse and attestation
-@description('Must be true at launch. May be false only for first bring-up before the store apps exist.')
-param requireAttestation bool = true
+@description('Play Integrity on Android requests. Must be true at launch. May be false only for first bring-up before the store app exists.')
+param requireAttestationAndroid bool = true
+@description('App Attest on iOS requests. False at launch (owner decision 2026-11-03: deferred, owner design pending); iOS requests get the tighter unattested limits.')
+param requireAttestationIos bool = false
 param playIntegrityPackageName string = ''
 param appAttestAppId string = ''
 param trustedProxyHops int = 1
@@ -122,7 +124,8 @@ var settings = [
   { name: 'Cloudflare__ApiToken', secretRef: 'cloudflare-api-token' }
   // Behind the ingress the TCP peer is the proxy; the API reads the connecting address from the last X-Forwarded-For entry.
   { name: 'Abuse__TrustedProxyHops', value: string(trustedProxyHops) }
-  { name: 'Abuse__RequireAttestation', value: string(requireAttestation) }
+  { name: 'Abuse__RequireAttestation__Android', value: string(requireAttestationAndroid) }
+  { name: 'Abuse__RequireAttestation__Ios', value: string(requireAttestationIos) }
   { name: 'Abuse__PlayIntegrity__PackageName', value: playIntegrityPackageName }
   { name: 'Abuse__AppAttest__AppId', value: appAttestAppId }
   { name: 'Auth__ReviewMode', value: string(reviewMode) }

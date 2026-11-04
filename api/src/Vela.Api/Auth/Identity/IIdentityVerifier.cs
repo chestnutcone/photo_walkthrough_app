@@ -14,6 +14,12 @@ public interface IIdentityVerifier
 
 public sealed class AccountSuspendedException() : Exception("The account is suspended.");
 public sealed class AccountDeletedException() : Exception("The account is deleted.");
+/// <summary>The identity deleted an account while its content was under review; sign-up waits until the review closes (max 30 days).</summary>
+public sealed class SignupBlockedException() : Exception("Sign-up is blocked for this identity for now.")
+{
+    public const string ClientMessage =
+        "An account using this sign-in was deleted while its content was under review. You can sign up again when the review ends, at most 30 days after the deletion.";
+}
 
 public interface IAccountResolver
 {

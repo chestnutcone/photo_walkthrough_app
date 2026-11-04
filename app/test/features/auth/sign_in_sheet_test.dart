@@ -105,6 +105,23 @@ void main() {
       expect(h.result, isNull);
     });
 
+    testWidgets('signup_blocked_shows_the_review_wait_message', (tester) async {
+      final h = await pumpSignIn(
+        tester,
+        api: AuthApi(ssoStatus: 403, ssoCode: 'signup_blocked'),
+      );
+      await tester.tap(key('sso-google'));
+      await tester.pumpAndSettle();
+      expect(key('sign-in-error'), findsOneWidget);
+      expect(
+        find.textContaining('deleted while its content was under review'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('at most 30 days'), findsOneWidget);
+      expect(h.stored, isFalse);
+      expect(h.result, isNull);
+    });
+
     testWidgets('double_tap_runs_one_attempt', (tester) async {
       final sso = FakeSso()..gate = Completer<String>();
       final h = await pumpSignIn(tester, sso: sso);

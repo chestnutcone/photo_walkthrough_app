@@ -12,7 +12,11 @@ namespace Vela.Api.Tests.Account;
 public class DeletionCompletenessTests(PostgresFixture pg)
 {
     /// <summary>Tables that hold no user data at all.</summary>
-    private static readonly HashSet<string> NonUserTables = ["__EFMigrationsHistory", "tiers"];
+    /// <summary>
+    /// Tables with no user id column at all. signup_blocks holds only identity hashes and dates; its rows are removed by the hard
+    /// delete, which <c>SignupBlockTests</c> checks (a hash cannot be found by the uuid scan below).
+    /// </summary>
+    private static readonly HashSet<string> NonUserTables = ["__EFMigrationsHistory", "tiers", "signup_blocks"];
 
     /// <summary>
     /// Tables deletion must NOT clear, with the reason. They hold no foreign key to users, so a deleted account leaves them

@@ -8,7 +8,7 @@ public static class AccountEndpoints
 {
     public static IServiceCollection AddAccount(this IServiceCollection services, IHostEnvironment env)
     {
-        services.AddScoped<IAccountDeletionService, AccountDeletionService>().AddScoped<DeletionJob>()
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>().AddScoped<DeletionJob>().AddScoped<SignupBlocks>()
             .AddScoped<IExportService, ExportService>().AddScoped<ExportData>().AddScoped<ExportArchiveBuilder>()
             .AddSingleton<ICdnPurger, NoOpCdnPurger>().AddSingleton<IAppleTokenRevoker, LoggingAppleTokenRevoker>()
             .AddSingleton<IDeletionStepObserver, NoOpDeletionStepObserver>().AddSingleton<DeletionWorker>().AddSingleton<ExportWorker>();

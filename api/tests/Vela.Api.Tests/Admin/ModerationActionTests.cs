@@ -187,12 +187,12 @@ public class ModerationActionTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Restore_unhides_auto_hidden_report_hidden_and_admin_hidden_replies()
     {
         var (_, work) = await _s.Story();
-        var fan = await _s.NewUser(); var reporter = await _s.NewUser();
+        var fan = await _s.NewUser(); var reporter = await _s.Reporter();
         var auto = await _s.ReplyOn(fan, work, "bad " + Unsafe);
         var autoFlag = await _s.AutoFlagId("reply", auto);
         Assert.Equal(HiddenBy.Auto, (await _s.LoadReply(auto)).HiddenBy);
         var reported = await _s.ReplyOn(fan, work, "meh");
-        var reportRow = await _s.Report(reporter, "reply", reported, "illegal_content"); // S2: hides with one report
+        var reportRow = await _s.Report(reporter, "reply", reported, "illegal_content"); // hides with one report from an account at least 24 h old
         Assert.Equal(HiddenBy.Report, (await _s.LoadReply(reported)).HiddenBy);
         var byAdmin = await _s.ReplyOn(fan, work, "rude");
         var third = await _s.NewUser();
@@ -212,7 +212,7 @@ public class ModerationActionTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Restoring_a_report_hidden_work_lifts_the_hide_without_republishing()
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content"); // S2: hides with one report
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content"); // hides with one report from an account at least 24 h old
         Assert.True((await WorkTestKit.Load(_s.Host, work)).ReportHidden);
         RecordingHandler.Seen.Clear();
 

@@ -12,7 +12,7 @@ namespace Vela.Api.Account;
 /// The completeness test scans the live schema, so a new user-referencing table or column fails there until it is handled here.
 /// </summary>
 public sealed class DeletionJob(
-    VelaDbContext db, IBlobStore blobs, ICdnPurger cdn, IAppleTokenRevoker apple, IDeletionStepObserver observer, ILogger<DeletionJob> log, IUserStateCache? stateCache = null)
+    VelaDbContext db, IBlobStore blobs, ICdnPurger cdn, IAppleTokenRevoker apple, IDeletionStepObserver observer, SignupBlocks signupBlocks, ILogger<DeletionJob> log, IUserStateCache? stateCache = null)
 {
     /// <summary>How many times new works may appear mid-deletion before the run gives up (and is retried after the back-off).</summary>
     public const int MaxPasses = 5;
@@ -119,6 +119,8 @@ public sealed class DeletionJob(
         // Foreign-keyed rows, deleted explicitly rather than trusting the cascade alone.
         deleted += await db.RefreshTokens.Where(t => t.UserId == userId).ExecuteDeleteAsync(ct);
         await observer.AfterStepAsync();
+        // The re-signup block lapses with the hard delete (review closed or 30-day cap); it needs the identities to find its rows.
+        deleted += await signupBlocks.LiftAsync(userId, ct);
         deleted += await db.Identities.Where(i => i.UserId == userId).ExecuteDeleteAsync(ct);
         await observer.AfterStepAsync();
         deleted += await db.Follows.Where(f => f.FollowerId == userId || f.FolloweeId == userId).ExecuteDeleteAsync(ct);

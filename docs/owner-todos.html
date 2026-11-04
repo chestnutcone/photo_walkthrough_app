@@ -19,6 +19,7 @@
   li span { color:var(--muted); font-size:.92rem; }
   .tag { font:600 .7rem system-ui, sans-serif; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); }
   .done { color:var(--ok); font-weight:600; }
+  li.blocker { border:2px solid var(--accent); }
   code { font:.85em ui-monospace, Menlo, monospace; background:var(--line); padding:1px 5px; border-radius:3px; }
   footer { margin-top:40px; color:var(--muted); font-size:.85rem; }
 </style>
@@ -27,20 +28,26 @@
 <main>
   <h1>Vela: what is left</h1>
   <p class="lede">The build is finished and merged into <code>main</code>. Everything below needs you, a device, or a decision. Tick items as you go (ticks stay in this browser only).</p>
-  <p class="lede"><span class="done">Done:</span> API (1444 tests), Flutter app (935), web viewer, security hardening, two independent final reviews with fixes, emulator end-to-end (18 tests), screenshot gallery and accessibility audit.</p>
+  <p class="lede"><span class="done">Done:</span> API (1481 tests), Flutter app (937), web viewer, security hardening, two independent final reviews with fixes, emulator end-to-end (18 tests), screenshot gallery and accessibility audit.</p>
+
+  <h2>Release blockers</h2>
+  <p class="lede">Nothing ships to the stores until these are done. Legal texts are drafts; keep them as they are until counsel reviews.</p>
+  <ul>
+    <li class="blocker"><input type="checkbox"><div><span class="tag">Release blocker</span><b>Legal review by counsel</b><span>Review <code>api/src/Vela.Api/Legal/privacy.md</code>, <code>terms.md</code>, <code>content.md</code> and <code>dmca.md</code> (drafts, kept as they are until then), and confirm these behaviours: the 30-day account deletion deferral while content is under review; the 7-day database backup and storage recovery windows; 3-year DMCA notice retention; retention periods for the moderation audit trail and ban hashes; the 24 h account age before an illegal-content report hides content; the re-signup block after deleting during review (up to 30 days); DMCA agent registration with the US Copyright Office; the NCMEC reporting process and ESP account; 18+ self-confirmation and COPPA; the fail-open Content Safety and malware scanner stance; the App Store and Google Play privacy disclosures (data safety, privacy labels).</span></div></li>
+  </ul>
 
   <h2>1. Decisions only you can make</h2>
   <ul>
-    <li><input type="checkbox"><div><b>Fresh-account illegal-content reports (I-5)</b><span>One new account can hide any story at once by reporting it as illegal content. Pick: rate-limit per fresh account; hide only after an admin sees it; require 24 h account age; or make a dismissed false report cost the reporter instant hide. Details: <code>docs/security/threat-model.md</code> section 7.</span></div></li>
-    <li><input type="checkbox"><div><b>Re-signup cooling-off</b><span>How long someone who deletes their account while content is under review must wait before signing up again.</span></div></li>
-    <li><input type="checkbox"><div><b>Attestation design</b><span>App Attest (per-install key, assertions, server nonce store) and Play Integrity request binding. Until configured, production sign-in returns 403 <code>attestation_required</code>.</span></div></li>
+    <li><input type="checkbox"><div><b>Fresh-account illegal-content reports (I-5)</b><span><span class="done">Decided 2026-11-03, built:</span> an illegal-content report hides at once only from an account at least 24 h old (<code>Reports:IllegalContentInstantHideMinAgeHours</code>); a younger account's report is queued and counts towards the 3-reporter rule.</span></div></li>
+    <li><input type="checkbox"><div><b>Re-signup cooling-off</b><span><span class="done">Decided 2026-11-03, built:</span> after deleting an account during review the same sign-in gets 403 <code>signup_blocked</code> until the review closes, at most 30 days; only a hash and dates are stored.</span></div></li>
+    <li><input type="checkbox"><div><b>Attestation: Play Integrity setup (Android)</b><span>Decided 2026-11-03, built: Android requires Play Integrity at launch, iOS does not (tighter limits instead). You: link a Cloud project in Play Console, build with <code>PLAY_CLOUD_PROJECT_NUMBER</code>, store the response-encryption keys and set <code>Abuse:PlayIntegrity</code> (steps in <code>docs/deploy.md</code>, "App review mode and attestation"). App Attest: deferred, design pending (per-install key, server nonce store).</span></div></li>
     <li><input type="checkbox"><div><b>Product name, icon and launch content</b><span>"Vela" is a code name. Names live in one place each: <code>api/src/Vela.Api/Branding/BrandingOptions.cs</code> and <code>app/lib/core/branding.dart</code>; <code>app/web/README.md</code> has the rename checklist.</span></div></li>
     <li><input type="checkbox"><div><b>Visual calls</b><span>Photo cover falls back to contain per work; progress segments stay 15 pt; artist name sits on its own line at 390 pt; desktop web layout is undesigned; web fallback fonts (emoji/CJK show as boxes) blocked by the CSP.</span></div></li>
   </ul>
 
   <h2>2. Legal (counsel review)</h2>
   <ul>
-    <li><input type="checkbox"><div><b>Privacy policy and terms</b><span>Including: 30-day deletion deferral while under review, 7-day database backup and storage recovery windows, 3-year DMCA retention, indefinite audit trail and ban hashes (set periods).</span></div></li>
+    <li><input type="checkbox"><div><b>Privacy policy and terms</b><span>Part of the <b>release blocker</b> "Legal review by counsel" at the top, which lists everything counsel must confirm.</span></div></li>
     <li><input type="checkbox"><div><b>DMCA agent registration</b><span>Production start-up refuses to run without the DMCA agent set.</span></div></li>
     <li><input type="checkbox"><div><b>NCMEC ESP account</b><span>Illegal-content reports stay queued until you can submit manually or configure it.</span></div></li>
   </ul>

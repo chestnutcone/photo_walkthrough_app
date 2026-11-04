@@ -25,7 +25,7 @@ public class EvidenceRetentionTests(PostgresFixture pg) : IAsyncLifetime
     private async Task<Guid> Hold()
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         return (await _s.MarkIllegal(_admin, report)).HoldId!.Value;
     }
 

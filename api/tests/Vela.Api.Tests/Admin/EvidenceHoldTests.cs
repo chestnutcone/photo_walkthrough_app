@@ -25,7 +25,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
         var owner = await _s.OwnerWithEmail();
         var (_, work) = await _s.Story("Hold this title", owner);
         var original = _s.Host.Blobs.Bytes(await WorkTestKit.OriginalOf(_s.Host, work));
-        var fan = await _s.NewUser();
+        var fan = await _s.Reporter();
         var report = await _s.Report(fan, "work", work, "illegal_content", "private reporter note");
         var second = await _s.Report(await _s.NewUser(), "work", work, "spam");
 
@@ -85,7 +85,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
         var (_, work) = await _s.Story();
         var author = await _s.OwnerWithEmail();
         var reply = await _s.ReplyOn(author, work, "the offending reply text");
-        var report = await _s.Report(await _s.NewUser(), "reply", reply, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "reply", reply, "illegal_content");
 
         var result = await _s.MarkIllegal(_admin, report);
 
@@ -116,7 +116,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
         var target = await _s.OwnerWithEmail();
         await using (var db = _s.Host.Db())
             await db.Profiles.Where(p => p.UserId == target.Id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Bio, "a bio worth keeping").SetProperty(p => p.City, "Springfield"));
-        var report = await _s.Report(await _s.NewUser(), "user", target.Id, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "user", target.Id, "illegal_content");
 
         var result = await _s.MarkIllegal(_admin, report);
 
@@ -140,7 +140,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
         string subject;
         await using (var db = _s.Host.Db())
             subject = await db.Identities.Where(i => i.UserId == owner.Id).Select(i => i.Subject).FirstAsync();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
 
         var hold = await _s.Hold((await _s.MarkIllegal(_admin, report)).HoldId!.Value);
 
@@ -151,7 +151,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Marking_the_same_target_again_returns_the_existing_hold_and_changes_nothing_more()
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         var otherReport = await _s.Report(await _s.NewUser(), "work", work, "spam");
         var first = await _s.MarkIllegal(_admin, report);
         int Actions() => _s.Audit().Result.Count(a => a.Action is "mark_illegal" or "remove_work" or "ban_user");
@@ -174,7 +174,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
     {
         var boss = await _s.AdminOwner();
         var (_, work) = await _s.Story("Admin story", boss);
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
 
         var result = await _s.MarkIllegal(_admin, report);
 
@@ -192,7 +192,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
     {
         var owner = await _s.OwnerWithEmail();
         var (_, work) = await _s.Story("Keep me up", owner);
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         _s.Host.Blobs.FailWrites = n => n.StartsWith("evidence/", StringComparison.Ordinal);
 
         var result = await _s.MarkIllegal(_admin, report);
@@ -215,7 +215,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
     public async Task A_copy_that_fails_halfway_leaves_no_partial_evidence_blobs_behind()
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         _s.Host.Blobs.FailWrites = n => n.EndsWith("/variants/full.webp", StringComparison.Ordinal);
 
         var result = await _s.MarkIllegal(_admin, report);
@@ -229,7 +229,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
     {
         var (_, work) = await _s.Story();
         foreach (var v in Variants(work)) await _s.Host.Blobs.DeletePrefixAsync(v);
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
 
         var result = await _s.MarkIllegal(_admin, report);
 
@@ -243,7 +243,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
     public async Task A_reason_is_required_and_a_refused_mark_changes_nothing(string reason)
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
 
         Assert.Equal(ModerationOutcome.ReasonRequired, (await _s.MarkIllegal(_admin, report, reason)).Outcome);
         Assert.Equal(ModerationOutcome.ReasonTooLong, (await _s.MarkIllegal(_admin, report, new string('x', 501))).Outcome);
@@ -257,7 +257,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Only_a_live_admin_can_mark_and_an_unknown_report_is_not_found()
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         var plain = await _s.NewUser();
 
         Assert.Equal(ModerationOutcome.Forbidden, (await _s.MarkIllegal(plain.Id, report)).Outcome);
@@ -269,7 +269,7 @@ public class EvidenceHoldTests(PostgresFixture pg) : IAsyncLifetime
     public async Task A_report_whose_target_is_gone_is_not_found_and_holds_nothing()
     {
         var (owner, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         await using (var db = _s.Host.Db()) await db.Works.Where(w => w.Id == work).ExecuteDeleteAsync();
 
         Assert.Equal(ModerationOutcome.NotFound, (await _s.MarkIllegal(_admin, report)).Outcome);

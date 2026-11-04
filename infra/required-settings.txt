@@ -16,7 +16,8 @@ ContentSafety__Endpoint
 ContentSafety__Key
 Branding__Domain
 Web__ViewerUrl
-Abuse__RequireAttestation
+Abuse__RequireAttestation__Android
+Abuse__RequireAttestation__Ios
 Abuse__TrustedProxyHops
 Abuse__PlayIntegrity__PackageName
 Abuse__PlayIntegrity__DecryptionKey

@@ -17,7 +17,7 @@ public static class SsoEndpoint
 
     private static async Task<IResult> HandleAsync(SsoSignInRequest? req, IEnumerable<IIdentityVerifier> verifiers,
         IAccountResolver resolver, ITokenService tokens, VelaDbContext db, TimeProvider clock,
-        HttpContext ctx, IClientIpResolver ips)
+        HttpContext ctx, IClientIpResolver ips, UnattestedLimiter unattested)
     {
         var verifier = verifiers.FirstOrDefault(v => v.Provider == req?.Provider);
         if (verifier is null)
@@ -25,9 +25,16 @@ public static class SsoEndpoint
         if (string.IsNullOrWhiteSpace(req!.IdToken))
             return Results.Fail(StatusCodes.Status400BadRequest, "validation_failed", "idToken is required.");
 
+        // Unattested (iOS at launch): only a verified sign-in spends the shared address budget (DECISIONS I-1).
+        var address = UnattestedLimiter.IsUnattested(ctx) ? UnattestedLimiter.AddressSubject(ctx, ips) : null;
+        if (address is not null && unattested.Peek(UnattestedLimiter.Sso, address) is { } exhausted)
+            return UnattestedLimiter.Refuse(ctx, exhausted);
+
         try
         {
             var identity = await verifier.VerifyAsync(req.IdToken, req.Nonce);
+            if (address is not null && unattested.TryAcquire(UnattestedLimiter.Sso, address) is { } wait)
+                return UnattestedLimiter.Refuse(ctx, wait);
             var (userId, isNew) = await resolver.SignInAsync(identity, ips.Resolve(ctx));
             var pair = await tokens.IssueAsync(userId);
             var onboarded = !isNew && await db.Users.AnyAsync(u => u.Id == userId && u.TermsAcceptedAt != null && u.AgeConfirmedAt != null);
@@ -50,6 +57,10 @@ public static class SsoEndpoint
         catch (AccountDeletedException)
         {
             return Results.Fail(StatusCodes.Status403Forbidden, "account_deleted", "This account has been deleted.");
+        }
+        catch (SignupBlockedException)
+        {
+            return Results.Fail(StatusCodes.Status403Forbidden, "signup_blocked", SignupBlockedException.ClientMessage);
         }
     }
 }

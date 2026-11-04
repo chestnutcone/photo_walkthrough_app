@@ -31,7 +31,7 @@ public class EvidencePageTests(PostgresFixture pg) : IAsyncLifetime
     private async Task<(Guid Hold, Guid Report, Guid Work)> Held(string title = "Held story")
     {
         var (_, work) = await _s.Story(title);
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         return ((await _s.MarkIllegal(_admin, report)).HoldId!.Value, report, work);
     }
 
@@ -59,7 +59,7 @@ public class EvidencePageTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Posting_mark_illegal_needs_the_token_the_checkbox_and_a_reason_then_lands_on_the_hold()
     {
         var (_, work) = await _s.Story();
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         var url = $"/admin/reports/{report}?handler=MarkIllegal";
 
         Assert.Equal(HttpStatusCode.BadRequest, (await _b.Post(url, F(("reason", "r"), ("confirm", "on")), withToken: false)).Status);
@@ -129,7 +129,7 @@ public class EvidencePageTests(PostgresFixture pg) : IAsyncLifetime
         await using (var db = _s.Host.Db())
             await db.Profiles.Where(p => p.UserId == owner.Id).ExecuteUpdateAsync(s => s.SetProperty(p => p.DisplayName, "\"><img src=x onerror=alert(1)>"));
         var (_, work) = await _s.Story("<script>alert('t')</script>", owner);
-        var report = await _s.Report(await _s.NewUser(), "work", work, "illegal_content");
+        var report = await _s.Report(await _s.Reporter(), "work", work, "illegal_content");
         var hold = (await _s.MarkIllegal(_admin, report)).HoldId!.Value;
 
         var p = await _b.Get($"/admin/evidence/{hold}");
