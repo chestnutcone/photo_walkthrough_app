@@ -18,7 +18,7 @@ Read this first after any interruption. Update it after every task, then commit.
   (b) deleting an account while content is under review blocks the same sign-in identity (403 `signup_blocked`) until the
   review closes, at most 30 days; only the identity hash and dates are stored; bans stay permanent; (c) attestation at launch
   on Android only (Play Integrity, `Abuse:RequireAttestation:Android=true`), iOS App Attest deferred (`:Ios=false`), iOS and
-  every other unattested request held to tighter per-address/per-account limits. Product name stays Vela (code name).
+  every other unattested request held to its own per-address/per-account limits (sized for shared addresses, DECISIONS fix). Product name stays Vela (code name).
 
 ## Release blockers
 - [ ] **Legal review by counsel.** Legal texts are drafts; keep as is until counsel reviews. Scope: `api/src/Vela.Api/Legal/`
@@ -99,6 +99,12 @@ Read this first after any interruption. Update it after every task, then commit.
   `illegal_content` instant hide only from accounts at least 24 h old; re-signup block `signup_blocked` after deleting during
   review (hash + dates, at most 30 days); per-platform attestation (Android Play Integrity required, iOS deferred with tighter
   unattested limits); release blocker "Legal review by counsel"
+- [x] DECISIONS fix round (review-DECISIONS.md; [report](../../.superpowers/sdd/2026-10-22-vela-build/task-DECISIONS-fix-report.md) local only):
+  unattested limits sized for shared addresses (email 20/h per address + 5/h per (address, email), sso 60/h per address,
+  create_work 10/day per account), charged only after basic validation (sso after the identity token verifies), refusals counted by
+  `vela.abuse.unattested_limited`; R-3/deploy.md say the limits bound abuse per address only (I-1, I-2); report min-age validated
+  at start-up (M-4); `appAttestAppId` empty in prod params (M-5); validate-infra pins `requireAttestationAndroid=true` (M-6);
+  default/sso/create_work limit tests (M-7); deferral and signup blocks in one transaction (M-2)
 - [x] CLEANUP Contract and leftovers (77fa745, 77da463, b57a3c0, accfbf2, 18c5700): 501 stubs removed, idempotent follow text, open notification type, contract length limits (F-T2-1, F-A8-4, F-A13-1), B7 website opens https, 'Followed by' excludes viewer, zero build/analyze warnings, consolidated Deferred minors list below
 
 ## Review documents
@@ -172,6 +178,11 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | FINALAPI | I6 rest: no admin "clear avatar" action; profile text unscanned | Later / Accept | Avatars are now scanned before publishing (pre-launch none exist unscanned); ban covers a bad one; spec does not require profile text scans |
 | DECISIONS | An `X-Platform: ios` claim cannot be proven, so a script claiming iOS skips Play Integrity and gets the unattested budget (R-3); the unattested limiter is in memory per replica (R-4) | Owner / Accept | Closes when App Attest is designed and `Abuse:RequireAttestation:Ios=true`; single replica at launch |
 | DECISIONS | Re-signup block lapses up to an hour after the review closes (the deletion sweep rechecks hourly); a different identity (other email, Apple or Google account) is not blocked; rotating `Admin:BanPepper` voids blocks as it voids bans | Accept | Bounded and documented; identities are never linked by email by design |
+| DECISIONS fix | M-1: during the deferral the identity rows still exist, so the `signup_blocks` row only changes the error code (`signup_blocked` instead of `account_deleted`); the block is defence in depth | Accept | Keep the block rows meaningful if identities are ever deleted at request time; privacy text describes a hash that does exist |
+| DECISIONS fix | M-3: a fresh identity with the same email (email code after deleting an Apple/Google account, or the reverse) is not blocked | Accept / Owner | Identities are never linked by email (threat model A-13 residual) |
+| DECISIONS fix | M-8: the email code is consumed before `signup_blocked` is answered | Accept | Same as `account_deleted`/`account_suspended`; nothing leaks before the code verifies |
+| DECISIONS fix | The code store's 5 codes/h per email (every platform, any address) lets someone who floods requests for a victim's email delay the victim's code by up to an hour | Accept | Pre-existing mail-bombing guard (A4); the unattested limiter itself is keyed per (address, email) so it adds no cross-address lockout |
+| DECISIONS fix | Unattested `create_work` is charged in the middleware before the body is validated (per account, after sign-in) | Accept | A signed-in account only spends its own budget |
 | DECISIONS | Only `ssoSignIn` and `emailVerify` list their 403 codes (`SignInForbidden`); other operations still use the generic `Forbidden` (FINALAPI M6) | Later (contract) | Same as M6 |
 | C1 | Unused role assignments; hand-maintained settings list; Postgres CA trust and omitted-password behaviour; no one-time warning when `TrustedProxyHops>0` falls back to the TCP peer (F-C1-4) | Accept / Device | The warning needs a logger in `ClientIpResolver` (constructed in many places); check the rest on first deploy |
 
