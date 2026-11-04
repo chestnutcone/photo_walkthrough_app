@@ -160,13 +160,29 @@ setting to `false` and run an `dotnet ef migrations bundle` from a machine allow
   the header declares. An iOS claim cannot be proven without App Attest, so anyone can send it; what it buys is the tighter
   **unattested limits**, applied to every protected request that passes without a verified token (all iOS requests at launch):
 
-  | Action | Unattested limit (in memory, per replica) | Setting | For comparison, attested |
-  |---|---|---|---|
-  | `email_request` | 5 per hour per client address | `Abuse__RateLimits__unattested-email_request__Permit` | 20/hour per address (`auth-email`) |
-  | `sso` | 10 per hour per client address | `Abuse__RateLimits__unattested-sso__Permit` | `write` 60/min; 5 new accounts per address per day |
-  | `create_work` | 10 per day per account | `Abuse__RateLimits__unattested-create_work__Permit` | `upload` 20/hour per account |
+  | Action | Unattested limit (in memory, per replica) | Counts only | Setting | For comparison, attested |
+  |---|---|---|---|---|
+  | `email_request` | 20 per hour per client address | valid, permanent addresses that pass the per-email key | `Abuse__RateLimits__unattested-email_request__Permit` | 20/hour per address (`auth-email`) |
+  | `email_target` | 5 per hour per (client address, target email) | valid, permanent addresses | `Abuse__RateLimits__unattested-email_target__Permit` | 5/hour per email (code store, every platform) |
+  | `sso` | 60 per hour per client address | sign-ins whose identity token verified | `Abuse__RateLimits__unattested-sso__Permit` | `write` 60/min; 5 new accounts per address per day |
+  | `create_work` | 10 per day per account | every unattested `createDraft` | `Abuse__RateLimits__unattested-create_work__Permit` | `upload` 20/hour per account |
 
-  The per-email limits apply to every platform as before (5 codes per hour per address, wrong-code lockout), as do the signup
+  **Shared addresses (ruling, DECISIONS fix I-1).** These budgets are per client address, and one address is often shared by
+  many real people: carrier CGNAT (many phones behind one IPv4), school, office, hotel or event wifi. Every iOS user behind such
+  an address shares the same `email_request` and `sso` budget, so the numbers are sized for a crowded address (60 verified iOS
+  sign-ins and 20 email codes per hour), not for one phone. To keep junk from draining that shared budget, `sso` is charged only
+  after the identity token verifies (an exhausted address is refused before the token is checked), and email codes are charged
+  only for a valid, non-disposable address, the (address, email) key first: a burst of requests for one email spends only that
+  pair's budget, not the address budget the other people behind the address share. The code store's 5 codes per hour per email
+  (every platform, any address) is unchanged, so someone who floods requests for your email can still delay your code for up to
+  an hour; that limit predates this branch and is the mail-bombing guard. Every refusal increments the metric
+  **`vela.abuse.unattested_limited`** (tag `action`) in Application Insights; if it climbs for real users (support reports of
+  "Too many requests" on iOS, or a steady count from a few addresses), raise the permit with the setting above. The limits bound
+  abuse **per address only**: a bot that claims iOS through a proxy pool gets these budgets once per address it controls, and
+  until App Attest ships the only control across addresses is Cloudflare (bot fight mode / WAF rate rules on `/v1/auth/*` and
+  `POST /v1/works`, owner); see threat model R-3.
+
+  The per-email limits apply to every platform as before (5 codes per hour per email, wrong-code lockout), as do the signup
   velocity (5 new accounts per address per day) and the daily draft quota. 429 answers carry `Retry-After`.
 - **Play Integrity owner steps (Android, required at launch).** In Play Console link a Google Cloud project to the app (App
   integrity > Play Integrity API) and enable the Play Integrity API in that project. Note the **Cloud project number** and build
