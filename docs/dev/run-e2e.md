@@ -17,7 +17,11 @@ Screenshots: tests print `E2E_SHOT <flow>/<name>`; `scripts/e2e/run-test.sh` gra
 
 Test layout (`app/integration_test/`): `support/e2e.dart` (harness: fake photo picker, injected session, plain-HTTP
 second accounts, host helper client), `a_guest`, `b_signin_onboarding` (B and C), `d_social` (D, H, J, K),
-`e_create`, `f_profile_search_settings` (F, G, I, session restart), `g_a11y`.
+`e_create`, `f_profile_search_settings` (F, G, I, session restart), `g_a11y`, `h_safety` (L: 24 h `illegal_content` rule,
+M: `signup_blocked`), `i_attestation` (N: Android attestation). `run-e2e.sh` also starts a second API instance on `:5081`
+with `Abuse:RequireAttestation:Android=true` (fake verifier: the token `valid` passes) for `i_attestation`. The host helper
+also back-dates an account (`/backdate?handle=&hours=`) for the account-age rules. `run-test.sh` sets the emulator's
+`hide_error_dialogs` and `shot.py` closes a "System UI isn't responding" window before each screenshot.
 
 Manual checks used in the report: `scripts/e2e/adb-link.sh <uri> <out.png>` (deep links),
 `scripts/e2e/airplane.sh on|off`, `adb shell settings put system font_scale 2.0`,
