@@ -105,6 +105,9 @@ Read this first after any interruption. Update it after every task, then commit.
   `vela.abuse.unattested_limited`; R-3/deploy.md say the limits bound abuse per address only (I-1, I-2); report min-age validated
   at start-up (M-4); `appAttestAppId` empty in prod params (M-5); validate-infra pins `requireAttestationAndroid=true` (M-6);
   default/sso/create_work limit tests (M-7); deferral and signup blocks in one transaction (M-2)
+- [x] E2E-FINAL Final emulator e2e on the final code (8e34f07..HEAD, branch `build/e2e-final`, [report](../../.superpowers/sdd/2026-10-22-vela-build/task-E2EFINAL-report.md) local only):
+  25/25 on the emulator incl. new flows L (24 h `illegal_content`), M (`signup_blocked`), N (Android attestation); B/C test updated
+  for the follow-at-sign-in behaviour; fresh screenshots; web viewer re-checked; [install-on-device.md](../dev/install-on-device.md)
 - [x] CLEANUP Contract and leftovers (77fa745, 77da463, b57a3c0, accfbf2, 18c5700): 501 stubs removed, idempotent follow text, open notification type, contract length limits (F-T2-1, F-A8-4, F-A13-1), B7 website opens https, 'Followed by' excludes viewer, zero build/analyze warnings, consolidated Deferred minors list below
 
 ## Review documents
@@ -217,6 +220,7 @@ names the viewer; unused `levels` test parameter (F-A4-10); all `dotnet build` w
 | GALLERY | Contrast measured from rendered pixels flags 11-13 pt labels (anti-aliasing); specified colours pass | Accept | See a11y-audit.md |
 
 ## Log (newest first; one line per event: date, task, result, commit)
+- 2026-11-06 E2E-FINAL (8e34f07..HEAD, branch `build/e2e-final`): emulator e2e 25/25 on a fresh DB (first run 24/25: B/C test expected the followed artist in onboarding; test updated, no app/API fix needed); flows L, M, N added; a11y 15 findings (unchanged); Flutter 937 pass, 2 skipped, flutter analyze no issues; no API code touched (scripts only), no dotnet test run; web viewer Playwright pass; install-on-device.md verified on the emulator. NOT pushed: no SSH key in this sandbox.
 - 2026-11-04 DECISIONS fix round (f03c007..9652db3 + final docs, branch `build/decisions`): API 1506/1506 (was 1481; +25), one full run 24 min; dotnet build 0 warnings; `scripts/validate-infra.sh` OK; Flutter not run (app/contract untouched). Unattested limits sized for shared addresses and charged after validation, metric added, R-3 wording, M-2/M-4/M-5/M-6/M-7. Pushed.
 - 2026-11-03 DECISIONS (fc03982..9faf5db + docs, branch `build/decisions`): API 1481/1481 (was 1444), one full run 21 min; dotnet build 0 warnings; `scripts/validate-infra.sh` OK; Flutter 937 pass (was 935), 2 skipped, flutter analyze no issues; `scripts/gen-client.sh` run (doc comments only). Owner decisions (a) 24 h illegal_content rule, (b) `signup_blocked`, (c) Android-only attestation built; release blocker "Legal review by counsel" recorded. Pushed.
 - 2026-10-31 FINALAPI (61cf8cb..fc8ed7b + docs): API 1444/1444 (was 1406), one full run 18 min 27 s; dotnet build 0 warnings; `scripts/validate-infra.sh` OK. No app/, contract/ or generated client touched; no flutter run. Pushed.
