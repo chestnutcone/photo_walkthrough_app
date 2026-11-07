@@ -48,7 +48,9 @@ Future<void> completeOnboarding(
 void main() {
   initBinding();
 
-  testWidgets('B/C: SSO sign-in, onboarding, follow, Following tab', (tester) async {
+  testWidgets('B/C: SSO sign-in, onboarding, follow, Following tab', (
+    tester,
+  ) async {
     final artist = await makeAccount('fa$uniq', name: 'Followable $uniq');
     final workId = await publishStory(artist, 'Followable story $uniq');
 
@@ -60,7 +62,12 @@ void main() {
     await shot(tester, 'b-signin', '01-sign-in-sheet');
     expect(find.byKey(const ValueKey('sso-email')), findsOneWidget);
     await tapKey(tester, 'sso-google');
-    await completeOnboarding(tester, 'b-signin', 'ob$uniq', followId: artist.id);
+    await completeOnboarding(
+      tester,
+      'b-signin',
+      'ob$uniq',
+      followId: artist.id,
+    );
 
     // Signed in and onboarded: feed with a Following tab that lists the artist.
     await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
@@ -79,9 +86,11 @@ void main() {
   testWidgets('B: email code sign-in for a new account', (tester) async {
     final email = 'mail$uniq@example.com';
     await launchApp(tester);
-    final pill = find.byWidgetPredicate((w) =>
-        w.key is ValueKey<String> &&
-        (w.key! as ValueKey<String>).value.startsWith('follow-pill-'));
+    final pill = find.byWidgetPredicate(
+      (w) =>
+          w.key is ValueKey<String> &&
+          (w.key! as ValueKey<String>).value.startsWith('follow-pill-'),
+    );
     await pumpUntil(tester, pill);
     await tester.tap(pill.first);
     await pumpUntil(tester, find.byKey(const ValueKey('sso-email')));

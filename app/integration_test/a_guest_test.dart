@@ -8,18 +8,28 @@ import 'support/e2e.dart';
 void main() {
   initBinding();
 
-  testWidgets('A: guest feed, story walk-through, explore, replies', (tester) async {
+  testWidgets('A: guest feed, story walk-through, explore, replies', (
+    tester,
+  ) async {
     final artist = await makeAccount('ga$uniq', name: 'Guest Artist $uniq');
     final workId = await publishStory(artist, 'Guest story $uniq', chapters: 3);
     final reader = await makeAccount('gr$uniq');
-    await http('POST', '$apiBase/v1/works/$workId/chapters/0/replies',
-        token: reader.token, body: {'body': 'Reader says hi $uniq'});
+    await http(
+      'POST',
+      '$apiBase/v1/works/$workId/chapters/0/replies',
+      token: reader.token,
+      body: {'body': 'Reader says hi $uniq'},
+    );
 
     await launchApp(tester);
     await pumpUntil(tester, find.byKey(ValueKey('post-card-$workId')));
     await shot(tester, 'a-guest', '01-feed');
     expect(find.text('Discover'), findsOneWidget);
-    expect(find.text('Following'), findsNothing, reason: 'guests see only Discover');
+    expect(
+      find.text('Following'),
+      findsNothing,
+      reason: 'guests see only Discover',
+    );
 
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
     await settle(tester);
@@ -30,7 +40,9 @@ void main() {
     // Open the story from the feed.
     final card = find.byKey(ValueKey('post-card-$workId'));
     await tester.ensureVisible(card);
-    await tester.tap(find.descendant(of: card, matching: find.text('Walk through')));
+    await tester.tap(
+      find.descendant(of: card, matching: find.text('Walk through')),
+    );
     await pumpUntil(tester, find.text('Begin →'));
     await shot(tester, 'a-guest', '03-story-intro');
     expect(find.text('Intro for Guest story $uniq'), findsOneWidget);

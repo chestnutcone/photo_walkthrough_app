@@ -7,7 +7,9 @@ import 'support/e2e.dart';
 void main() {
   initBinding();
 
-  testWidgets('F: edit profile bio and see it on the portfolio', (tester) async {
+  testWidgets('F: edit profile bio and see it on the portfolio', (
+    tester,
+  ) async {
     final me = await makeAccount('pf$uniq', name: 'Profile $uniq');
     await publishStory(me, 'Portfolio story $uniq');
     await launchApp(tester, signedInAs: me);
@@ -30,7 +32,10 @@ void main() {
   });
 
   testWidgets('G: search finds an artist and a story', (tester) async {
-    final artist = await makeAccount('sa$uniq', name: 'Searchable Person $uniq');
+    final artist = await makeAccount(
+      'sa$uniq',
+      name: 'Searchable Person $uniq',
+    );
     await publishStory(artist, 'Searchable story $uniq');
     await launchApp(tester);
     await pumpUntil(tester, find.byKey(const ValueKey('search-button')));
@@ -55,8 +60,11 @@ void main() {
     await tapKey(tester, 'export-request');
     await settle(tester, 3000);
     await shot(tester, 'i-settings', '02-export-requested');
-    expect(find.byKey(const ValueKey('export-request')), findsNothing,
-        reason: 'request button is replaced by the pending status');
+    expect(
+      find.byKey(const ValueKey('export-request')),
+      findsNothing,
+      reason: 'request button is replaced by the pending status',
+    );
     await tapKey(tester, 'settings-sign-out');
     await pumpUntil(tester, find.text('Discover'));
     expect(find.byKey(const ValueKey('tab-following')), findsNothing);
@@ -90,16 +98,19 @@ void main() {
     expect(find.byKey(const ValueKey('tab-following')), findsNothing);
   });
 
-  testWidgets('session persists across an app restart and a guest stays a guest', (tester) async {
-    final me = await makeAccount('rs$uniq');
-    await launchApp(tester, signedInAs: me);
-    await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
-    // Cold restart: fresh widget tree, same secure storage.
-    await launchApp(tester, clean: false);
-    await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
-    await shot(tester, 'i-session', '01-still-signed-in-after-restart');
-    goTo(tester, '/settings');
-    await pumpUntil(tester, find.byKey(const ValueKey('settings-account')));
-    expect(find.text('Signed in as @${me.handle}.'), findsOneWidget);
-  });
+  testWidgets(
+    'session persists across an app restart and a guest stays a guest',
+    (tester) async {
+      final me = await makeAccount('rs$uniq');
+      await launchApp(tester, signedInAs: me);
+      await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
+      // Cold restart: fresh widget tree, same secure storage.
+      await launchApp(tester, clean: false);
+      await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
+      await shot(tester, 'i-session', '01-still-signed-in-after-restart');
+      goTo(tester, '/settings');
+      await pumpUntil(tester, find.byKey(const ValueKey('settings-account')));
+      expect(find.text('Signed in as @${me.handle}.'), findsOneWidget);
+    },
+  );
 }
