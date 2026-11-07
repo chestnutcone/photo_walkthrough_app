@@ -34,9 +34,12 @@ export ConnectionStrings__Default="Host=127.0.0.1;Port=$PG_PORT;Database=vela;Us
 export Database__MigrateOnStartup=true
 export Abuse__RequireAttestation__Android="${VELA_E2E_REQUIRE_ATTESTATION_ANDROID:-false}"
 export Abuse__SignupsPerIpPerDay=100000   # e2e creates many accounts from one IP
-# Image URLs handed to the emulator point at 127.0.0.1:$AZ_PORT; the emulator reaches it via `adb reverse tcp:$AZ_PORT tcp:$AZ_PORT`.
-export Storage__PublicBaseUrl="http://127.0.0.1:$AZ_PORT/devstoreaccount1/"
-export Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:$AZ_PORT/devstoreaccount1;"
+# Image and upload URLs handed to the device point at 127.0.0.1:$AZ_PORT; the emulator (or a USB phone) reaches it via
+# `adb reverse tcp:$AZ_PORT tcp:$AZ_PORT`. VELA_PUBLIC_HOST=<LAN IP> puts that address in the URLs instead, for a phone on
+# the same Wi-Fi without adb reverse (docs/dev/install-on-device.md). Azurite's well-known dev key, not a secret.
+BLOB_HOST="${VELA_PUBLIC_HOST:-127.0.0.1}"
+export Storage__PublicBaseUrl="http://$BLOB_HOST:$AZ_PORT/devstoreaccount1/"
+export Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://$BLOB_HOST:$AZ_PORT/devstoreaccount1;"
 export Storage__EnsurePublicRead=true   # works/avatars public-read, like the Azure infra
 export Auth__ReviewMode=false
 export Auth__UserStateCacheSeconds=1   # a ban set directly in the DB is seen within a second
