@@ -4,8 +4,13 @@ A debug build talks to the local Development API over plain http (`app/android/a
 allows cleartext in debug builds only) and signs in with the server's fake identity provider (`VELA_FAKE_SSO=true`),
 so no Google account, Play Integrity or email delivery is needed. Release builds refuse an `http://` API.
 
-All commands run from the repository root. Toolchains: `source scripts/dev-env.sh && source scripts/android-env.sh`
+Each code block starts in the repository root (blocks that build `cd app`; go back with `cd ..`). Toolchains: `source scripts/dev-env.sh && source scripts/android-env.sh`
 in every shell (or prefix a single command with `scripts/with-env.sh`).
+
+Verified 2026-11-06 on the `vela_test` emulator (Android 15, API 35): section 2a as written; section 2b option 1 with
+`-s emulator-5554` (`adb reverse` behaves the same on an emulator); option 2 with the WSL address `172.26.59.192` as
+`HOST_IP` and no `adb reverse` (cleared app data, feed photos loaded from `http://172.26.59.192:10000/...`). A physical
+phone was not available in the sandbox.
 
 ## 1. Start the local API and seed demo data
 
