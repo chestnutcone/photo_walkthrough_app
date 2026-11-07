@@ -12,17 +12,18 @@ Future<void> reportIllegal(
   WidgetTester tester,
   String workId,
   String flow,
-  String prefix,
+  String reasonShot,
+  String doneShot,
 ) async {
   goTo(tester, '/story/$workId');
   await pumpUntil(tester, find.byKey(const ValueKey('story-menu')));
   await tapKey(tester, 'story-menu');
   await tapKey(tester, 'story-menu-report');
   await tapKey(tester, 'report-reason-illegal_content');
-  await shot(tester, flow, '$prefix-reason');
+  await shot(tester, flow, reasonShot);
   await tapKey(tester, 'report-send');
   await pumpUntil(tester, find.byKey(const ValueKey('report-done')));
-  await shot(tester, flow, '$prefix-acknowledged');
+  await shot(tester, flow, doneShot);
   await tapKey(tester, 'report-done');
 }
 
@@ -66,7 +67,13 @@ void main() {
       // A brand-new account: acknowledged, queued, no hide for others.
       await launchApp(tester, signedInAs: young);
       await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
-      await reportIllegal(tester, workId, 'l-illegal-24h', '01-young');
+      await reportIllegal(
+        tester,
+        workId,
+        'l-illegal-24h',
+        '01-young-reason',
+        '02-young-acknowledged',
+      );
       expect(await tester.runAsync(() => guestSeesStory(workId)), isTrue);
       await openAsGuest(tester, workId);
       expect(find.text('Begin →'), findsOneWidget);
@@ -78,7 +85,13 @@ void main() {
       await tester.runAsync(() => backdateHandle(old.handle, 25));
       await launchApp(tester, signedInAs: old);
       await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
-      await reportIllegal(tester, workId, 'l-illegal-24h', '04-old');
+      await reportIllegal(
+        tester,
+        workId,
+        'l-illegal-24h',
+        '04-old-reason',
+        '05-old-acknowledged',
+      );
       expect(await tester.runAsync(() => guestSeesStory(workId)), isFalse);
       await openAsGuest(tester, workId);
       expect(find.text("This story isn't available"), findsOneWidget);
