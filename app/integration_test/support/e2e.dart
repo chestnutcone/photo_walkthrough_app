@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:dio/dio.dart' show HttpClientAdapter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vela_app/core/api/api_providers.dart';
 import 'package:vela_app/core/attestation/attestation_client.dart';
 import 'package:vela_app/core/attestation/platform_attestation.dart';
 import 'package:vela_app/features/auth/sso_client.dart';
@@ -53,7 +55,11 @@ Uint8List testPhoto({int w = 1200, int h = 800, int? exifOrientation}) {
       x: rnd.nextInt(w),
       y: rnd.nextInt(h),
       radius: 40 + rnd.nextInt(120),
-      color: img.ColorRgb8(rnd.nextInt(255), rnd.nextInt(255), rnd.nextInt(255)),
+      color: img.ColorRgb8(
+        rnd.nextInt(255),
+        rnd.nextInt(255),
+        rnd.nextInt(255),
+      ),
     );
   }
   if (exifOrientation != null) im.exif.imageIfd.orientation = exifOrientation;
@@ -77,6 +83,8 @@ Future<void> launchApp(
   bool clean = true,
   Account? signedInAs,
   String? ssoSubject,
+  AttestationClient? attestation,
+  HttpClientAdapter? httpAdapter,
 }) async {
   if (clean) {
     await const FlutterSecureStorage().deleteAll();
@@ -88,7 +96,9 @@ Future<void> launchApp(
       value: Session(
         accessToken: signedInAs.token,
         refreshToken: signedInAs.refresh,
-        accessExpiresAt: DateTime.now().toUtc().add(const Duration(minutes: 14)),
+        accessExpiresAt: DateTime.now().toUtc().add(
+          const Duration(minutes: 14),
+        ),
       ).encode(),
     );
   }
@@ -97,8 +107,10 @@ Future<void> launchApp(
       key: UniqueKey(),
       overrides: [
         attestationClientProvider.overrideWithValue(
-          createPlatformAttestationClient(),
+          attestation ?? createPlatformAttestationClient(),
         ),
+        if (httpAdapter != null)
+          httpClientAdapterProvider.overrideWithValue(httpAdapter),
         if (picker != null) photoPickerProvider.overrideWithValue(picker),
         ssoClientProvider.overrideWithValue(
           _TestSso(ssoSubject ?? 'ui$runId${_launches++}'),
@@ -248,15 +260,16 @@ Future<Account> makeAccount(String handle, {String? name}) async {
       'followArtistIds': <String>[],
     },
   );
-  return Account(token, r['data']['refreshToken'] as String, me['data']['id'] as String, handle);
+  return Account(
+    token,
+    r['data']['refreshToken'] as String,
+    me['data']['id'] as String,
+    handle,
+  );
 }
 
 /// Creates and publishes a story over HTTP, returns the work id.
-Future<String> publishStory(
-  Account a,
-  String title, {
-  int chapters = 3,
-}) async {
+Future<String> publishStory(Account a, String title, {int chapters = 3}) async {
   final d = await http(
     'POST',
     '$apiBase/v1/works',
@@ -303,6 +316,10 @@ Future<String> latestEmailCode() async =>
 
 Future<void> suspendHandle(String handle) async =>
     _text('$helperBase/suspend?handle=$handle');
+
+/// Moves the account's creation time [hours] into the past (account-age rules).
+Future<void> backdateHandle(String handle, int hours) async =>
+    _text('$helperBase/backdate?handle=$handle&hours=$hours');
 
 Future<String> _text(String url) async {
   final c = HttpClient();

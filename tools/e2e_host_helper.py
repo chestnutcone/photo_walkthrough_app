@@ -3,8 +3,9 @@
 
   GET /code            latest sign-in code printed by the API's ConsoleEmailSender (.local/api.log)
   GET /suspend?handle= suspends the account in the local Postgres container (what an admin ban does)
+  GET /backdate?handle=&hours= moves the account's created_at back (account-age rules: 24 h illegal_content, 7 days)
   GET /health
-Bound to 0.0.0.0 on a throwaway dev sandbox; it can only read a log and flip one column, and must never be exposed.
+Bound to 0.0.0.0 on a throwaway dev sandbox; it can only read a log and set two user columns, and must never be exposed.
 """
 import http.server
 import os
@@ -16,6 +17,7 @@ import urllib.parse
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 LOG = os.path.join(ROOT, ".local", "api.log")
 HANDLE = re.compile(r"^[a-z0-9_]{3,20}$")
+HOURS = re.compile(r"^[0-9]{1,5}$")
 
 
 class H(http.server.BaseHTTPRequestHandler):
@@ -37,10 +39,22 @@ class H(http.server.BaseHTTPRequestHandler):
             handle = q.get("handle", [""])[0]
             if not HANDLE.match(handle):
                 return self._send(400, "bad handle")
-            sql = f"update users set suspended_at = now() where id = (select user_id from profiles where handle = '{handle}')"
-            r = subprocess.run(["docker", "exec", "vela-e2e-pg", "psql", "-U", "vela", "-d", "vela", "-tAc", sql], capture_output=True, text=True)
-            return self._send(200 if r.returncode == 0 else 500, r.stdout + r.stderr)
+            return self._sql(f"update users set suspended_at = now() where id = (select user_id from profiles where handle = '{handle}')")
+        if u.path == "/backdate":
+            handle = q.get("handle", [""])[0]
+            hours = q.get("hours", [""])[0]
+            if not HANDLE.match(handle) or not HOURS.match(hours):
+                return self._send(400, "bad handle or hours")
+            return self._sql(
+                f"update users set created_at = now() - interval '{int(hours)} hours' "
+                f"where id = (select user_id from profiles where handle = '{handle}')")
         self._send(404, "not found")
+
+    def _sql(self, sql):
+        r = subprocess.run(["docker", "exec", "vela-e2e-pg", "psql", "-U", "vela", "-d", "vela", "-tAc", sql],
+                           capture_output=True, text=True)
+        ok = r.returncode == 0 and "UPDATE 1" in r.stdout
+        return self._send(200 if ok else 500, r.stdout + r.stderr)
 
     def log_message(self, *a):
         pass

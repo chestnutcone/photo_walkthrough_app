@@ -47,11 +47,18 @@ void main() {
     await enterKey(tester, 'story-title', title);
     await shot(tester, flow, '05-ready');
     await tapKey(tester, 'publish');
-    await pumpUntilGone(tester, find.byKey(const ValueKey('create-screen')),
-        timeout: const Duration(seconds: 90));
+    await pumpUntilGone(
+      tester,
+      find.byKey(const ValueKey('create-screen')),
+      timeout: const Duration(seconds: 90),
+    );
     await settle(tester, 2000);
     await shot(tester, flow, '06-published');
-    final mine = await http('GET', '$apiBase/v1/artists/${me.handle}/works', token: me.token);
+    final mine = await http(
+      'GET',
+      '$apiBase/v1/artists/${me.handle}/works',
+      token: me.token,
+    );
     final work = (mine['data'] as List).firstWhere((w) => w['title'] == title);
     expect(work['status'] ?? 'published', 'published');
     expect(work['chapters'], hasLength(2));
@@ -63,7 +70,9 @@ void main() {
   testWidgets('E: create a landscape story, publish, open it', (tester) async {
     final me = await makeAccount('ec$uniq');
     final id = await createStory(
-      tester, 'e-create', me,
+      tester,
+      'e-create',
+      me,
       FakePhotoPicker(() => testPhoto(w: 1600, h: 1000)),
       'Landscape $uniq',
     );
@@ -71,40 +80,53 @@ void main() {
     await pumpUntil(tester, find.text('Begin →'));
     await shot(tester, 'e-create', '07-open-published');
     final w = await http('GET', '$apiBase/v1/works/$id', token: me.token);
-    expect(w['data']['imageWidth'], greaterThan(w['data']['imageHeight'] as int));
+    expect(
+      w['data']['imageWidth'],
+      greaterThan(w['data']['imageHeight'] as int),
+    );
   });
 
-  testWidgets('E: an EXIF-rotated JPEG is shown and stored upright', (tester) async {
+  testWidgets('E: an EXIF-rotated JPEG is shown and stored upright', (
+    tester,
+  ) async {
     final me = await makeAccount('er$uniq');
     // 1600x1000 stored sideways with orientation 6 = displays as 1000x1600.
     final id = await createStory(
-      tester, 'e-create-rotated', me,
+      tester,
+      'e-create-rotated',
+      me,
       FakePhotoPicker(() => testPhoto(w: 1600, h: 1000, exifOrientation: 6)),
       'Rotated $uniq',
     );
     final w = await http('GET', '$apiBase/v1/works/$id', token: me.token);
     log('rotated image ${w['data']['imageWidth']}x${w['data']['imageHeight']}');
-    expect(w['data']['imageHeight'], greaterThan(w['data']['imageWidth'] as int),
-        reason: 'EXIF orientation must be baked in');
+    expect(
+      w['data']['imageHeight'],
+      greaterThan(w['data']['imageWidth'] as int),
+      reason: 'EXIF orientation must be baked in',
+    );
     goTo(tester, '/story/$id');
     await pumpUntil(tester, find.text('Begin →'));
     await shot(tester, 'e-create-rotated', '07-open-published');
   });
 
-  testWidgets('E: a new account reaches create, portfolio and settings from the feed only', (tester) async {
-    final me = await makeAccount('nv$uniq');
-    await launchApp(tester, signedInAs: me);
-    await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
-    await shot(tester, 'e-nav', '01-feed-with-tab-bar');
-    await tapKey(tester, 'tab-bar-create');
-    await pumpUntil(tester, find.byKey(const ValueKey('create-screen')));
-    await shot(tester, 'e-nav', '02-create');
-    await tapKey(tester, 'cancel');
-    await pumpUntil(tester, find.byKey(const ValueKey('tab-bar-portfolio')));
-    await tapKey(tester, 'tab-bar-portfolio');
-    await pumpUntil(tester, find.byKey(const ValueKey('portfolio-settings')));
-    await shot(tester, 'e-nav', '03-own-portfolio');
-    await tapKey(tester, 'portfolio-settings');
-    await pumpUntil(tester, find.byKey(const ValueKey('settings-sign-out')));
-  });
+  testWidgets(
+    'E: a new account reaches create, portfolio and settings from the feed only',
+    (tester) async {
+      final me = await makeAccount('nv$uniq');
+      await launchApp(tester, signedInAs: me);
+      await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
+      await shot(tester, 'e-nav', '01-feed-with-tab-bar');
+      await tapKey(tester, 'tab-bar-create');
+      await pumpUntil(tester, find.byKey(const ValueKey('create-screen')));
+      await shot(tester, 'e-nav', '02-create');
+      await tapKey(tester, 'cancel');
+      await pumpUntil(tester, find.byKey(const ValueKey('tab-bar-portfolio')));
+      await tapKey(tester, 'tab-bar-portfolio');
+      await pumpUntil(tester, find.byKey(const ValueKey('portfolio-settings')));
+      await shot(tester, 'e-nav', '03-own-portfolio');
+      await tapKey(tester, 'portfolio-settings');
+      await pumpUntil(tester, find.byKey(const ValueKey('settings-sign-out')));
+    },
+  );
 }

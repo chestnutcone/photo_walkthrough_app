@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/e2e.dart';
 
-Finder _replyPill() => find.textContaining(RegExp(r'repl', caseSensitive: false)).last;
+Finder _replyPill() =>
+    find.textContaining(RegExp(r'repl', caseSensitive: false)).last;
 
 Future<void> openStoryChapter(WidgetTester tester, String workId) async {
   goTo(tester, '/story/$workId');
@@ -30,9 +31,11 @@ void main() {
     await tapKey(tester, 'composer-send');
     await pumpUntil(tester, find.text('My reply $uniq'));
     await shot(tester, 'd-replies', '02-posted');
-    final del = find.byWidgetPredicate((w) =>
-        w.key is ValueKey<String> &&
-        (w.key! as ValueKey<String>).value.startsWith('delete-'));
+    final del = find.byWidgetPredicate(
+      (w) =>
+          w.key is ValueKey<String> &&
+          (w.key! as ValueKey<String>).value.startsWith('delete-'),
+    );
     await pumpUntil(tester, del);
     await tester.tap(del.first);
     await pumpUntil(tester, find.text('Delete this reply?'));
@@ -61,40 +64,57 @@ void main() {
     await shot(tester, 'j-report', '03-thanks');
   });
 
-  testWidgets('H: notifications for a reply and a follow deep-link to the chapter', (tester) async {
-    final owner = await makeAccount('ho$uniq', name: 'Owner $uniq');
-    final workId = await publishStory(owner, 'Notify story $uniq');
-    final other = await makeAccount('hx$uniq', name: 'Other $uniq');
-    await http('PUT', '$apiBase/v1/artists/${owner.id}/follow', token: other.token);
-    await http('POST', '$apiBase/v1/works/$workId/chapters/1/replies',
-        token: other.token, body: {'body': 'Notify reply $uniq'});
+  testWidgets(
+    'H: notifications for a reply and a follow deep-link to the chapter',
+    (tester) async {
+      final owner = await makeAccount('ho$uniq', name: 'Owner $uniq');
+      final workId = await publishStory(owner, 'Notify story $uniq');
+      final other = await makeAccount('hx$uniq', name: 'Other $uniq');
+      await http(
+        'PUT',
+        '$apiBase/v1/artists/${owner.id}/follow',
+        token: other.token,
+      );
+      await http(
+        'POST',
+        '$apiBase/v1/works/$workId/chapters/1/replies',
+        token: other.token,
+        body: {'body': 'Notify reply $uniq'},
+      );
 
-    await launchApp(tester, signedInAs: owner);
-    await pumpUntil(tester, find.byKey(const ValueKey('bell-button')));
-    await pumpUntil(tester, find.byKey(const ValueKey('unread-badge')));
-    await shot(tester, 'h-notifications', '01-bell-badge');
-    await tapKey(tester, 'bell-button');
-    final items = find.byWidgetPredicate((w) =>
-        w.key is ValueKey<String> &&
-        (w.key! as ValueKey<String>).value.startsWith('notification-') &&
-        !(w.key! as ValueKey<String>).value.endsWith('-unread'));
-    await pumpUntil(tester, items);
-    await settle(tester, 1000);
-    expect(items.evaluate().length, greaterThanOrEqualTo(2));
-    await shot(tester, 'h-notifications', '02-list');
-    // Tap the reply notification (mentions "replied").
-    final reply = find.textContaining('repl', findRichText: true);
-    await tester.tap(reply.first);
-    await pumpUntil(tester, find.text('Notify reply $uniq'));
-    await shot(tester, 'h-notifications', '03-deep-linked-replies');
-  });
+      await launchApp(tester, signedInAs: owner);
+      await pumpUntil(tester, find.byKey(const ValueKey('bell-button')));
+      await pumpUntil(tester, find.byKey(const ValueKey('unread-badge')));
+      await shot(tester, 'h-notifications', '01-bell-badge');
+      await tapKey(tester, 'bell-button');
+      final items = find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            (w.key! as ValueKey<String>).value.startsWith('notification-') &&
+            !(w.key! as ValueKey<String>).value.endsWith('-unread'),
+      );
+      await pumpUntil(tester, items);
+      await settle(tester, 1000);
+      expect(items.evaluate().length, greaterThanOrEqualTo(2));
+      await shot(tester, 'h-notifications', '02-list');
+      // Tap the reply notification (mentions "replied").
+      final reply = find.textContaining('repl', findRichText: true);
+      await tester.tap(reply.first);
+      await pumpUntil(tester, find.text('Notify reply $uniq'));
+      await shot(tester, 'h-notifications', '03-deep-linked-replies');
+    },
+  );
 
-  testWidgets('K: a suspended account sees the suspended screen', (tester) async {
+  testWidgets('K: a suspended account sees the suspended screen', (
+    tester,
+  ) async {
     final me = await makeAccount('ks$uniq');
     await launchApp(tester, signedInAs: me);
     await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
     await tester.runAsync(() => suspendHandle(me.handle));
-    await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 2)));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(seconds: 2)),
+    );
     goTo(tester, '/notifications');
     await pumpUntil(tester, find.byKey(const ValueKey('suspended-support')));
     await shot(tester, 'k-suspended', '01-suspended-screen');

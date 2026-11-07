@@ -21,7 +21,9 @@ Future<void> audit(WidgetTester tester, String screen) async {
       await expectLater(tester, meetsGuideline(e.value));
     } on TestFailure catch (f) {
       final msg = f.message?.replaceAll('\n', ' ').trim() ?? '';
-      _violations.add('$screen | ${e.key} | ${msg.length > 400 ? msg.substring(0, 400) : msg}');
+      _violations.add(
+        '$screen | ${e.key} | ${msg.length > 400 ? msg.substring(0, 400) : msg}',
+      );
       // ignore: avoid_print
       print('A11Y_FAIL $screen | ${e.key} | $msg');
     }
@@ -63,8 +65,16 @@ void main() {
     final me = await makeAccount('ab$uniq', name: 'A11y Me $uniq');
     await publishStory(me, 'A11y own story $uniq');
     final other = await makeAccount('ac$uniq');
-    await http('PUT', '$apiBase/v1/artists/${me.id}/follow', token: other.token);
-    await launchApp(tester, signedInAs: me, picker: FakePhotoPicker(() => testPhoto()));
+    await http(
+      'PUT',
+      '$apiBase/v1/artists/${me.id}/follow',
+      token: other.token,
+    );
+    await launchApp(
+      tester,
+      signedInAs: me,
+      picker: FakePhotoPicker(() => testPhoto()),
+    );
     await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
     await audit(tester, 'signed-in-feed');
     goTo(tester, '/notifications');
@@ -92,12 +102,23 @@ void main() {
     await launchApp(tester);
     final acct = await makeAccount('ad$uniq');
     // A signed-in but not onboarded account lands on onboarding.
-    final r = await http('POST', '$apiBase/v1/auth/sso',
-        body: {'provider': 'fake', 'idToken': 'fake:nb$uniq:nb$uniq@example.com', 'nonce': 'n'});
+    final r = await http(
+      'POST',
+      '$apiBase/v1/auth/sso',
+      body: {
+        'provider': 'fake',
+        'idToken': 'fake:nb$uniq:nb$uniq@example.com',
+        'nonce': 'n',
+      },
+    );
     await launchApp(
       tester,
-      signedInAs: Account(r['data']['accessToken'] as String,
-          r['data']['refreshToken'] as String, '', ''),
+      signedInAs: Account(
+        r['data']['accessToken'] as String,
+        r['data']['refreshToken'] as String,
+        '',
+        '',
+      ),
     );
     await pumpUntil(tester, find.byKey(const ValueKey('welcome-continue')));
     await audit(tester, 'onboarding-welcome');

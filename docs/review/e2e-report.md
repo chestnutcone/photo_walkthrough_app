@@ -1,9 +1,65 @@
 # End-to-end verification report (Android emulator, real local API)
 
-Latest run: **2026-10-31** (GALLERY task). Device: Android 15 (API 35) x86_64 emulator `vela_test`, 1080 x 2400, headless with
-swiftshader and KVM; debug build `dev.vela.app` on the branch at c30040c (later test files also picked up ab4c0e7); API in Development mode on `http://10.0.2.2:5080`
-with Postgres 16 and Azurite in Docker, seeded by `tools/seed_local.py`. Re-run everything with `scripts/run-e2e.sh`
-([docs/dev/run-e2e.md](../dev/run-e2e.md)).
+Latest run: **2026-11-06** (E2E-FINAL task, final code after FINALAPP, FINALAPI and the 2026-11-03 owner decisions).
+Device: Android 15 (API 35) x86_64 emulator `vela_test` (`sdk_gphone64_x86_64`), 1080 x 2400, headless with swiftshader,
+KVM, 3 GB RAM; debug build `dev.vela.app` from branch `build/e2e-final`; API in Development mode on `http://10.0.2.2:5080`
+(attestation off) plus a second instance on `:5081` with `Abuse:RequireAttestation:Android=true` and the fake verifier,
+Postgres 16 and Azurite in Docker on a fresh database, seeded by `tools/seed_local.py`. Re-run everything with
+`scripts/run-e2e.sh` ([docs/dev/run-e2e.md](../dev/run-e2e.md)). Installing a normal build on an emulator or a USB phone:
+[docs/dev/install-on-device.md](../dev/install-on-device.md).
+
+## 2026-11-06 final run (E2E-FINAL)
+
+| File | Flows | Tests | Result |
+|---|---|---|---|
+| `a_guest_test.dart` | A | 1 | pass |
+| `b_signin_onboarding_test.dart` | B, C | 2 | pass (after a test update, see below) |
+| `d_social_test.dart` | D, H, J, K | 4 | pass |
+| `e_create_test.dart` | E (create, EXIF rotation, navigation) | 3 | pass |
+| `f_profile_search_settings_test.dart` | F, G, I (settings, export, delete, session restart) | 5 | pass |
+| `g_a11y_test.dart` | accessibility guidelines on 19 screens | 3 | pass (violations are collected, not asserted) |
+| `h_safety_test.dart` (new) | L: 24 h `illegal_content` rule; M: `signup_blocked` | 2 | pass |
+| `i_attestation_test.dart` (new) | N: Android attestation (fake Play Integrity, no token, real plugin on the emulator) | 4 | pass |
+| **Total** | | **25** | **25 pass, 0 fail** on the final run; the first run of the day was 24/25 |
+
+New flows (screenshots in `l-illegal-24h/`, `m-signup-blocked/`, `n-attestation/`):
+- **L** An account a few minutes old reports a story as illegal content: the sheet acknowledges ("Thanks for letting us
+  know... hidden for you"), and a guest still opens the story. A second account back-dated 25 h through the host helper
+  (`/backdate`, short of the 7-day rule) reports it: the story is gone for the guest at once ("This story isn't available").
+- **M** An artist with a pending report deletes the account (`deferred_review`); signing in again with the same identity on a
+  fresh install shows the `signup_blocked` message on the sign-in sheet, which stays usable (email option offered).
+- **N** Against the attestation-required instance: the API refuses an SSO request without a token (403
+  `attestation_required`); with the fake Play Integrity token `valid` SSO sign-in reaches onboarding; with no token the sheet
+  says "This device couldn't be verified." for both Google and the email-code request; with the real Play Integrity plugin
+  (non-zero project number) the emulator yields no token and the app shows the same message, no crash. A real Play Integrity
+  token cannot be produced here (no Play-linked Cloud project, emulator image), so only the error path of the real plugin is
+  covered.
+
+Regression found: **B/C** failed because a guest's Follow tap is now carried out right after sign-in (the sign-in sheet
+returns and the feed runs the follow), so onboarding no longer suggests that artist. The app behaviour is the intended
+"resume what you tapped" flow; the test was updated to expect the artist to be followed already and absent from the
+suggestions (test-only change). No app or API code needed a fix.
+
+Harness fixes: the loaded emulator raised "System UI isn't responding" over the app in several screenshots of the first run;
+`scripts/e2e/run-test.sh` now sets `hide_error_dialogs` and `scripts/e2e/shot.py` closes an ANR window before each capture.
+`scripts/run-local-api.sh` runs named instances (`VELA_E2E_INSTANCE`, `VELA_E2E_REQUIRE_ATTESTATION_ANDROID`) and takes
+`VELA_PUBLIC_HOST` for the LAN-address install option.
+
+Screenshots of every automated flow were replaced by this run (`docs/review/screenshots/<flow>/`, 540 px wide, folder about
+20 MB including the widget gallery); the manual `gap/` set is from the first run and was not repeated. On-device
+accessibility (`a11y-violations.txt`): **15** findings, the same profile as 2026-10-31 (2 tap targets: the 15 pt progress
+segments, ruling S2-6; 13 text-contrast hints from anti-aliased pixels or transitions). Web viewer re-checked with Playwright:
+[web-viewer-report.md](web-viewer-report.md).
+
+Gaps seen on this run (not fixed):
+- Minor (API): the follow carried out right after sign-in is stored before the new account accepts the terms and confirms
+  18+ in onboarding. The follower list filters to onboarded users, but follower counts (`ArtistQueries.Rows`) count it, and it stays if the user abandons onboarding. Proposed:
+  count only onboarded, active followers, or gate `PUT /v1/artists/{id}/follow` on onboarding like replies (403 `onboarding_required`),
+  with the app resuming the follow after onboarding. Owner/API decision.
+- Minor (app): onboarding still asks for three picks ("3 of 3 selected") even when the user already follows the artist they
+  tapped. Proposed: count existing follows toward the three.
+- Same limits as before: no real Google/Apple sign-in, real Play Integrity verdicts, verified app links, TalkBack speech,
+  release build; no physical phone (install steps verified on the emulator only).
 
 ## 2026-10-31 re-run (after S2, S2 fixes, CLEANUP and the GALLERY fixes)
 

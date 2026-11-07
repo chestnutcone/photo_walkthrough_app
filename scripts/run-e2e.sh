@@ -8,6 +8,9 @@ ENVRUN="$ROOT/scripts/with-env.sh"
 LOGS="$ROOT/.local/e2e-logs"; mkdir -p "$LOGS"
 
 "$ROOT/scripts/run-local-api.sh" || exit 1
+# Second instance with Android attestation required (fake verifier: token "valid"), for i_attestation_test.dart.
+VELA_E2E_INSTANCE=api-attested VELA_E2E_API_PORT=5081 VELA_E2E_REQUIRE_ATTESTATION_ANDROID=true \
+  "$ROOT/scripts/run-local-api.sh" || exit 1
 
 if ! curl -fs http://127.0.0.1:5090/health >/dev/null 2>&1; then
   nohup python3 "$ROOT/tools/e2e_host_helper.py" 5090 >"$ROOT/.local/helper.log" 2>&1 &

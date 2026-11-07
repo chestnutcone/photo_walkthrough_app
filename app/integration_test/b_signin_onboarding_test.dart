@@ -9,7 +9,7 @@ Future<void> completeOnboarding(
   WidgetTester tester,
   String flow,
   String handle, {
-  String? followId,
+  String? alreadyFollowedId,
 }) async {
   await pumpUntil(tester, find.byKey(const ValueKey('welcome-continue')));
   await shot(tester, flow, '03-onboarding-welcome');
@@ -23,17 +23,15 @@ Future<void> completeOnboarding(
   await tapKey(tester, 'profile-continue');
   await pumpUntil(tester, find.byKey(const ValueKey('follow-finish')));
   await settle(tester, 1500);
-  var picked = 0;
-  if (followId != null) {
-    await tapKey(tester, 'artist-$followId');
-    picked++;
+  if (alreadyFollowedId != null) {
+    expect(find.byKey(ValueKey('artist-$alreadyFollowedId')), findsNothing);
   }
+  var picked = 0;
   // The server wants at least three follows; pick others from the list.
   final rows = find.byWidgetPredicate(
     (w) =>
         w.key is ValueKey<String> &&
-        (w.key! as ValueKey<String>).value.startsWith('artist-') &&
-        (w.key! as ValueKey<String>).value != 'artist-$followId',
+        (w.key! as ValueKey<String>).value.startsWith('artist-'),
   );
   for (var i = 0; picked < 3 && i < rows.evaluate().length; i++) {
     await tester.ensureVisible(rows.at(i));
@@ -48,7 +46,9 @@ Future<void> completeOnboarding(
 void main() {
   initBinding();
 
-  testWidgets('B/C: SSO sign-in, onboarding, follow, Following tab', (tester) async {
+  testWidgets('B/C: SSO sign-in, onboarding, follow, Following tab', (
+    tester,
+  ) async {
     final artist = await makeAccount('fa$uniq', name: 'Followable $uniq');
     final workId = await publishStory(artist, 'Followable story $uniq');
 
@@ -60,7 +60,14 @@ void main() {
     await shot(tester, 'b-signin', '01-sign-in-sheet');
     expect(find.byKey(const ValueKey('sso-email')), findsOneWidget);
     await tapKey(tester, 'sso-google');
-    await completeOnboarding(tester, 'b-signin', 'ob$uniq', followId: artist.id);
+    // The Follow tap that opened the sheet is carried out right after sign-in,
+    // so onboarding no longer suggests that artist; pick three others.
+    await completeOnboarding(
+      tester,
+      'b-signin',
+      'ob$uniq',
+      alreadyFollowedId: artist.id,
+    );
 
     // Signed in and onboarded: feed with a Following tab that lists the artist.
     await pumpUntil(tester, find.byKey(const ValueKey('tab-following')));
@@ -79,9 +86,11 @@ void main() {
   testWidgets('B: email code sign-in for a new account', (tester) async {
     final email = 'mail$uniq@example.com';
     await launchApp(tester);
-    final pill = find.byWidgetPredicate((w) =>
-        w.key is ValueKey<String> &&
-        (w.key! as ValueKey<String>).value.startsWith('follow-pill-'));
+    final pill = find.byWidgetPredicate(
+      (w) =>
+          w.key is ValueKey<String> &&
+          (w.key! as ValueKey<String>).value.startsWith('follow-pill-'),
+    );
     await pumpUntil(tester, pill);
     await tester.tap(pill.first);
     await pumpUntil(tester, find.byKey(const ValueKey('sso-email')));
