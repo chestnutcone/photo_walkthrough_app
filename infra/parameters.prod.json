@@ -43,6 +43,6 @@
     "appAttestAppId": { "value": "" },
     "reviewMode": { "value": false },
     "reviewEmails": { "value": [] },
-    "sentryEnabled": { "value": true }
+    "sentryEnabled": { "value": false }
   }
 }

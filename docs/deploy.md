@@ -75,7 +75,7 @@ Decisions worth knowing:
 4. **Key Vault secrets** (you need `Key Vault Secrets Officer` on the vault). Infra already wrote `postgres-connection-string`,
    `storage-connection-string`, `acs-connection-string`, `appinsights-connection-string`. You add:
    `jwt-signing-key` (32+ bytes random), `email-code-pepper` (32+ chars), `ban-pepper` (32+ chars; rotating it voids bans),
-   `content-safety-key`, `cloudflare-api-token` (permission: Zone > Cache Purge only), `sentry-dsn`,
+   `content-safety-key`, `cloudflare-api-token` (permission: Zone > Cache Purge only), `sentry-dsn` (optional: only when `sentryEnabled` is true; prod ships with it false and relies on Application Insights),
    `play-integrity-decryption-key`, `play-integrity-verification-key` (from Play Console; needed when `playIntegrityPackageName` is set),
    `review-code` (only while `reviewMode` is on), `registry-password` (only for a private registry).
    Example: `az keyvault secret set --vault-name <kv> --name jwt-signing-key --value "$(openssl rand -base64 48)"`.
@@ -84,7 +84,7 @@ Decisions worth knowing:
 6. **Content Safety**: create an Azure AI Content Safety resource (F0 tier), pass `contentSafetyEndpoint`, store its key above.
 7. **Store and identity values** (parameters): `appleClientId`, `googleClientIds`, `appleTeamId`, `androidSha256Fingerprints`,
    `playIntegrityPackageName`, `appAttestAppId` (`TEAMID.bundle.id`; App Attest is deferred, may stay empty), `dmcaAgent*` (needs legal review), `adminEmails`
-   (comma-separated allow-list; first admin signs in at `/admin` with an email code), Sentry DSN (secret above).
+   (comma-separated allow-list; first admin signs in at `/admin` with an email code), Sentry DSN (optional, secret above).
    Also set the app's dart-defines (`LINKS_DOMAIN`, `SENTRY_DSN`, `PLAY_CLOUD_PROJECT_NUMBER`, store URLs; leave
    `APP_ATTEST_ENABLED` unset while App Attest is deferred). See "App review mode and attestation" for the Play Integrity steps.
 8. **Container image**: `docker build -f api/Dockerfile -t ghcr.io/<owner>/vela-api:<tag> .` then `docker push`. Public GHCR package
@@ -112,7 +112,7 @@ Decisions worth knowing:
 - [ ] `adminEmails` set; Cloudflare Access (or equivalent) in front of `/admin`.
 - [ ] `requireAttestationAndroid: true` with the Play Integrity values (false only for first bring-up), `requireAttestationIos:
       false` (App Attest deferred, owner design pending), `reviewMode: false` except during store review.
-- [ ] Key Vault secrets from step 4 present, including `ban-pepper` (never rotate it) and `sentry-dsn`.
+- [ ] Key Vault secrets from step 4 present, including `ban-pepper` (never rotate it); `sentry-dsn` only if `sentryEnabled` is true.
 - [ ] ACS domain Verified and `linkEmailDomain: true`; budget alert emails reach the owner.
 - [ ] After pass 2: `appOutboundIps` filled and `allowAzureServices: false`.
 - [ ] Privacy policy and terms reviewed by counsel (DMCA and audit retention periods, 30-day deletion deferral).

@@ -26,7 +26,7 @@ You can deploy the infrastructure before counsel finishes, but keep sign-ups clo
 | Cloudflare account and a domain on it | Zone must exist before step 5. |
 | Apple Developer account | Sign in with Apple, Associated Domains. Needs a Mac for any iOS build. |
 | Google Play Console and a Google Cloud project | Play Integrity, Google sign-in client IDs. |
-| Sentry project | DSN for app and API. |
+| Sentry project (optional) | Skip it: Azure Application Insights already collects API errors. The app then has no crash reports. |
 | Docker, `az` CLI, `openssl`, Flutter 3.47.7 | Docker is needed for the API image (CI never builds it). |
 
 Check:
@@ -96,11 +96,10 @@ az keyvault secret set --vault-name $KV --name email-code-pepper     --value "$(
 az keyvault secret set --vault-name $KV --name ban-pepper            --value "$(openssl rand -base64 32)"
 az keyvault secret set --vault-name $KV --name content-safety-key    --value "<from the Content Safety resource>"
 az keyvault secret set --vault-name $KV --name cloudflare-api-token  --value "<Zone > Cache Purge only>"
-az keyvault secret set --vault-name $KV --name sentry-dsn            --value "<dsn>"
 az keyvault secret set --vault-name $KV --name play-integrity-decryption-key   --value "<base64 AES-256 from Play Console>"
 az keyvault secret set --vault-name $KV --name play-integrity-verification-key --value "<base64 EC key, SubjectPublicKeyInfo>"
 ```
-**Never rotate `ban-pepper`**: it voids every ban. `review-code` is only needed while `reviewMode` is on (store review only).
+**Never rotate `ban-pepper`**: it voids every ban. `sentry-dsn` is only needed if you turn Sentry on (`sentryEnabled: true`, off in prod by default). `review-code` is only needed while `reviewMode` is on (store review only).
 
 Check: `az keyvault secret list --vault-name $KV --query '[].name' -o tsv` lists all of the above.
 
@@ -211,7 +210,7 @@ Follow `docs/deploy.md` "App release builds" and "App review mode and attestatio
    flutter build appbundle --release \
      -PlinksDomain=<links domain> \
      --dart-define=LINKS_DOMAIN=<links domain> --dart-define=API_BASE_URL=https://api.<domain> \
-     --dart-define=PLAY_CLOUD_PROJECT_NUMBER=<number> --dart-define=SENTRY_DSN=<dsn> \
+     --dart-define=PLAY_CLOUD_PROJECT_NUMBER=<number> \
      --dart-define=PLAY_STORE_URL=<url> --dart-define=APP_STORE_URL=<url>
    ```
    The build fails on a missing key, a placeholder, or mismatched links values, which is intended.
@@ -234,7 +233,7 @@ Run through the "Production checklist" in `docs/deploy.md` (it is the authoritat
 - [ ] `reviewMode: false`, `requireAttestationAndroid: true`, `minReplicas` at least 1, `malwareScanning: true`.
 - [ ] `adminEmails` set, and the first admin has signed in at `/admin` through Access.
 - [ ] Budget alert emails reach you; an alert exists on Postgres storage percent.
-- [ ] Sentry receives a test error from the API and from the app.
+- [ ] An error logged by the API appears in Application Insights (and in Sentry, only if you enabled it).
 
 ## 14. Rollback and the first week
 
@@ -253,7 +252,7 @@ itself is the problem, restore from the 7-day Postgres point-in-time backup into
 - Log Analytics daily cap (0.15 GB): once hit, further records are dropped for the day. Check the `Usage` table.
 - The metric `vela.abuse.unattested_limited`; raise the permit settings if real users hit it.
 - Budget and the Defender scan cap (about 11.50 USD a month at most).
-- Sentry for crashes.
+- Application Insights failures for API errors (Sentry only if enabled).
 
 **Known gaps to schedule** (see `docs/deploy.md` "Known gaps"): authenticated origin pulls, orphan `originals` sweep,
 Apple token revocation on deletion, App Attest, unencrypted Data Protection keys, app connects as the DB admin.
